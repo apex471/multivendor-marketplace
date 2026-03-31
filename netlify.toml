@@ -4,9 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  # Tell Next.js to skip static-site-optimization for API routes (needed for
-  # routes that connect to MongoDB at request time)
   NEXT_TELEMETRY_DISABLED = "1"
+  # NODE_ENV is intentionally NOT set here — Next.js sets it to "production"
+  # automatically during `next build`. Setting it manually causes build warnings.
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
