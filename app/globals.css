@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: Poppins, system-ui, sans-serif;
+  
+  /* Charcoal - Primary Brand Color (Deep Charcoal / Near Black) */
+  --color-charcoal-50: #f5f5f5;
+  --color-charcoal-100: #e5e5e5;
+  --color-charcoal-200: #d4d4d4;
+  --color-charcoal-300: #a3a3a3;
+  --color-charcoal-400: #737373;
+  --color-charcoal-500: #525252;
+  --color-charcoal-600: #404040;
+  --color-charcoal-700: #262626;
+  --color-charcoal-800: #1a1a1a;
+  --color-charcoal-900: #111111;
+  --color-charcoal-950: #0a0a0a;
+  
+  /* Cool Gray - Supporting Color */
+  --color-cool-gray-50: #fafafa;
+  --color-cool-gray-100: #f2f2f2;
+  --color-cool-gray-200: #e5e5e5;
+  --color-cool-gray-300: #d4d4d4;
+  --color-cool-gray-400: #9b9b9b;
+  --color-cool-gray-500: #8a8a8a;
+  --color-cool-gray-600: #6b6b6b;
+  --color-cool-gray-700: #525252;
+  --color-cool-gray-800: #3a3a3a;
+  --color-cool-gray-900: #2a2a2a;
+  
+  /* Gold - Accent/Luxury Highlight (Muted Gold / Champagne) */
+  --color-gold-50: #faf9f7;
+  --color-gold-100: #f5f2ed;
+  --color-gold-200: #ebe4d8;
+  --color-gold-300: #ddd0b8;
+  --color-gold-400: #d0bc98;
+  --color-gold-500: #c6a45e;
+  --color-gold-600: #bfa46f;
+  --color-gold-700: #a68a55;
+  --color-gold-800: #8a7045;
+  --color-gold-900: #6d5736;
+  
+  /* Legacy colors for backward compatibility */
+  --color-primary-50: #f5f5f5;
+  --color-primary-100: #e5e5e5;
+  --color-primary-200: #d4d4d4;
+  --color-primary-300: #a3a3a3;
+  --color-primary-400: #737373;
+  --color-primary-500: #525252;
+  --color-primary-600: #404040;
+  --color-primary-700: #262626;
+  --color-primary-800: #1a1a1a;
+  --color-primary-900: #111111;
+  
+  --color-secondary-50: #faf9f7;
+  --color-secondary-100: #f5f2ed;
+  --color-secondary-200: #ebe4d8;
+  --color-secondary-300: #ddd0b8;
+  --color-secondary-400: #d0bc98;
+  --color-secondary-500: #c6a45e;
+  --color-secondary-600: #bfa46f;
+  --color-secondary-700: #a68a55;
+  --color-secondary-800: #8a7045;
+  --color-secondary-900: #6d5736;
+}
+
+:root {
+  --foreground-rgb: 17, 17, 17;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+.dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 26, 26, 26;
+  --background-end-rgb: 17, 17, 17;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background-color: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 0.25rem;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
+}
+
+/* Ensure text contrast for accessibility */
+.dark {
+  /* Override any potential dark text on dark backgrounds */
+  color: #ffffff;
+}
+
+/* Prevent dark text on dark backgrounds */
+.dark .text-gray-900:not(.dark\:text-white),
+.dark .text-gray-800:not(.dark\:text-white),
+.dark .text-gray-700:not(.dark\:text-cool-gray-300) {
+  color: #ffffff !important;
+}
+
+.dark .text-gray-600:not(.dark\:text-cool-gray-400) {
+  color: #9b9b9b !important;
+}
+
+.dark .text-gray-500:not(.dark\:text-cool-gray-400) {
+  color: #9b9b9b !important;
+}
+
+/* Confetti Animation */
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confetti linear forwards;
+}
