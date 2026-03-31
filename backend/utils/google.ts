@@ -1,13 +1,27 @@
 import { OAuth2Client } from 'google-auth-library';
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+// ---------------------------------------------------------------------------
+// Lazy client — created on first use, NOT at module load time.
+// Creating the client at module level would execute during Next.js static
+// analysis (next build) even when the env vars are not yet available, which
+// causes cryptic build errors on Netlify CI.
+// ---------------------------------------------------------------------------
+let _client: OAuth2Client | null = null;
 
-if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-  console.warn('Google OAuth credentials not configured');
+function getClient(): OAuth2Client {
+  if (!_client) {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.warn('[Google OAuth] Credentials not configured — set NEXT_PUBLIC_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Netlify env vars.');
+    }
+
+    const redirectUri = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/auth/google/callback`;
+    _client = new OAuth2Client(clientId, clientSecret, redirectUri);
+  }
+  return _client;
 }
-
-const client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/auth/google/callback`);
 
 export interface GoogleTokenPayload {
   iss: string;
@@ -30,9 +44,9 @@ export interface GoogleTokenPayload {
  */
 export async function verifyGoogleToken(token: string): Promise<GoogleTokenPayload | null> {
   try {
-    const ticket = await client.verifyIdToken({
+    const ticket = await getClient().verifyIdToken({
       idToken: token,
-      audience: GOOGLE_CLIENT_ID,
+      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload() as GoogleTokenPayload;
@@ -88,7 +102,7 @@ export function getGoogleAuthUrl(): string {
     'https://www.googleapis.com/auth/userinfo.profile',
   ];
 
-  return client.generateAuthUrl({
+  return getClient().generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
     prompt: 'consent',
