@@ -115,7 +115,7 @@ const mockProducts = [
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [_selectedCategory, setSelectedCategory] = useState('');
   const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -132,10 +132,6 @@ export default function Home() {
 
   const handleProductClick = (productId: string) => {
     router.push(`/product/${productId}`);
-  };
-
-  const handleVendorClick = (vendorId: string) => {
-    router.push(`/vendor/${vendorId}`);
   };
 
   const handleLikePost = (postId: string) => {
@@ -589,7 +585,7 @@ export default function Home() {
         <section className="mb-10 sm:mb-12 md:mb-16">
           <div className="mb-5 sm:mb-6 md:mb-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1 sm:mb-2">Shop by Category</h2>
-            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400">Find exactly what you're looking for</p>
+            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400">Find exactly what you&apos;re looking for</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">

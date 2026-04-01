@@ -1,16 +1,35 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
 .next
 out
 dist
 build
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# .env.example IS committed (template only, no real secrets)
+# All other .env* files are ignored
 .env
 .env.*
 !.env.example
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.vercel
+pnpm-debug.log*
+
+# ── TypeScript ────────────────────────────────────────────────────────────────
 *.tsbuildinfo
 next-env.d.ts
+
+# ── Deployment ────────────────────────────────────────────────────────────────
+.vercel
