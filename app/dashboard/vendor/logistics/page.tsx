@@ -21,7 +21,7 @@ export default function VendorLogisticsPage() {
 
       <main className="flex-1">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-charcoal-800 to-charcoal-900 dark:from-charcoal-900 dark:to-charcoal-950 text-white">
+        <div className="bg-linear-to-r from-charcoal-800 to-charcoal-900 dark:from-charcoal-900 dark:to-charcoal-950 text-white">
           <div className="container mx-auto px-4 py-8 sm:py-12">
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gold-500 flex items-center justify-center text-3xl sm:text-4xl flex-shrink-0">
@@ -38,7 +38,7 @@ export default function VendorLogisticsPage() {
         <div className="container mx-auto px-4 py-8 sm:py-12">
           {/* Current Provider Status */}
           {selectedLogistics && (
-            <div className="mb-8 bg-gradient-to-r from-gold-50 to-gold-100 dark:from-charcoal-800 dark:to-charcoal-750 border border-gold-200 dark:border-gold-800 rounded-xl p-6">
+            <div className="mb-8 bg-linear-to-r from-gold-50 to-gold-100 dark:from-charcoal-800 dark:to-charcoal-750 border border-gold-200 dark:border-gold-800 rounded-xl p-6">
               <div className="flex items-center gap-4">
                 <div className="text-4xl">✅</div>
                 <div className="flex-1">
@@ -154,7 +154,7 @@ export default function VendorLogisticsPage() {
                     <button className="px-6 py-2 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white font-semibold rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                       Cancel
                     </button>
-                    <button className="px-6 py-2 bg-gradient-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all shadow-md hover:shadow-lg">
+                    <button className="px-6 py-2 bg-linear-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all shadow-md hover:shadow-lg">
                       Save Settings
                     </button>
                   </div>

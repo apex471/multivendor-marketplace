@@ -156,7 +156,7 @@ export default function Home() {
       <Header />
 
       {/* Hero Section with Search */}
-      <section className="relative bg-gradient-to-br from-charcoal-900 via-charcoal-800 to-charcoal-700 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 text-white overflow-hidden">
+      <section className="relative bg-linear-to-br from-charcoal-900 via-charcoal-800 to-charcoal-700 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 dark:opacity-20">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gold-400 dark:bg-gold-600 rounded-full filter blur-3xl"></div>
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-charcoal-600 dark:bg-charcoal-900 rounded-full filter blur-3xl"></div>
@@ -226,7 +226,7 @@ export default function Home() {
                 className="flex-shrink-0 text-center group touch-manipulation"
               >
                 <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
-                  <div className={`absolute inset-0 rounded-full ${story.hasNew ? 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
+                  <div className={`absolute inset-0 rounded-full ${story.hasNew ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
                     <div className="w-full h-full rounded-full bg-white p-[2px] sm:p-[3px]">
                       <Image
                         src={story.avatar}
@@ -396,14 +396,14 @@ export default function Home() {
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-2xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1"
               >
                 {/* Banner Image */}
-                <div className="relative h-32 sm:h-40 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800 overflow-hidden">
+                <div className="relative h-32 sm:h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800 overflow-hidden">
                   <Image
                     src={brand.banner}
                     alt={brand.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
                   
                   {/* Brand Logo */}
                   <div className="absolute bottom-0 left-4 sm:left-6 translate-y-1/2">
@@ -559,7 +559,7 @@ export default function Home() {
 
         {/* Statistics / Trust Section */}
         <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="bg-gradient-to-r from-gold-600 to-gold-700 dark:from-gold-700 dark:to-gold-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-12 text-white shadow-lg dark:shadow-charcoal-950/50">
+          <div className="bg-linear-to-r from-gold-600 to-gold-700 dark:from-gold-700 dark:to-gold-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-12 text-white shadow-lg dark:shadow-charcoal-950/50">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 text-center">
               <div>
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">2,500+</div>
@@ -600,7 +600,7 @@ export default function Home() {
                 href={`/shop?category=${category.name}`}
                 className="group relative overflow-hidden rounded-lg sm:rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${category.color} group-hover:scale-110 transition-transform duration-300`} />
+                <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-110 transition-transform duration-300`} />
                 <div className="relative z-10 text-center text-white px-2">
                   <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2 md:mb-3">{category.icon}</div>
                   <div className="font-display font-bold text-sm sm:text-base md:text-xl leading-tight">{category.name}</div>

@@ -193,22 +193,22 @@ export default function LogisticsDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6">
+          <div className="bg-linear-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6">
             <div className="text-3xl mb-2">📦</div>
             <div className="text-2xl font-bold">{stats.totalActive}</div>
             <div className="text-sm opacity-90">Active Shipments</div>
           </div>
-          <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6">
+          <div className="bg-linear-to-br from-green-500 to-green-600 text-white rounded-xl p-6">
             <div className="text-3xl mb-2">✅</div>
             <div className="text-2xl font-bold">{stats.totalDelivered}</div>
             <div className="text-sm opacity-90">Delivered Today</div>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6">
+          <div className="bg-linear-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6">
             <div className="text-3xl mb-2">⏱️</div>
             <div className="text-2xl font-bold">{stats.averageDeliveryTime}d</div>
             <div className="text-sm opacity-90">Avg Delivery Time</div>
           </div>
-          <div className="bg-gradient-to-br from-gold-500 to-gold-600 text-white rounded-xl p-6">
+          <div className="bg-linear-to-br from-gold-500 to-gold-600 text-white rounded-xl p-6">
             <div className="text-3xl mb-2">⭐</div>
             <div className="text-2xl font-bold">{stats.onTimeRate}%</div>
             <div className="text-sm opacity-90">On-Time Rate</div>
@@ -495,7 +495,7 @@ export default function LogisticsDashboard() {
                   <button className="px-6 py-2 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white font-semibold rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                     Cancel
                   </button>
-                  <button className="px-6 py-2 bg-gradient-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all shadow-md hover:shadow-lg">
+                  <button className="px-6 py-2 bg-linear-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all shadow-md hover:shadow-lg">
                     Save Settings
                   </button>
                 </div>

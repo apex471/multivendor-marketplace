@@ -139,7 +139,7 @@ export default function BrandPage() {
           fill
           className="object-cover opacity-70"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent flex items-end">
           <div className="container mx-auto px-4 pb-8">
             <div className="flex items-end gap-6">
               <div className="relative w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white dark:border-charcoal-900 bg-white flex-shrink-0">

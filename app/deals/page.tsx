@@ -30,7 +30,7 @@ export default function DealsPage() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Hero Banner */}
-        <div className="bg-gradient-to-r from-gold-600 to-gold-700 rounded-2xl p-8 md:p-12 text-white text-center mb-8">
+        <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-2xl p-8 md:p-12 text-white text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">🔥 Hot Deals & Sales</h1>
           <p className="text-xl mb-6">Up to 70% off on luxury fashion items</p>
           <div className="flex justify-center gap-4">

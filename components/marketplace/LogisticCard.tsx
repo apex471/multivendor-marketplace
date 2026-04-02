@@ -123,7 +123,7 @@ export default function LogisticCard({ provider, isSelected, onSelect, isLoading
         <button
           onClick={() => !isLoading && onSelect?.(provider)}
           disabled={isLoading}
-          className="mt-4 w-full py-3 px-4 bg-gradient-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+          className="mt-4 w-full py-3 px-4 bg-linear-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
         >
           {isLoading ? 'Selecting...' : 'Select Provider'}
         </button>

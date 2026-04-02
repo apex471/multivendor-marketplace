@@ -12,7 +12,7 @@ export default function VendorCard({ vendor, distance }: VendorCardProps) {
     <Link href={`/vendors/${vendor.id}`} className="group">
       <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
         {/* Store Banner */}
-        <div className="relative h-32 bg-gradient-to-r from-primary-400 to-secondary-400">
+        <div className="relative h-32 bg-linear-to-r from-primary-400 to-secondary-400">
           {vendor.storeBanner && (
             <Image
               src={vendor.storeBanner}

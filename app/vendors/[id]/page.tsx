@@ -137,8 +137,8 @@ export default function VendorStorePage() {
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       {/* Banner */}
-      <div className="h-64 bg-gradient-to-r from-charcoal-800 via-charcoal-900 to-charcoal-950 dark:from-charcoal-900 dark:via-charcoal-950 dark:to-black relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gold-600/10 to-transparent"></div>
+      <div className="h-64 bg-linear-to-r from-charcoal-800 via-charcoal-900 to-charcoal-950 dark:from-charcoal-900 dark:via-charcoal-950 dark:to-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-gold-600/10 to-transparent"></div>
         <div className="absolute inset-0 flex items-end">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             <div className="flex items-end gap-6">
@@ -217,7 +217,7 @@ export default function VendorStorePage() {
               )}
 
               {/* Map */}
-              <div className="h-48 bg-gradient-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center relative overflow-hidden">
+              <div className="h-48 bg-linear-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
                   <div className="grid grid-cols-6 grid-rows-6 h-full">
                     {Array.from({ length: 36 }).map((_, i) => (
@@ -272,7 +272,7 @@ export default function VendorStorePage() {
                     key={product.id}
                     className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    <div className="h-48 bg-gradient-to-br from-purple-200 to-pink-200 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center text-6xl">
+                    <div className="h-48 bg-linear-to-br from-purple-200 to-pink-200 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center text-6xl">
                       📸
                     </div>
                     <div className="p-4">
@@ -417,7 +417,7 @@ export default function VendorStorePage() {
             <div className="space-y-3">
               <Link
                 href={`/vendors/nearby`}
-                className="block w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-center rounded-lg hover:from-purple-700 hover:to-purple-600 font-semibold"
+                className="block w-full px-4 py-3 bg-linear-to-r from-purple-600 to-purple-500 text-white text-center rounded-lg hover:from-purple-700 hover:to-purple-600 font-semibold"
               >
                 🗺️ Find Nearby Vendors
               </Link>

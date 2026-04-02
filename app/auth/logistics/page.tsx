@@ -104,7 +104,7 @@ const DELIVERY_TIMES = [
 
 function AccessDenied({ error }: { error: string }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-linear-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 flex items-center justify-center px-4 py-12">
       <div className="max-w-lg w-full text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-900/30 border-2 border-red-700 mb-6">
           <span className="text-4xl">🔒</span>
@@ -155,7 +155,7 @@ function AccessDenied({ error }: { error: string }) {
 
 function SuccessScreen({ companyName }: { companyName: string }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-linear-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 flex items-center justify-center px-4 py-12">
       <div className="max-w-lg w-full text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-900/30 border-2 border-green-600 mb-6 animate-bounce">
           <span className="text-4xl">✅</span>
@@ -456,12 +456,12 @@ function LogisticsSignupContent() {
   const daysLeft = referralPayload ? getDaysUntilExpiry(referralPayload) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 py-8 px-4">
+    <div className="min-h-screen bg-linear-to-br from-charcoal-950 via-charcoal-900 to-charcoal-800 py-8 px-4">
       <div className="max-w-2xl mx-auto">
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-gold-500 to-gold-700 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-linear-to-br from-gold-500 to-gold-700 rounded-2xl mb-4">
             <span className="text-3xl">🚚</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">

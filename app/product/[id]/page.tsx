@@ -250,7 +250,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               href={`/vendors/${product.vendor.id}`}
               className="flex items-center gap-3 p-4 bg-cool-gray-50 dark:bg-charcoal-800 rounded-lg mb-6 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 transition-colors"
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center text-2xl">
+              <div className="w-12 h-12 bg-linear-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center text-2xl">
                 🏪
               </div>
               <div className="flex-1">

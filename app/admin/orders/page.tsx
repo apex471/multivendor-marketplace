@@ -213,7 +213,7 @@ export default function OrderManagementPage() {
             <div className="text-2xl font-bold text-green-900 dark:text-green-400">{deliveredOrders}</div>
             <div className="text-xs text-green-800 dark:text-green-500">Delivered</div>
           </div>
-          <div className="bg-gradient-to-br from-gold-400 to-gold-600 rounded-xl p-4 text-white">
+          <div className="bg-linear-to-br from-gold-400 to-gold-600 rounded-xl p-4 text-white">
             <div className="text-3xl mb-2">💰</div>
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <div className="text-xs opacity-90">Total Revenue</div>

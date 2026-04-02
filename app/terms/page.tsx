@@ -182,7 +182,7 @@ Address: 123 Fashion Avenue, New York, NY 10001`,
 
         {/* Agreement Section */}
         <div className="max-w-4xl mx-auto mt-12">
-          <div className="bg-gradient-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-white text-center">
+          <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-white text-center">
             <h2 className="text-2xl font-bold mb-4">Have Questions?</h2>
             <p className="mb-6">
               If you have any questions about these Terms of Service, please don't hesitate to contact us.

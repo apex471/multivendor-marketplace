@@ -70,7 +70,7 @@ export default function BrandDetailPage() {
       <Header />
 
       {/* Banner */}
-      <div className="relative h-48 sm:h-64 md:h-80 bg-gradient-to-br from-charcoal-800 to-charcoal-900 overflow-hidden">
+      <div className="relative h-48 sm:h-64 md:h-80 bg-linear-to-br from-charcoal-800 to-charcoal-900 overflow-hidden">
         <Image
           src={brand.banner}
           alt={brand.name}
@@ -78,7 +78,7 @@ export default function BrandDetailPage() {
           className="object-cover opacity-60"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent"></div>
       </div>
 
       <div className="container mx-auto px-4 -mt-16 sm:-mt-20 relative z-10">

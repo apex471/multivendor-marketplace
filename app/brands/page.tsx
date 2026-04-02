@@ -237,14 +237,14 @@ export default function BrandsPage() {
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all hover:-translate-y-1"
               >
                 {/* Banner Image */}
-                <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                <div className="relative h-40 bg-linear-to-br from-gray-100 to-gray-200 overflow-hidden">
                   <Image
                     src={brand.banner}
                     alt={brand.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
                   
                   {/* Brand Logo */}
                   <div className="absolute bottom-0 left-6 translate-y-1/2">
@@ -312,7 +312,7 @@ export default function BrandsPage() {
         )}
 
         {/* Info Section */}
-        <div className="mt-12 bg-gradient-to-r from-gold-600 to-gold-700 rounded-xl p-8 text-white text-center">
+        <div className="mt-12 bg-linear-to-r from-gold-600 to-gold-700 rounded-xl p-8 text-white text-center">
           <h2 className="text-2xl font-bold mb-3">Shop with Confidence</h2>
           <p className="mb-6 max-w-2xl mx-auto">
             All brands are verified. Products are available through official brand stores or authorized retailers.

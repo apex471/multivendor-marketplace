@@ -100,7 +100,7 @@ export default function MessagesPage() {
                     selectedChat === conversation.id ? 'bg-gold-50 dark:bg-charcoal-700' : ''
                   }`}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-gold-600 to-gold-700 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+                  <div className="w-12 h-12 bg-linear-to-br from-gold-600 to-gold-700 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                     {conversation.avatar}
                   </div>
                   <div className="flex-1 text-left min-w-0">
@@ -131,7 +131,7 @@ export default function MessagesPage() {
                 {/* Chat Header */}
                 <div className="p-4 border-b border-cool-gray-200 dark:border-charcoal-700 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-gold-600 to-gold-700 rounded-full flex items-center justify-center text-xl">
+                    <div className="w-10 h-10 bg-linear-to-br from-gold-600 to-gold-700 rounded-full flex items-center justify-center text-xl">
                       {conversations.find((c) => c.id === selectedChat)?.avatar}
                     </div>
                     <div>

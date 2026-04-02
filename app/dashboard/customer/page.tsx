@@ -74,7 +74,7 @@ export default function CustomerDashboard() {
 
       <main className="flex-1">
         {/* Header Section */}
-        <div className="bg-gradient-to-br from-primary-800 to-primary-600 text-white">
+        <div className="bg-linear-to-br from-primary-800 to-primary-600 text-white">
           <div className="container mx-auto px-4 py-8 sm:py-12">
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-secondary-400 flex items-center justify-center text-3xl sm:text-4xl">
@@ -181,7 +181,7 @@ export default function CustomerDashboard() {
                 <div className="space-y-3">
                   <Link 
                     href="/shop"
-                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary-700 to-primary-600 text-white rounded-lg hover:from-primary-800 hover:to-primary-700 transition-all shadow-md hover:shadow-lg min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-linear-to-r from-primary-700 to-primary-600 text-white rounded-lg hover:from-primary-800 hover:to-primary-700 transition-all shadow-md hover:shadow-lg min-h-[60px]"
                   >
                     <span className="text-2xl">🛍️</span>
                     <div>
@@ -192,7 +192,7 @@ export default function CustomerDashboard() {
                   
                   <Link 
                     href="/feed"
-                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-secondary-600 to-secondary-500 text-primary-900 rounded-lg hover:from-secondary-700 hover:to-secondary-600 transition-all shadow-md hover:shadow-lg min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-linear-to-r from-secondary-600 to-secondary-500 text-primary-900 rounded-lg hover:from-secondary-700 hover:to-secondary-600 transition-all shadow-md hover:shadow-lg min-h-[60px]"
                   >
                     <span className="text-2xl">📸</span>
                     <div>

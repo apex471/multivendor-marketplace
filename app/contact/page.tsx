@@ -268,7 +268,7 @@ export default function ContactPage() {
             </div>
 
             {/* Response Time */}
-            <div className="bg-gradient-to-br from-gold-600 to-gold-700 rounded-lg p-6 text-white">
+            <div className="bg-linear-to-br from-gold-600 to-gold-700 rounded-lg p-6 text-white">
               <div className="text-4xl mb-3">⏱️</div>
               <h3 className="text-xl font-bold mb-2">Response Time</h3>
               <p className="text-sm">

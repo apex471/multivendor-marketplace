@@ -179,7 +179,7 @@ export default function BrandDashboard() {
   const LogisticsTab = () => (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="bg-gradient-to-br from-gray-900 to-gray-700 text-white rounded-xl p-6 sm:p-8">
+      <div className="bg-linear-to-br from-gray-900 to-gray-700 text-white rounded-xl p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-display font-bold mb-1">Logistics Management</h2>
@@ -413,7 +413,7 @@ export default function BrandDashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                         {request.vendorName.charAt(0)}
                       </div>
                       <div>
@@ -563,7 +563,7 @@ export default function BrandDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gold-600/10 via-white to-gold-600/5 dark:from-charcoal-900 dark:via-charcoal-900 dark:to-charcoal-800">
+    <div className="min-h-screen bg-linear-to-br from-gold-600/10 via-white to-gold-600/5 dark:from-charcoal-900 dark:via-charcoal-900 dark:to-charcoal-800">
       {/* Header */}
       <header className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700 shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

@@ -62,7 +62,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5 sm:gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-charcoal-800 to-charcoal-900 dark:from-gold-600 dark:to-gold-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-linear-to-br from-charcoal-800 to-charcoal-900 dark:from-gold-600 dark:to-gold-700 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-gold-300 dark:text-charcoal-900 font-bold text-xs sm:text-sm">CLW</span>
             </div>
             <div className="flex flex-col">

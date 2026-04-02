@@ -37,7 +37,7 @@ export default function CategoriesPage() {
               href={`/shop?category=${category.id}`}
               className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all hover:-translate-y-1"
             >
-              <div className="bg-gradient-to-br from-gold-600 to-gold-700 p-8 text-center">
+              <div className="bg-linear-to-br from-gold-600 to-gold-700 p-8 text-center">
                 <div className="text-6xl mb-2">{category.icon}</div>
               </div>
               <div className="p-6">
@@ -65,7 +65,7 @@ export default function CategoriesPage() {
         </div>
 
         {/* Featured Collections */}
-        <div className="bg-gradient-to-r from-gold-600 to-gold-700 rounded-2xl p-8 md:p-12 text-white text-center">
+        <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-2xl p-8 md:p-12 text-white text-center">
           <h2 className="text-3xl font-bold mb-4">Can't Find What You're Looking For?</h2>
           <p className="text-lg mb-6">Use our advanced search to find specific items</p>
           <Link

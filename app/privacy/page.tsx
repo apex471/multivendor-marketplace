@@ -226,7 +226,7 @@ We will respond to your inquiry within 30 days.`,
 
         {/* Quick Summary */}
         <div className="max-w-4xl mx-auto mb-12">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-600 rounded-lg p-6">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 border-l-4 border-blue-600 rounded-lg p-6">
             <h2 className="text-xl font-bold text-charcoal-900 mb-4">📋 Quick Summary</h2>
             <ul className="space-y-2 text-charcoal-700">
               <li>✅ We collect information to provide and improve our services</li>
@@ -297,7 +297,7 @@ We will respond to your inquiry within 30 days.`,
 
         {/* Contact Section */}
         <div className="max-w-4xl mx-auto mt-12">
-          <div className="bg-gradient-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-white text-center">
+          <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-white text-center">
             <h2 className="text-2xl font-bold mb-4">Privacy Questions?</h2>
             <p className="mb-6">
               We're here to help you understand how we protect your information.

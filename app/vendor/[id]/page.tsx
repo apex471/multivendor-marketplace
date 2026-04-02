@@ -48,7 +48,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
       <Header />
 
       {/* Vendor Banner */}
-      <div className="relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary-600 to-secondary-600">
+      <div className="relative h-48 sm:h-64 md:h-80 bg-linear-to-r from-primary-600 to-secondary-600">
         <Image
           src={vendor.banner}
           alt={vendor.name}

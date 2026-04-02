@@ -253,7 +253,7 @@ export default function VendorsPage() {
               {sortedVendors.map(vendor => (
                 <div key={vendor.id} className="group bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
                   {/* Banner */}
-                  <div className="relative h-32 sm:h-40 bg-gradient-to-r from-gold-600 to-gold-700">
+                  <div className="relative h-32 sm:h-40 bg-linear-to-r from-gold-600 to-gold-700">
                     <Image
                       src={vendor.banner}
                       alt={vendor.name}

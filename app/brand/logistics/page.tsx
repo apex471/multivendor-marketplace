@@ -41,7 +41,7 @@ export default function BrandLogisticsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Provider Status */}
         {selectedLogistics && (
-          <div className="mb-8 bg-gradient-to-r from-gold-50 to-gold-100 dark:from-charcoal-800 dark:to-charcoal-750 border border-gold-200 dark:border-gold-800 rounded-xl p-6">
+          <div className="mb-8 bg-linear-to-r from-gold-50 to-gold-100 dark:from-charcoal-800 dark:to-charcoal-750 border border-gold-200 dark:border-gold-800 rounded-xl p-6">
             <div className="flex items-center gap-4">
               <div className="text-4xl">✅</div>
               <div className="flex-1">
@@ -157,7 +157,7 @@ export default function BrandLogisticsPage() {
                   <button className="px-6 py-2 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white font-semibold rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                     Cancel
                   </button>
-                  <button className="px-6 py-2 bg-gradient-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all">
+                  <button className="px-6 py-2 bg-linear-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all">
                     Save Settings
                   </button>
                 </div>

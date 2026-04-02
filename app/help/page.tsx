@@ -218,7 +218,7 @@ export default function HelpPage() {
 
         {/* Still Need Help */}
         <div className="max-w-4xl mx-auto mt-12">
-          <div className="bg-gradient-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-center text-white">
+          <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-center text-white">
             <h2 className="text-2xl font-bold mb-3">Still need help?</h2>
             <p className="mb-6">Our support team is here to assist you</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

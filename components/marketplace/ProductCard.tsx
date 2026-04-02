@@ -49,7 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Out of Stock Overlay */}
           {product.stock === 0 && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="px-4 py-2 bg-white text-gray-900 font-semibold rounded">
                 Out of Stock
               </span>

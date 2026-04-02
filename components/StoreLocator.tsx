@@ -276,7 +276,7 @@ export default function StoreLocator({
                       className="p-4 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:shadow-md transition-shadow"
                     >
                       <div className="flex gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
+                        <div className="w-12 h-12 bg-linear-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
                           {store.logo}
                         </div>
                         <div className="flex-1">
@@ -335,7 +335,7 @@ export default function StoreLocator({
                 })}
               </div>
             ) : (
-              <div className="h-96 bg-gradient-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center">
+              <div className="h-96 bg-linear-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-6xl mb-4">🗺️</div>
                   <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-2">

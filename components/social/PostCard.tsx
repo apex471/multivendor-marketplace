@@ -52,7 +52,7 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
             className="object-cover"
           />
           {post.images.length > 1 && (
-            <div className="absolute top-2 right-2 px-2 py-1 bg-black bg-opacity-60 text-white text-xs rounded">
+            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
               1/{post.images.length}
             </div>
           )}

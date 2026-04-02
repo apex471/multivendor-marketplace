@@ -205,7 +205,7 @@ export default function ShipmentDetailsPage({ params }: { params: { id: string }
                 <button
                   onClick={handleStatusUpdate}
                   disabled={!updateStatus}
-                  className="w-full px-4 py-2 bg-gradient-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-linear-to-r from-gold-600 to-gold-700 text-white font-semibold rounded-lg hover:from-gold-700 hover:to-gold-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Update Status
                 </button>

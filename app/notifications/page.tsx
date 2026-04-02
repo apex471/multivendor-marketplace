@@ -249,7 +249,7 @@ export default function NotificationsPage() {
                           </div>
                         </Link>
                       ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-gold-500 to-gold-700 rounded-full flex items-center justify-center text-2xl">
+                        <div className="w-12 h-12 bg-linear-to-br from-gold-500 to-gold-700 rounded-full flex items-center justify-center text-2xl">
                           {getNotificationIcon(notification.type)}
                         </div>
                       )}

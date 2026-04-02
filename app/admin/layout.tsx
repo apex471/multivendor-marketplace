@@ -109,7 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="min-h-screen bg-charcoal-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
+          <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-gold-500 to-gold-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
             <span className="text-white font-black text-lg">CLW</span>
           </div>
           <div className="w-8 h-8 border-4 border-gold-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -142,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-charcoal-800">
-          <div className="w-10 h-10 bg-gradient-to-br from-gold-500 to-gold-700 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+          <div className="w-10 h-10 bg-linear-to-br from-gold-500 to-gold-700 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
             <span className="text-white font-black text-sm tracking-tight">CLW</span>
           </div>
           <div>
@@ -201,7 +201,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Admin profile & logout */}
         <div className="shrink-0 border-t border-charcoal-800 p-3 space-y-1">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-charcoal-800/50">
-            <div className="w-8 h-8 bg-gradient-to-br from-gold-500 to-gold-700 rounded-full flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 bg-linear-to-br from-gold-500 to-gold-700 rounded-full flex items-center justify-center shrink-0">
               <span className="text-white text-xs font-bold">{adminInitial}</span>
             </div>
             <div className="flex-1 min-w-0">

@@ -163,7 +163,7 @@ export default function FeedPage() {
               <div className="flex gap-4 overflow-x-auto">
                 {/* Add Story */}
                 <button className="flex-shrink-0 flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-2xl border-4 border-white dark:border-charcoal-800">
+                  <div className="w-16 h-16 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-2xl border-4 border-white dark:border-charcoal-800">
                     +
                   </div>
                   <span className="text-xs text-charcoal-600 dark:text-cool-gray-400">Add Story</span>
@@ -212,7 +212,7 @@ export default function FeedPage() {
                 {/* Post Header */}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-2xl">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-2xl">
                       {post.author.avatar}
                     </div>
                     <div>
@@ -295,7 +295,7 @@ export default function FeedPage() {
                 {/* Comment Input */}
                 <div className="border-t border-cool-gray-300 dark:border-charcoal-700 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-lg">
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-lg">
                       👤
                     </div>
                     <input
@@ -342,7 +342,7 @@ export default function FeedPage() {
                 ].map((user, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-xl">
+                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-xl">
                         {user.avatar}
                       </div>
                       <div>

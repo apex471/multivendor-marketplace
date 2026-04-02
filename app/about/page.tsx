@@ -68,7 +68,7 @@ export default function AboutPage() {
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-gold-600 to-gold-700 text-white py-20">
+      <div className="bg-linear-to-r from-gold-600 to-gold-700 text-white py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl font-bold mb-6">About Us</h1>
           <p className="text-xl max-w-3xl mx-auto leading-relaxed">
@@ -204,7 +204,7 @@ export default function AboutPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-r from-gold-600 to-gold-700 py-16">
+      <div className="bg-linear-to-r from-gold-600 to-gold-700 py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-white mb-6">Join Our Fashion Community</h2>
           <p className="text-xl text-white mb-8 max-w-2xl mx-auto">

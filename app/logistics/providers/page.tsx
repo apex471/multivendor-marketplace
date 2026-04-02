@@ -379,7 +379,7 @@ export default function LogisticsProvidersPage() {
 
       <main className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-950">
         {/* Page Header */}
-        <div className="bg-gradient-to-br from-charcoal-900 via-charcoal-800 to-charcoal-700 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 text-white">
+        <div className="bg-linear-to-br from-charcoal-900 via-charcoal-800 to-charcoal-700 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 text-white">
           <div className="container mx-auto px-4 py-10 sm:py-14">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
@@ -521,7 +521,7 @@ export default function LogisticsProvidersPage() {
           )}
 
           {/* Invite CTA Banner */}
-          <div className="mt-10 bg-gradient-to-br from-charcoal-900 to-charcoal-800 dark:from-charcoal-800 dark:to-charcoal-700 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-5">
+          <div className="mt-10 bg-linear-to-br from-charcoal-900 to-charcoal-800 dark:from-charcoal-800 dark:to-charcoal-700 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-5">
             <div className="flex-shrink-0 w-14 h-14 bg-gold-600/20 border border-gold-600/40 rounded-2xl flex items-center justify-center text-3xl">
               🔗
             </div>

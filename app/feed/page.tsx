@@ -126,7 +126,7 @@ export default function FeedPage() {
           {/* Create Post */}
           <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-md mb-6">
             <div className="flex gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-gold-600 to-gold-700 flex items-center justify-center text-white font-bold flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-linear-to-br from-gold-600 to-gold-700 flex items-center justify-center text-white font-bold flex-shrink-0">
                 U
               </div>
               <div className="flex-1">

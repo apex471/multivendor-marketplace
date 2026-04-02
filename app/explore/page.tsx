@@ -317,7 +317,7 @@ export default function ExplorePage() {
                   <Link
                     key={category.name}
                     href={`/explore?category=${category.name}`}
-                    className="bg-gradient-to-br from-gold-500 to-gold-700 rounded-lg p-6 text-white text-center hover:scale-105 transition-transform"
+                    className="bg-linear-to-br from-gold-500 to-gold-700 rounded-lg p-6 text-white text-center hover:scale-105 transition-transform"
                   >
                     <div className="text-4xl mb-2">{category.emoji}</div>
                     <div className="font-semibold">{category.name}</div>

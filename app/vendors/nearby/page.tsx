@@ -275,7 +275,7 @@ export default function NearbyVendorsPage() {
               </h2>
               <div 
                 ref={mapRef}
-                className="w-full h-96 bg-gradient-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center relative overflow-hidden"
+                className="w-full h-96 bg-linear-to-br from-cool-gray-100 to-cool-gray-200 dark:from-charcoal-700 dark:to-charcoal-600 rounded-lg flex items-center justify-center relative overflow-hidden"
               >
                 {/* Simple map representation - Replace with real Mapbox/Google Maps */}
                 <div className="absolute inset-0 opacity-10">
@@ -366,7 +366,7 @@ export default function NearbyVendorsPage() {
                     >
                       <div className="flex gap-4">
                         {/* Logo */}
-                        <div className="w-16 h-16 bg-gradient-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                        <div className="w-16 h-16 bg-linear-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
                           {vendor.logo}
                         </div>
 
