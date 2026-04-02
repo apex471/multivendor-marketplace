@@ -82,9 +82,9 @@ export default function AboutPage() {
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-charcoal-900 mb-4">Our Mission</h2>
+            <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-4">Our Mission</h2>
             <div className="w-20 h-1 bg-gold-600 mx-auto mb-8"></div>
-            <p className="text-lg text-charcoal-700 leading-relaxed">
+            <p className="text-lg text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
               To create the world's most engaging fashion marketplace where buyers discover unique styles, 
               vendors grow their businesses, and fashion enthusiasts connect through shared passion for style. 
               We believe shopping should be social, personal, and inspiring.
@@ -94,13 +94,13 @@ export default function AboutPage() {
       </div>
 
       {/* Stats Section */}
-      <div className="bg-white py-16">
+      <div className="bg-white dark:bg-charcoal-900 py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-4xl font-bold text-gold-600 mb-2">{stat.number}</div>
-                <div className="text-charcoal-700 font-semibold">{stat.label}</div>
+                <div className="text-charcoal-700 dark:text-cool-gray-300 font-semibold">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -110,8 +110,8 @@ export default function AboutPage() {
       {/* Story Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-charcoal-900 mb-8 text-center">Our Story</h2>
-          <div className="space-y-6 text-charcoal-700 leading-relaxed">
+          <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-8 text-center">Our Story</h2>
+          <div className="space-y-6 text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
             <p>
               Founded in 2024, our platform was born from a simple observation: online fashion shopping 
               lacked the social connection and inspiration that makes fashion exciting. Traditional 
@@ -133,15 +133,15 @@ export default function AboutPage() {
       </div>
 
       {/* Values Section */}
-      <div className="bg-gray-100 py-16">
+      <div className="bg-gray-100 dark:bg-charcoal-950 py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-charcoal-900 mb-12 text-center">Our Values</h2>
+          <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-12 text-center">Our Values</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md p-6 text-center">
+              <div key={index} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 text-center">
                 <div className="text-5xl mb-4">{value.icon}</div>
-                <h3 className="text-xl font-bold text-charcoal-900 mb-3">{value.title}</h3>
-                <p className="text-charcoal-600">{value.description}</p>
+                <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-3">{value.title}</h3>
+                <p className="text-charcoal-600 dark:text-cool-gray-400">{value.description}</p>
               </div>
             ))}
           </div>
@@ -150,10 +150,10 @@ export default function AboutPage() {
 
       {/* Team Section */}
       <div className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-charcoal-900 mb-12 text-center">Meet Our Team</h2>
+        <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-12 text-center">Meet Our Team</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {team.map((member, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div key={index} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md overflow-hidden">
               <div className="relative h-64">
                 <Image
                   src={member.image}
@@ -163,9 +163,9 @@ export default function AboutPage() {
                 />
               </div>
               <div className="p-6 text-center">
-                <h3 className="text-xl font-bold text-charcoal-900 mb-1">{member.name}</h3>
+                <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-1">{member.name}</h3>
                 <p className="text-gold-600 font-semibold mb-2">{member.role}</p>
-                <p className="text-sm text-charcoal-600">{member.bio}</p>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">{member.bio}</p>
               </div>
             </div>
           ))}
@@ -173,9 +173,9 @@ export default function AboutPage() {
       </div>
 
       {/* Timeline Section */}
-      <div className="bg-white py-16">
+      <div className="bg-white dark:bg-charcoal-900 py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-charcoal-900 mb-12 text-center">Our Journey</h2>
+          <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-12 text-center">Our Journey</h2>
           <div className="max-w-3xl mx-auto space-y-8">
             {[
               { year: '2024', title: 'Platform Launch', description: 'Officially launched with 50 vendors and 1,000 products' },
@@ -194,8 +194,8 @@ export default function AboutPage() {
                   )}
                 </div>
                 <div className="flex-1 pb-8">
-                  <h3 className="text-xl font-bold text-charcoal-900 mb-2">{milestone.title}</h3>
-                  <p className="text-charcoal-600">{milestone.description}</p>
+                  <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">{milestone.title}</h3>
+                  <p className="text-charcoal-600 dark:text-cool-gray-400">{milestone.description}</p>
                 </div>
               </div>
             ))}

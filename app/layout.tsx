@@ -31,14 +31,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
                 const theme = localStorage.getItem('theme');
-                if (theme === 'dark') {
+                // Default to dark; only remove if user explicitly chose light
+                if (theme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                } else {
                   document.documentElement.classList.add('dark');
                 }
               } catch (e) {}

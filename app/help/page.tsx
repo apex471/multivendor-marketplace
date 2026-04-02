@@ -104,8 +104,8 @@ export default function HelpPage() {
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-charcoal-900 mb-4">How can we help you?</h1>
-          <p className="text-lg text-charcoal-600 mb-8">
+          <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">How can we help you?</h1>
+          <p className="text-lg text-charcoal-600 dark:text-cool-gray-400 mb-8">
             Search our knowledge base or browse topics below
           </p>
 
@@ -117,7 +117,7 @@ export default function HelpPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for help articles..."
-                className="w-full px-6 py-4 pl-14 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 shadow-md"
+                className="w-full px-6 py-4 pl-14 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-800 dark:placeholder-cool-gray-400 shadow-md"
               />
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl">🔍</span>
             </div>
@@ -128,41 +128,41 @@ export default function HelpPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <Link
             href="/contact"
-            className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-gold-600"
+            className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-gold-600"
           >
             <div className="text-4xl mb-3">📧</div>
-            <h3 className="font-bold text-charcoal-900 mb-2">Contact Support</h3>
-            <p className="text-sm text-charcoal-600">Get help from our team</p>
+            <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">Contact Support</h3>
+            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Get help from our team</p>
           </Link>
           <Link
             href="/orders"
-            className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-blue-600"
+            className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-blue-600"
           >
             <div className="text-4xl mb-3">📦</div>
-            <h3 className="font-bold text-charcoal-900 mb-2">Track Order</h3>
-            <p className="text-sm text-charcoal-600">Check your order status</p>
+            <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">Track Order</h3>
+            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Check your order status</p>
           </Link>
           <Link
             href="/orders"
-            className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-green-600"
+            className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-green-600"
           >
             <div className="text-4xl mb-3">↩️</div>
-            <h3 className="font-bold text-charcoal-900 mb-2">Returns</h3>
-            <p className="text-sm text-charcoal-600">Start a return or exchange</p>
+            <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">Returns</h3>
+            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Start a return or exchange</p>
           </Link>
           <Link
             href="/settings"
-            className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-purple-600"
+            className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow border-t-4 border-purple-600"
           >
             <div className="text-4xl mb-3">⚙️</div>
-            <h3 className="font-bold text-charcoal-900 mb-2">Account Settings</h3>
-            <p className="text-sm text-charcoal-600">Manage your account</p>
+            <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">Account Settings</h3>
+            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Manage your account</p>
           </Link>
         </div>
 
         {/* Categories */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-charcoal-900 mb-4">Browse by Topic</h2>
+          <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-4">Browse by Topic</h2>
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
@@ -171,7 +171,7 @@ export default function HelpPage() {
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   selectedCategory === category.id
                     ? 'bg-gold-600 text-white'
-                    : 'bg-white text-charcoal-700 hover:bg-gray-100 shadow-sm'
+                    : 'bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 hover:bg-gray-100 dark:hover:bg-charcoal-700 shadow-sm'
                 }`}
               >
                 {category.icon} {category.name}
@@ -182,32 +182,32 @@ export default function HelpPage() {
 
         {/* FAQs */}
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-charcoal-900 mb-6">
+          <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">
             Frequently Asked Questions
           </h2>
 
           {filteredFaqs.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-12 text-center">
               <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-2">No results found</h3>
-              <p className="text-charcoal-600">Try different keywords or browse all topics</p>
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">No results found</h3>
+              <p className="text-charcoal-600 dark:text-cool-gray-400">Try different keywords or browse all topics</p>
             </div>
           ) : (
             <div className="space-y-4">
               {filteredFaqs.map((faq, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div key={index} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md overflow-hidden">
                   <button
                     onClick={() => setExpandedFaq(expandedFaq === `${index}` ? null : `${index}`)}
-                    className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                   >
-                    <span className="font-semibold text-charcoal-900 pr-4">{faq.question}</span>
+                    <span className="font-semibold text-charcoal-900 dark:text-white pr-4">{faq.question}</span>
                     <span className="text-2xl text-gold-600 flex-shrink-0">
                       {expandedFaq === `${index}` ? '−' : '+'}
                     </span>
                   </button>
                   {expandedFaq === `${index}` && (
-                    <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                      <p className="text-charcoal-700 leading-relaxed">{faq.answer}</p>
+                    <div className="px-6 py-4 border-t border-gray-200 dark:border-charcoal-700 bg-gray-50 dark:bg-charcoal-900">
+                      <p className="text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">{faq.answer}</p>
                     </div>
                   )}
                 </div>

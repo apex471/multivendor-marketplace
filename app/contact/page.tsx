@@ -49,8 +49,8 @@ export default function ContactPage() {
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-charcoal-900 mb-4">Contact Us</h1>
-          <p className="text-lg text-charcoal-600 max-w-2xl mx-auto">
+          <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">Contact Us</h1>
+          <p className="text-lg text-charcoal-600 dark:text-cool-gray-400 max-w-2xl mx-auto">
             Have a question or need assistance? We're here to help! Fill out the form below and we'll get back to you as soon as possible.
           </p>
         </div>
@@ -58,14 +58,14 @@ export default function ContactPage() {
         <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-8">
           {/* Contact Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-lg p-8">
               {submitted ? (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-6">✅</div>
-                  <h2 className="text-2xl font-bold text-charcoal-900 mb-4">
+                  <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-4">
                     Message Sent Successfully!
                   </h2>
-                  <p className="text-charcoal-600 mb-8">
+                  <p className="text-charcoal-600 dark:text-cool-gray-400 mb-8">
                     Thank you for contacting us. We'll respond to your inquiry within 24 hours.
                   </p>
                   <button
@@ -80,7 +80,7 @@ export default function ContactPage() {
                   <div className="space-y-6">
                     {/* Name */}
                     <div>
-                      <label htmlFor="name" className="block text-sm font-semibold text-charcoal-900 mb-2">
+                      <label htmlFor="name" className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
                         Full Name *
                       </label>
                       <input
@@ -90,14 +90,14 @@ export default function ContactPage() {
                         value={formData.name}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-700 dark:placeholder-cool-gray-400"
                         placeholder="John Doe"
                       />
                     </div>
 
                     {/* Email */}
                     <div>
-                      <label htmlFor="email" className="block text-sm font-semibold text-charcoal-900 mb-2">
+                      <label htmlFor="email" className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
                         Email Address *
                       </label>
                       <input
@@ -107,14 +107,14 @@ export default function ContactPage() {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-700 dark:placeholder-cool-gray-400"
                         placeholder="john@example.com"
                       />
                     </div>
 
                     {/* Category */}
                     <div>
-                      <label htmlFor="category" className="block text-sm font-semibold text-charcoal-900 mb-2">
+                      <label htmlFor="category" className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
                         Category *
                       </label>
                       <select
@@ -123,7 +123,7 @@ export default function ContactPage() {
                         value={formData.category}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-700"
                       >
                         <option value="general">General Inquiry</option>
                         <option value="orders">Orders & Shipping</option>
@@ -138,7 +138,7 @@ export default function ContactPage() {
 
                     {/* Subject */}
                     <div>
-                      <label htmlFor="subject" className="block text-sm font-semibold text-charcoal-900 mb-2">
+                      <label htmlFor="subject" className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
                         Subject *
                       </label>
                       <input
@@ -148,14 +148,14 @@ export default function ContactPage() {
                         value={formData.subject}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-700 dark:placeholder-cool-gray-400"
                         placeholder="How can we help you?"
                       />
                     </div>
 
                     {/* Message */}
                     <div>
-                      <label htmlFor="message" className="block text-sm font-semibold text-charcoal-900 mb-2">
+                      <label htmlFor="message" className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
                         Message *
                       </label>
                       <textarea
@@ -165,7 +165,7 @@ export default function ContactPage() {
                         onChange={handleChange}
                         required
                         rows={6}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 resize-none"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600 focus:border-transparent text-charcoal-900 dark:text-white bg-white dark:bg-charcoal-700 dark:placeholder-cool-gray-400 resize-none"
                         placeholder="Please provide as much detail as possible..."
                       />
                     </div>
@@ -187,10 +187,10 @@ export default function ContactPage() {
           {/* Contact Information */}
           <div className="space-y-6">
             {/* Email */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
               <div className="text-4xl mb-4">📧</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-2">Email Us</h3>
-              <p className="text-charcoal-600 mb-3">
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Email Us</h3>
+              <p className="text-charcoal-600 dark:text-cool-gray-400 mb-3">
                 Get help from our support team
               </p>
               <a
@@ -202,10 +202,10 @@ export default function ContactPage() {
             </div>
 
             {/* Phone */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
               <div className="text-4xl mb-4">📞</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-2">Call Us</h3>
-              <p className="text-charcoal-600 mb-3">
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Call Us</h3>
+              <p className="text-charcoal-600 dark:text-cool-gray-400 mb-3">
                 Mon-Fri, 9am-6pm EST
               </p>
               <a
@@ -217,10 +217,10 @@ export default function ContactPage() {
             </div>
 
             {/* Office */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
               <div className="text-4xl mb-4">📍</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-2">Visit Us</h3>
-              <p className="text-charcoal-600 leading-relaxed">
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Visit Us</h3>
+              <p className="text-charcoal-600 dark:text-cool-gray-400 leading-relaxed">
                 123 Fashion Avenue<br />
                 New York, NY 10001<br />
                 United States
@@ -228,9 +228,9 @@ export default function ContactPage() {
             </div>
 
             {/* Social Media */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
               <div className="text-4xl mb-4">🌐</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-3">Follow Us</h3>
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-3">Follow Us</h3>
               <div className="flex gap-3">
                 <a
                   href="https://facebook.com"

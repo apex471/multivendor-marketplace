@@ -94,18 +94,18 @@ export default function WishlistPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-charcoal-900 mb-2">My Wishlist</h1>
-          <p className="text-charcoal-600">
+          <h1 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-2">My Wishlist</h1>
+          <p className="text-charcoal-600 dark:text-cool-gray-400">
             {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'} saved for later
           </p>
         </div>
 
         {wishlistItems.length === 0 ? (
           // Empty Wishlist
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-12 text-center">
             <div className="text-6xl mb-4">💝</div>
-            <h3 className="text-xl font-bold text-charcoal-900 mb-2">Your wishlist is empty</h3>
-            <p className="text-charcoal-600 mb-6">
+            <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Your wishlist is empty</h3>
+            <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
               Start adding items you love to keep track of them!
             </p>
             <Link
@@ -120,9 +120,9 @@ export default function WishlistPage() {
             {/* Left Column - Wishlist Items */}
             <div className="lg:col-span-2 space-y-4">
               {/* Actions Bar */}
-              <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap items-center justify-between gap-4">
-                <div className="text-sm text-charcoal-600">
-                  <span className="font-semibold text-charcoal-900">{inStockCount}</span> items available in stock
+              <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                  <span className="font-semibold text-charcoal-900 dark:text-white">{inStockCount}</span> items available in stock
                 </div>
                 <button
                   onClick={handleMoveAllToCart}
@@ -135,7 +135,7 @@ export default function WishlistPage() {
 
               {/* Wishlist Items */}
               {wishlistItems.map((item) => (
-                <div key={item.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div key={item.id} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                   <div className="p-4 sm:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}
@@ -158,13 +158,13 @@ export default function WishlistPage() {
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
                         <Link href={`/product/${item.id}`}>
-                          <h3 className="font-semibold text-charcoal-900 hover:text-gold-600 transition-colors mb-1">
+                          <h3 className="font-semibold text-charcoal-900 dark:text-white hover:text-gold-600 transition-colors mb-1">
                             {item.name}
                           </h3>
                         </Link>
                         <Link
                           href={`/vendor/${item.id}`}
-                          className="text-sm text-charcoal-600 hover:text-gold-600 transition-colors mb-2 block"
+                          className="text-sm text-charcoal-600 dark:text-cool-gray-400 hover:text-gold-600 transition-colors mb-2 block"
                         >
                           {item.vendor}
                         </Link>
@@ -172,7 +172,7 @@ export default function WishlistPage() {
                         <div className="flex items-center gap-2 mb-3">
                           <div className="flex items-center gap-1">
                             <span className="text-yellow-500">⭐</span>
-                            <span className="text-sm font-medium text-charcoal-900">{item.rating}</span>
+                            <span className="text-sm font-medium text-charcoal-900 dark:text-white">{item.rating}</span>
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                             item.inStock
@@ -184,10 +184,10 @@ export default function WishlistPage() {
                         </div>
 
                         <div className="flex items-center gap-2 mb-4">
-                          <span className="text-xl font-bold text-charcoal-900">${item.price.toFixed(2)}</span>
+                          <span className="text-xl font-bold text-charcoal-900 dark:text-white">${item.price.toFixed(2)}</span>
                           {item.oldPrice && (
                             <>
-                              <span className="text-sm text-gray-500 line-through">${item.oldPrice.toFixed(2)}</span>
+                              <span className="text-sm text-gray-500 dark:text-cool-gray-500 line-through">${item.oldPrice.toFixed(2)}</span>
                               <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">
                                 SALE
                               </span>
@@ -206,7 +206,7 @@ export default function WishlistPage() {
                           </button>
                           <button
                             onClick={() => handleRemoveItem(item.id)}
-                            className="px-4 py-2 border-2 border-gray-300 text-charcoal-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                            className="px-4 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                           >
                             Remove
                           </button>
@@ -216,7 +216,7 @@ export default function WishlistPage() {
                   </div>
 
                   {/* Added Date */}
-                  <div className="px-4 sm:px-6 pb-4 text-xs text-charcoal-600">
+                  <div className="px-4 sm:px-6 pb-4 text-xs text-charcoal-600 dark:text-cool-gray-400">
                     Added {new Date(item.addedDate).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -229,36 +229,36 @@ export default function WishlistPage() {
 
             {/* Right Column - Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-md p-6 sticky top-4 space-y-6">
+              <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 sticky top-4 space-y-6">
                 {/* Wishlist Summary */}
                 <div>
-                  <h3 className="text-xl font-bold text-charcoal-900 mb-4">Wishlist Summary</h3>
+                  <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">Wishlist Summary</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-charcoal-600">Total Items</span>
-                      <span className="font-semibold text-charcoal-900">{wishlistItems.length}</span>
+                      <span className="text-charcoal-600 dark:text-cool-gray-400">Total Items</span>
+                      <span className="font-semibold text-charcoal-900 dark:text-white">{wishlistItems.length}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-charcoal-600">In Stock</span>
+                      <span className="text-charcoal-600 dark:text-cool-gray-400">In Stock</span>
                       <span className="font-semibold text-green-600">{inStockCount}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-charcoal-600">Out of Stock</span>
+                      <span className="text-charcoal-600 dark:text-cool-gray-400">Out of Stock</span>
                       <span className="font-semibold text-red-600">{wishlistItems.length - inStockCount}</span>
                     </div>
                   </div>
 
-                  <div className="border-t mt-4 pt-4">
+                  <div className="border-t dark:border-charcoal-700 mt-4 pt-4">
                     <div className="flex justify-between">
-                      <span className="font-semibold text-charcoal-900">Total Value</span>
+                      <span className="font-semibold text-charcoal-900 dark:text-white">Total Value</span>
                       <span className="text-xl font-bold text-gold-600">${totalValue.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="border-t pt-6">
-                  <h4 className="font-semibold text-charcoal-900 mb-3">Quick Actions</h4>
+                <div className="border-t dark:border-charcoal-700 pt-6">
+                  <h4 className="font-semibold text-charcoal-900 dark:text-white mb-3">Quick Actions</h4>
                   <div className="space-y-2">
                     <button
                       onClick={handleMoveAllToCart}
@@ -269,7 +269,7 @@ export default function WishlistPage() {
                     </button>
                     <Link
                       href="/shop"
-                      className="block w-full px-4 py-3 border-2 border-gray-300 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center"
+                      className="block w-full px-4 py-3 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors text-center"
                     >
                       Continue Shopping
                     </Link>
@@ -287,9 +287,9 @@ export default function WishlistPage() {
                 </div>
 
                 {/* Share Wishlist */}
-                <div className="border-t pt-6">
-                  <h4 className="font-semibold text-charcoal-900 mb-3">Share Your Wishlist</h4>
-                  <p className="text-sm text-charcoal-600 mb-3">
+                <div className="border-t dark:border-charcoal-700 pt-6">
+                  <h4 className="font-semibold text-charcoal-900 dark:text-white mb-3">Share Your Wishlist</h4>
+                  <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-3">
                     Share your wishlist with friends and family
                   </p>
                   <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
@@ -304,9 +304,9 @@ export default function WishlistPage() {
         {/* Recommendations */}
         {wishlistItems.length > 0 && (
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-charcoal-900 mb-6">You Might Also Like</h2>
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-charcoal-600 text-center">
+            <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">You Might Also Like</h2>
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
+              <p className="text-charcoal-600 dark:text-cool-gray-400 text-center">
                 Based on items in your wishlist...
                 <br />
                 <Link href="/shop" className="text-gold-600 hover:text-gold-700 font-medium">

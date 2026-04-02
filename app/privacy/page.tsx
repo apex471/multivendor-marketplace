@@ -213,11 +213,11 @@ We will respond to your inquiry within 30 days.`,
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="max-w-4xl mx-auto mb-12">
-          <h1 className="text-4xl font-bold text-charcoal-900 mb-4">Privacy Policy</h1>
-          <p className="text-charcoal-600 mb-2">
+          <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">Privacy Policy</h1>
+          <p className="text-charcoal-600 dark:text-cool-gray-400 mb-2">
             <strong>Last Updated:</strong> December 18, 2025
           </p>
-          <p className="text-charcoal-700 leading-relaxed">
+          <p className="text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
             This Privacy Policy describes how we collect, use, and protect your personal information when you use our 
             fashion marketplace and social platform. We are committed to protecting your privacy and being transparent 
             about our data practices.
@@ -226,9 +226,9 @@ We will respond to your inquiry within 30 days.`,
 
         {/* Quick Summary */}
         <div className="max-w-4xl mx-auto mb-12">
-          <div className="bg-linear-to-br from-blue-50 to-blue-100 border-l-4 border-blue-600 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-charcoal-900 mb-4">📋 Quick Summary</h2>
-            <ul className="space-y-2 text-charcoal-700">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/20 border-l-4 border-blue-600 dark:border-blue-700 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">📋 Quick Summary</h2>
+            <ul className="space-y-2 text-charcoal-700 dark:text-cool-gray-300">
               <li>✅ We collect information to provide and improve our services</li>
               <li>✅ We do NOT sell your personal information</li>
               <li>✅ You can access, update, or delete your data anytime</li>
@@ -241,8 +241,8 @@ We will respond to your inquiry within 30 days.`,
 
         {/* Table of Contents */}
         <div className="max-w-4xl mx-auto mb-12">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-charcoal-900 mb-4">Table of Contents</h2>
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">Table of Contents</h2>
             <div className="grid sm:grid-cols-2 gap-2">
               {sections.map((section, index) => (
                 <a
@@ -260,9 +260,9 @@ We will respond to your inquiry within 30 days.`,
         {/* Privacy Content */}
         <div className="max-w-4xl mx-auto space-y-8">
           {sections.map((section, index) => (
-            <div key={index} id={`section-${index}`} className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-charcoal-900 mb-4">{section.title}</h2>
-              <div className="text-charcoal-700 leading-relaxed whitespace-pre-line">
+            <div key={index} id={`section-${index}`} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-8">
+              <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-4">{section.title}</h2>
+              <div className="text-charcoal-700 dark:text-cool-gray-300 leading-relaxed whitespace-pre-line">
                 {section.content}
               </div>
             </div>
@@ -271,25 +271,25 @@ We will respond to your inquiry within 30 days.`,
 
         {/* Privacy Certifications */}
         <div className="max-w-4xl mx-auto mt-12">
-          <div className="bg-white rounded-lg shadow-md p-8">
-            <h2 className="text-2xl font-bold text-charcoal-900 mb-6 text-center">
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-8">
+            <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6 text-center">
               Our Privacy Commitments
             </h2>
             <div className="grid sm:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-5xl mb-3">🔒</div>
-                <h3 className="font-bold text-charcoal-900 mb-2">SSL Encrypted</h3>
-                <p className="text-sm text-charcoal-600">All data transmission secured</p>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">SSL Encrypted</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">All data transmission secured</p>
               </div>
               <div className="text-center">
                 <div className="text-5xl mb-3">🛡️</div>
-                <h3 className="font-bold text-charcoal-900 mb-2">GDPR Compliant</h3>
-                <p className="text-sm text-charcoal-600">EU data protection standards</p>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">GDPR Compliant</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">EU data protection standards</p>
               </div>
               <div className="text-center">
                 <div className="text-5xl mb-3">✅</div>
-                <h3 className="font-bold text-charcoal-900 mb-2">CCPA Compliant</h3>
-                <p className="text-sm text-charcoal-600">California privacy rights</p>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">CCPA Compliant</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">California privacy rights</p>
               </div>
             </div>
           </div>

@@ -91,28 +91,28 @@ export default function CustomerDashboard() {
         {/* Stats Cards */}
         <div className="container mx-auto px-4 -mt-8 mb-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-700 mb-1">{stats.totalOrders}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Total Orders</div>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">{stats.totalOrders}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Total Orders</div>
             </div>
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-700 mb-1">${stats.totalSpent.toFixed(2)}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Total Spent</div>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">${stats.totalSpent.toFixed(2)}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Total Spent</div>
             </div>
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-700 mb-1">{stats.wishlistItems}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Wishlist Items</div>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">{stats.wishlistItems}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Wishlist Items</div>
             </div>
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-700 mb-1">{stats.savedPosts}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Saved Posts</div>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">{stats.savedPosts}</div>
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Saved Posts</div>
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="container mx-auto px-4 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-2 overflow-x-auto">
+          <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-2 overflow-x-auto">
             <div className="flex gap-2 min-w-max">
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
@@ -127,7 +127,7 @@ export default function CustomerDashboard() {
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all min-h-[44px] ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white shadow-md'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-cool-gray-300 hover:bg-gray-100 dark:hover:bg-charcoal-700'
                   }`}
                 >
                   <span>{tab.icon}</span>
@@ -143,16 +143,16 @@ export default function CustomerDashboard() {
           {activeTab === 'overview' && (
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Recent Orders */}
-              <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
+              <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-display font-bold text-gray-900">Recent Orders</h2>
+                  <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white">Recent Orders</h2>
                   <Link href="/orders" className="text-primary-700 hover:text-primary-800 text-sm font-semibold">
                     View All →
                   </Link>
                 </div>
                 <div className="space-y-4">
                   {recentOrders.map((order) => (
-                    <div key={order.id} className="flex gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div key={order.id} className="flex gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-charcoal-700 rounded-lg hover:bg-gray-100 dark:hover:bg-charcoal-600 transition-colors">
                       <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
                         <Image src={order.image} alt="Order" fill className="object-cover" />
                       </div>
@@ -167,8 +167,8 @@ export default function CustomerDashboard() {
                             {order.status}
                           </span>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1">{order.items} items • {order.date}</p>
-                        <p className="font-bold text-primary-700 text-sm sm:text-base">${order.total.toFixed(2)}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-1">{order.items} items • {order.date}</p>
+                        <p className="font-bold text-primary-700 dark:text-gold-400 text-sm sm:text-base">${order.total.toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -176,8 +176,8 @@ export default function CustomerDashboard() {
               </div>
 
               {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-                <h2 className="text-xl font-display font-bold text-gray-900 mb-6">Quick Actions</h2>
+              <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+                <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
                 <div className="space-y-3">
                   <Link 
                     href="/shop"
@@ -203,12 +203,12 @@ export default function CustomerDashboard() {
 
                   <Link 
                     href="/vendors"
-                    className="flex items-center gap-4 p-4 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-colors min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-charcoal-600 transition-colors min-h-[60px]"
                   >
                     <span className="text-2xl">📍</span>
                     <div>
                       <div className="font-semibold">Find Nearby Vendors</div>
-                      <div className="text-sm text-gray-600">Discover local luxury</div>
+                      <div className="text-sm text-gray-600 dark:text-cool-gray-400">Discover local luxury</div>
                     </div>
                   </Link>
                 </div>
@@ -217,22 +217,22 @@ export default function CustomerDashboard() {
           )}
 
           {activeTab === 'wishlist' && (
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <h2 className="text-2xl font-display font-bold text-gray-900 mb-6">My Wishlist</h2>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">My Wishlist</h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {wishlistItems.map((item) => (
-                  <div key={item.id} className="group border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
+                  <div key={item.id} className="group border border-gray-200 dark:border-charcoal-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="relative aspect-square">
                       <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                      <button className="absolute top-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-red-50 transition-colors">
+                      <button className="absolute top-3 right-3 w-10 h-10 bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
                         ❤️
                       </button>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{item.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600 mb-2">{item.vendor}</p>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">{item.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{item.vendor}</p>
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-primary-700 text-base sm:text-lg">${item.price.toFixed(2)}</span>
+                        <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">${item.price.toFixed(2)}</span>
                         <button className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-[36px]">
                           Add to Cart
                         </button>
@@ -245,11 +245,11 @@ export default function CustomerDashboard() {
           )}
 
           {activeTab === 'orders' && (
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <h2 className="text-2xl font-display font-bold text-gray-900 mb-6">Order History</h2>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Order History</h2>
               <div className="space-y-4">
                 {recentOrders.map((order) => (
-                  <div key={order.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                  <div key={order.id} className="border border-gray-200 dark:border-charcoal-700 rounded-xl p-4 hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="relative w-full sm:w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
                         <Image src={order.image} alt="Order" fill className="object-cover" />
@@ -257,8 +257,8 @@ export default function CustomerDashboard() {
                       <div className="flex-1">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                           <div>
-                            <h3 className="font-bold text-lg">{order.id}</h3>
-                            <p className="text-sm text-gray-600">{order.date}</p>
+                            <h3 className="font-bold text-lg dark:text-white">{order.id}</h3>
+                            <p className="text-sm text-gray-600 dark:text-cool-gray-400">{order.date}</p>
                           </div>
                           <span className={`text-sm px-3 py-1.5 rounded-full w-fit font-semibold ${
                             order.status === 'Delivered' 
@@ -268,9 +268,9 @@ export default function CustomerDashboard() {
                             {order.status}
                           </span>
                         </div>
-                        <p className="text-gray-700 mb-3">{order.items} items</p>
+                        <p className="text-gray-700 dark:text-cool-gray-300 mb-3">{order.items} items</p>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <span className="text-xl font-bold text-primary-700">${order.total.toFixed(2)}</span>
+                          <span className="text-xl font-bold text-primary-700 dark:text-gold-400">${order.total.toFixed(2)}</span>
                           <div className="flex gap-2">
                             <button className="flex-1 sm:flex-none px-4 py-2 border border-primary-700 text-primary-700 rounded-lg hover:bg-primary-50 transition-colors font-semibold min-h-[40px]">
                               View Details
@@ -291,17 +291,17 @@ export default function CustomerDashboard() {
           )}
 
           {activeTab === 'posts' && (
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-display font-bold text-gray-900">Saved Posts</h2>
+                <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white">Saved Posts</h2>
                 <Link href="/dashboard/customer/posts" className="text-primary-700 hover:text-primary-800 text-sm font-semibold">
                   Manage All →
                 </Link>
               </div>
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📝</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No saved drafts yet</h3>
-                <p className="text-gray-600 mb-6">Start creating and saving your fashion posts</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No saved drafts yet</h3>
+                <p className="text-gray-600 dark:text-cool-gray-400 mb-6">Start creating and saving your fashion posts</p>
                 <Link
                   href="/post/create"
                   className="inline-block px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold"
@@ -313,30 +313,30 @@ export default function CustomerDashboard() {
           )}
 
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
-              <h2 className="text-2xl font-display font-bold text-gray-900 mb-6">Profile Settings</h2>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Profile Settings</h2>
               <div className="max-w-2xl space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                  <input type="text" defaultValue="Sarah Johnson" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Full Name</label>
+                  <input type="text" defaultValue="Sarah Johnson" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                  <input type="email" defaultValue="sarah.johnson@example.com" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Email Address</label>
+                  <input type="email" defaultValue="sarah.johnson@example.com" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-                  <input type="tel" defaultValue="+1 (555) 123-4567" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Phone Number</label>
+                  <input type="tel" defaultValue="+1 (555) 123-4567" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Shipping Address</label>
-                  <textarea rows={3} defaultValue="123 Luxury Avenue, Suite 456, New York, NY 10001" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Shipping Address</label>
+                  <textarea rows={3} defaultValue="123 Luxury Avenue, Suite 456, New York, NY 10001" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"></textarea>
                 </div>
                 <div className="flex gap-3">
                   <button className="px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-[48px]">
                     Save Changes
                   </button>
-                  <button className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold min-h-[48px]">
+                  <button className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-[48px]">
                     Cancel
                   </button>
                 </div>

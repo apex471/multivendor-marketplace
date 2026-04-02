@@ -140,11 +140,11 @@ Address: 123 Fashion Avenue, New York, NY 10001`,
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="max-w-4xl mx-auto mb-12">
-          <h1 className="text-4xl font-bold text-charcoal-900 mb-4">Terms of Service</h1>
-          <p className="text-charcoal-600 mb-2">
+          <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">Terms of Service</h1>
+          <p className="text-charcoal-600 dark:text-cool-gray-400 mb-2">
             <strong>Last Updated:</strong> December 18, 2025
           </p>
-          <p className="text-charcoal-700 leading-relaxed">
+          <p className="text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
             Please read these Terms of Service carefully before using our platform. By accessing or using our service, 
             you agree to be bound by these terms. If you disagree with any part of these terms, you may not access the service.
           </p>
@@ -152,8 +152,8 @@ Address: 123 Fashion Avenue, New York, NY 10001`,
 
         {/* Quick Links */}
         <div className="max-w-4xl mx-auto mb-12">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-charcoal-900 mb-4">Quick Links</h2>
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">Quick Links</h2>
             <div className="grid sm:grid-cols-2 gap-2">
               {sections.map((section, index) => (
                 <a
@@ -171,9 +171,9 @@ Address: 123 Fashion Avenue, New York, NY 10001`,
         {/* Terms Content */}
         <div className="max-w-4xl mx-auto space-y-8">
           {sections.map((section, index) => (
-            <div key={index} id={`section-${index}`} className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-charcoal-900 mb-4">{section.title}</h2>
-              <div className="text-charcoal-700 leading-relaxed whitespace-pre-line">
+            <div key={index} id={`section-${index}`} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-8">
+              <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-4">{section.title}</h2>
+              <div className="text-charcoal-700 dark:text-cool-gray-300 leading-relaxed whitespace-pre-line">
                 {section.content}
               </div>
             </div>

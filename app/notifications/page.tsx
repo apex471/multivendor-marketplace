@@ -162,9 +162,9 @@ export default function NotificationsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-charcoal-900">Notifications</h1>
+              <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white">Notifications</h1>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
@@ -182,7 +182,7 @@ export default function NotificationsPage() {
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   filter === 'all'
                     ? 'bg-gold-600 text-white'
-                    : 'bg-gray-100 text-charcoal-700 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-charcoal-700 text-charcoal-700 dark:text-cool-gray-300 hover:bg-gray-200 dark:hover:bg-charcoal-600'
                 }`}
               >
                 All ({notifications.length})
@@ -192,7 +192,7 @@ export default function NotificationsPage() {
                 className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   filter === 'unread'
                     ? 'bg-gold-600 text-white'
-                    : 'bg-gray-100 text-charcoal-700 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-charcoal-700 text-charcoal-700 dark:text-cool-gray-300 hover:bg-gray-200 dark:hover:bg-charcoal-600'
                 }`}
               >
                 Unread ({unreadCount})
@@ -202,12 +202,12 @@ export default function NotificationsPage() {
 
           {/* Notifications List */}
           {filteredNotifications.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-12 text-center">
               <div className="text-6xl mb-4">🔔</div>
-              <h3 className="text-xl font-bold text-charcoal-900 mb-2">
+              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">
                 {filter === 'unread' ? 'All caught up!' : 'No notifications yet'}
               </h3>
-              <p className="text-charcoal-600 mb-6">
+              <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
                 {filter === 'unread' 
                   ? "You've read all your notifications"
                   : "When you get notifications, they'll show up here"}
@@ -222,12 +222,12 @@ export default function NotificationsPage() {
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-md divide-y divide-gray-200">
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md divide-y divide-gray-200 dark:divide-charcoal-700">
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors ${
-                    !notification.isRead ? 'bg-blue-50/50' : ''
+                  className={`p-4 hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors ${
+                    !notification.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                   }`}
                 >
                   <div className="flex gap-4">
@@ -243,7 +243,7 @@ export default function NotificationsPage() {
                               height={48}
                               className="rounded-full"
                             />
-                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-sm">
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white dark:bg-charcoal-800 rounded-full flex items-center justify-center text-sm">
                               {getNotificationIcon(notification.type)}
                             </div>
                           </div>
@@ -265,7 +265,7 @@ export default function NotificationsPage() {
                               onClick={() => markAsRead(notification.id)}
                               className="hover:text-gold-600"
                             >
-                              <p className="text-charcoal-900">
+                              <p className="text-charcoal-900 dark:text-cool-gray-100">
                                 {notification.user && (
                                   <span className="font-semibold">{notification.user.username} </span>
                                 )}
@@ -273,14 +273,14 @@ export default function NotificationsPage() {
                               </p>
                             </Link>
                           ) : (
-                            <p className="text-charcoal-900">
+                            <p className="text-charcoal-900 dark:text-cool-gray-100">
                               {notification.user && (
                                 <span className="font-semibold">{notification.user.username} </span>
                               )}
                               {notification.text}
                             </p>
                           )}
-                          <p className="text-sm text-charcoal-600 mt-1">{notification.timestamp}</p>
+                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mt-1">{notification.timestamp}</p>
                         </div>
 
                         {/* Post Thumbnail */}
@@ -309,7 +309,7 @@ export default function NotificationsPage() {
                         )}
                         <button
                           onClick={() => deleteNotification(notification.id)}
-                          className="text-sm text-charcoal-600 hover:text-red-600 font-medium"
+                          className="text-sm text-charcoal-600 dark:text-cool-gray-400 hover:text-red-600 font-medium"
                         >
                           Delete
                         </button>
@@ -324,7 +324,7 @@ export default function NotificationsPage() {
           {/* Load More */}
           {filteredNotifications.length > 0 && (
             <div className="mt-6 text-center">
-              <button className="px-6 py-2 border-2 border-gray-300 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+              <button className="px-6 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                 Load More Notifications
               </button>
             </div>
