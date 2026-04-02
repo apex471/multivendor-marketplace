@@ -82,8 +82,9 @@ function VerifyEmailPendingContent() {
         setVerifyStatus('success');
         const userRole = data.data.user.role || role;
         const dashPath =
-          userRole === 'brand' ? '/dashboard/brand' :
-          userRole === 'logistics' ? '/dashboard/logistics' :
+          userRole === 'customer'  ? '/dashboard/customer' :
+          userRole === 'brand'     ? '/dashboard/brand'    :
+          userRole === 'logistics' ? '/logistics/dashboard' :
           '/dashboard/vendor';
         setTimeout(() => router.push(dashPath), 1500);
       } else {
@@ -129,7 +130,11 @@ function VerifyEmailPendingContent() {
     }
   };
 
-  const loginPath = role === 'brand' ? '/auth/brand/login' : '/auth/vendor/login';
+  const loginPath =
+    role === 'brand'     ? '/auth/brand/login'    :
+    role === 'customer'  ? '/auth/customer/login'  :
+    role === 'logistics' ? '/auth/logistics'        :
+    '/auth/vendor/login';
   const codeComplete = codes.every((c) => c !== '');
 
   return (

@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
       password,
       role,
       phoneNumber: body.phoneNumber || undefined,
-      // Customers and admins are auto-approved; vendors/brands/logistics require admin review
+      // Only admins are auto-approved; all other roles require admin review (or just email verify for customers)
       applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
-      // Customers auto-verified; all others must verify their email
-      isEmailVerified: (role === UserRole.CUSTOMER || role === UserRole.ADMIN),
+      // Nobody is auto-verified — every signup requires email OTP (admins excepted)
+      isEmailVerified: role === UserRole.ADMIN,
     });
 
-    // Generate OTP verification code for roles that need it
-    const rolesRequiringVerification = [UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
+    // Every non-admin role must verify their email with an OTP
+    const rolesRequiringVerification = [UserRole.CUSTOMER, UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
     let verifyToken = '';
     if (rolesRequiringVerification.includes(role)) {
       verifyToken = Math.floor(100000 + Math.random() * 900000).toString();

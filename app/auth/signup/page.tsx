@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { setAuthSession } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
 type Step = 'role-selection' | 'form';
@@ -46,12 +45,6 @@ const ROLES: { id: Role; icon: string; label: string; subtitle: string; perks: s
     ],
   },
 ];
-
-const DASHBOARD: Record<Role, string> = {
-  customer: '/dashboard/customer',
-  vendor: '/dashboard/vendor',
-  brand: '/dashboard/brand',
-};
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   if (!pw) return { score: 0, label: '', color: '' };
@@ -165,28 +158,10 @@ function SignupContent() {
         return;
       }
 
-      // Vendor / brand must verify their email before accessing the dashboard
-      if (data.data?.requiresEmailVerification) {
-        router.push(
-          `/auth/verify-email/pending?email=${encodeURIComponent(form.email.trim().toLowerCase())}&role=${role}`
-        );
-        return;
-      }
-
-      // Customer — store credentials and go to dashboard
-      const u = data.data.user;
-      setAuthSession(data.data.token, {
-        id: u.id,
-        email: u.email,
-        username: u.email?.split('@')[0] ?? '',
-        role: u.role,
-        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
-        firstName: u.firstName,
-        lastName: u.lastName,
-        avatar: u.avatar ?? undefined,
-        isEmailVerified: u.isEmailVerified,
-      });
-      router.push(DASHBOARD[role]);
+      // All roles must verify email via OTP before accessing their dashboard
+      router.push(
+        `/auth/verify-email/pending?email=${encodeURIComponent(form.email.trim().toLowerCase())}&role=${role}`
+      );
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
     } finally {
