@@ -489,29 +489,31 @@ export default function Home() {
             {mockProducts.map((product) => (
               <div key={product.id} className="group relative">
                 <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all">
-                  <button
+                  {/* Image container — div (not button) so aspect-square + fill create a reliable containing block */}
+                  <div
                     onClick={() => handleProductClick(product.id)}
-                    className="relative aspect-square overflow-hidden w-full touch-manipulation"
+                    className="relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation"
                   >
                     <Image
                       src={product.image}
                       alt={product.name}
                       fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+                      className="object-cover object-center group-hover:scale-110 transition-transform duration-300"
                     />
                     {product.oldPrice && (
                       <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">
                         SALE
                       </span>
                     )}
-                    {/* Quick Action Buttons - Hidden on small mobile */}
+                    {/* Quick Action Buttons */}
                     <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex flex-col gap-1.5 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAddToWishlist(product.id);
                         }}
-                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 sm:bg-white sm:dark:bg-charcoal-700 rounded-full flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
+                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
                         aria-label="Add to wishlist"
                       >
                         ❤️
@@ -521,13 +523,13 @@ export default function Home() {
                           e.stopPropagation();
                           handleProductClick(product.id);
                         }}
-                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 sm:bg-white sm:dark:bg-charcoal-700 rounded-full flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-primary-50 dark:hover:bg-gold-900/30 transition-colors touch-manipulation text-xs sm:text-sm hidden sm:flex"
+                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full hidden sm:flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-primary-50 dark:hover:bg-gold-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
                         aria-label="Quick view"
                       >
                         👁️
                       </button>
                     </div>
-                  </button>
+                  </div>
                   <div className="p-2 sm:p-3">
                     <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5 sm:mb-1 truncate">{product.vendor}</p>
                     <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">
