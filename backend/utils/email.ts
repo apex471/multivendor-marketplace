@@ -2,24 +2,6 @@ import nodemailer from 'nodemailer';
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace';
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
-
-  // If SMTP is not configured, use Ethereal (dev preview) or console fallback
-  if (!host || !user || pass === 'your_app_password' || !pass) {
-    return null; // Will log to console in dev
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: { user, pass },
-  });
-}
-
 interface EmailOptions {
   to: string;
   subject: string;
@@ -27,31 +9,100 @@ interface EmailOptions {
   text?: string;
 }
 
-async function sendEmail(opts: EmailOptions) {
-  const transporter = createTransporter();
+// ─── Priority 1: Resend API ───────────────────────────────────────────────────
+// Free tier: 3 000 emails/month. No SMTP config needed — just set RESEND_API_KEY.
+// Get your key at https://resend.com → free account → API Keys.
+// Set in Netlify: Site Settings → Environment Variables → RESEND_API_KEY
+async function sendViaResend(opts: EmailOptions): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY!;
+  // On the free Resend plan, `from` must be: "Name <onboarding@resend.dev>"
+  // OR a verified custom domain. Use RESEND_FROM_EMAIL to override.
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
-  if (!transporter) {
-    // Dev fallback: print to console so developer can manually test
-    console.log('\n📧 ─────────────────────────────────────');
-    console.log(`   TO:      ${opts.to}`);
-    console.log(`   SUBJECT: ${opts.subject}`);
-    console.log(`   BODY:    ${opts.text || '(html only)'}`);
-    console.log('─────────────────────────────────────\n');
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${APP_NAME} <${fromEmail}>`,
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text || '',
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Resend API error (${res.status}): ${errText}`);
+  }
+}
+
+// ─── Priority 2: SMTP / nodemailer ───────────────────────────────────────────
+// Works with Gmail (App Password), SendGrid SMTP, Mailgun SMTP, etc.
+// Required env vars: SMTP_HOST, SMTP_USER, SMTP_PASSWORD
+// Optional:          SMTP_PORT (default 587), SMTP_FROM_EMAIL
+function createSmtpTransporter() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+
+  if (!host || !user || !pass || pass === 'your_app_password') {
+    return null;
+  }
+
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for port 465 (SSL), false for 587 (STARTTLS)
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false }, // Required for some hosting providers
+  });
+}
+
+async function sendEmail(opts: EmailOptions): Promise<void> {
+  // ── Path 1: Resend ──
+  if (process.env.RESEND_API_KEY) {
+    await sendViaResend(opts);
     return;
   }
 
-  await transporter.sendMail({
-    from: `"${APP_NAME}" <${process.env.SMTP_USER}>`,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    text: opts.text,
-  });
+  // ── Path 2: SMTP ──
+  const transporter = createSmtpTransporter();
+  if (transporter) {
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+    await transporter.sendMail({
+      from: `"${APP_NAME}" <${fromEmail}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    });
+    return;
+  }
+
+  // ── Path 3: Dev console fallback ──
+  console.warn('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.warn('  📮  EMAIL NOT DELIVERED (no email service configured)');
+  console.warn(`  TO:      ${opts.to}`);
+  console.warn(`  SUBJECT: ${opts.subject}`);
+  console.warn(`  BODY:    ${opts.text || '(html only)'}`);
+  console.warn('  ▸ Set RESEND_API_KEY in Netlify env vars for production email.');
+  console.warn('  ▸ Get a free key at https://resend.com');
+  console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 
 /**
  * Send OTP verification code after signup.
- * In dev (no SMTP), prints the code to the server console.
+ *
+ * Email delivery priority:
+ *   1. Resend API  (set RESEND_API_KEY in Netlify env vars)
+ *   2. SMTP        (set SMTP_HOST / SMTP_USER / SMTP_PASSWORD)
+ *   3. Console log (dev fallback — code visible in server logs only)
  */
 export async function sendVerificationEmail(
   email: string,
@@ -61,14 +112,16 @@ export async function sendVerificationEmail(
 ) {
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
-  // Dev fallback: no real SMTP configured — print code to console in yellow
-  if (!createTransporter()) {
+  // ── Dev / no-email-service fallback ──────────────────────────────────────
+  const hasEmailService = !!process.env.RESEND_API_KEY || !!createSmtpTransporter();
+  if (!hasEmailService) {
     console.warn('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.warn('  📮  VERIFICATION CODE (dev mode)');
+    console.warn('  📮  VERIFICATION CODE (no email service — dev mode)');
     console.warn(`  EMAIL  : ${email}`);
     console.warn(`  CODE   : ${code}`);
     console.warn(`  ROLE   : ${roleLabel}`);
     console.warn('  Expires: 10 minutes');
+    console.warn('  ▸ Set RESEND_API_KEY in Netlify env vars to deliver real emails.');
     console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     return;
   }

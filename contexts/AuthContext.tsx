@@ -118,7 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await signupUser(data);
 
       if (!response.success || !response.data) {
-        setError(response.message || 'Signup failed');
+        // Show the most specific error: first field error > message > fallback
+        // e.g. backend returns errors.password = "Password must be at least 8 chars"
+        const fieldError = response.errors
+          ? (Object.values(response.errors)[0] as string)
+          : null;
+        setError(fieldError || response.message || 'Signup failed');
         return false;
       }
 

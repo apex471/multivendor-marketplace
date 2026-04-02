@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
+import { storeAuthToken, storeUser } from '@/lib/api/auth';
 
 export default function CustomerLoginPage() {
   const router = useRouter();
@@ -13,24 +13,64 @@ export default function CustomerLoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, isLoading, error: authError, clearError } = useAuth();
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    clearError();
 
     if (!formData.email || !formData.password) {
       setError('Please enter your email and password');
       return;
     }
 
-    const success = await login(formData.email, formData.password);
-    if (success) {
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        // Unverified email — redirect to verification page with resend option
+        if (data.errors?.requiresEmailVerification === 'true') {
+          const email = data.errors?.email || formData.email;
+          const role = data.data?.user?.role || 'vendor';
+          router.push(
+            `/auth/verify-email/pending?email=${encodeURIComponent(email)}&role=${role}`
+          );
+          return;
+        }
+        setError(data.message || 'Invalid email or password.');
+        return;
+      }
+
+      // Store credentials
+      const u = data.data.user;
+      storeAuthToken(data.data.token);
+      storeUser({
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
+
       router.push('/dashboard/customer');
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
-    // authError is set inside AuthContext and rendered via {error || authError} below
   };
 
   return (
@@ -48,9 +88,9 @@ export default function CustomerLoginPage() {
         {/* Login Form */}
         <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {(error || authError) && (
+            {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-sm text-red-800 dark:text-red-400">&#9888;&#65039; {error || authError}</p>
+                <p className="text-sm text-red-800 dark:text-red-400">&#9888;&#65039; {error}</p>
               </div>
             )}
 

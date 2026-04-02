@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { storeAuthToken, storeUser } from '@/lib/api/auth';
 
 export default function BrandLoginPage() {
   const router = useRouter();
@@ -19,20 +20,51 @@ export default function BrandLoginPage() {
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (formData.email && formData.password) {
-        localStorage.setItem('brandAuth', 'true');
-        localStorage.setItem('userType', 'brand');
-        router.push('/brand/dashboard');
-      } else {
-        setError('Please fill in all fields');
-        setIsLoading(false);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        // Unverified email — redirect to verification page with resend option
+        if (data.errors?.requiresEmailVerification === 'true') {
+          const email = data.errors?.email || formData.email;
+          router.push(`/auth/verify-email/pending?email=${encodeURIComponent(email)}&role=brand`);
+          return;
+        }
+        setError(data.message || 'Invalid email or password.');
+        return;
       }
-    }, 1000);
+
+      // Store credentials and redirect
+      const u = data.data.user;
+      storeAuthToken(data.data.token);
+      storeUser({
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
+
+      router.push('/dashboard/brand');
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gold-900 via-gold-800 to-gold-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-gold-900 via-gold-800 to-gold-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-block p-4 bg-gold-600 rounded-2xl mb-4">
@@ -104,7 +136,7 @@ export default function BrandLoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-              Don't have a brand account?{' '}
+              Don&apos;t have a brand account?{' '}
               <Link href="/auth/brand/signup" className="text-gold-600 hover:text-gold-700 font-semibold">
                 Apply now
               </Link>
