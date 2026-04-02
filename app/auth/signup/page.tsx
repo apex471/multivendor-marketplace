@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
+import { storeAuthToken, storeUser } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
 type Step = 'role-selection' | 'form';
@@ -70,7 +70,6 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signup, isLoading, error: authError, clearError } = useAuth();
 
   const roleParam = searchParams.get('role') as Role | null;
   const validRoles: Role[] = ['customer', 'vendor', 'brand'];
@@ -78,6 +77,7 @@ function SignupContent() {
   const initialStep: Step = validRoles.includes(roleParam as Role) ? 'form' : 'role-selection';
 
   const [step, setStep] = useState<Step>(initialStep);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [role, setRole] = useState<Role>(initialRole);
   const [form, setForm] = useState({
     firstName: '',
@@ -99,7 +99,6 @@ function SignupContent() {
   const handleRoleSelect = (r: Role) => {
     setRole(r);
     setStep('form');
-    clearError();
     setSubmitError('');
     setFieldErrors({});
   };
@@ -111,7 +110,6 @@ function SignupContent() {
       setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     }
     if (submitError) setSubmitError('');
-    clearError();
   };
 
   const validate = (): boolean => {
@@ -131,7 +129,6 @@ function SignupContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
-    clearError();
 
     if (!validate()) return;
 
@@ -140,20 +137,61 @@ function SignupContent() {
       return;
     }
 
-    const success = await signup({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim().toLowerCase(),
-      password: form.password,
-      confirmPassword: form.confirmPassword,
-      ...(form.phoneNumber.trim() ? { phoneNumber: form.phoneNumber.trim() } : {}),
-      role,
-    });
+    setIsSubmitting(true);
 
-    if (success) {
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+          confirmPassword: form.confirmPassword,
+          ...(form.phoneNumber.trim() ? { phoneNumber: form.phoneNumber.trim() } : {}),
+          role,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        // Show first field-level error, or the top-level message
+        const msg = data.errors
+          ? (Object.values(data.errors)[0] as string)
+          : data.message || 'Sign up failed. Please try again.';
+        setSubmitError(msg);
+        return;
+      }
+
+      // Vendor / brand must verify their email before accessing the dashboard
+      if (data.data?.requiresEmailVerification) {
+        router.push(
+          `/auth/verify-email/pending?email=${encodeURIComponent(form.email.trim().toLowerCase())}&role=${role}`
+        );
+        return;
+      }
+
+      // Customer — store credentials and go to dashboard
+      const u = data.data.user;
+      storeAuthToken(data.data.token);
+      storeUser({
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
       router.push(DASHBOARD[role]);
-    } else {
-      setSubmitError(authError || 'Sign up failed. Please try again.');
+    } catch {
+      setSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -252,10 +290,10 @@ function SignupContent() {
             </div>
           )}
 
-          {(submitError || authError) && (
+          {submitError && (
             <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm mb-5">
               <span className="shrink-0 mt-0.5">&#9888;&#65039;</span>
-              <span>{submitError || authError}</span>
+              <span>{submitError}</span>
             </div>
           )}
 
@@ -458,7 +496,6 @@ function SignupContent() {
                 type="button"
                 onClick={() => {
                   setStep('role-selection');
-                  clearError();
                   setSubmitError('');
                 }}
                 className="px-5 py-2.5 border-2 border-cool-gray-300 dark:border-charcoal-700 text-charcoal-700 dark:text-cool-gray-300 rounded-xl font-medium hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-sm"
@@ -467,10 +504,10 @@ function SignupContent() {
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="flex-1 bg-charcoal-900 dark:bg-gold-600 text-white py-2.5 rounded-xl font-semibold hover:bg-charcoal-800 dark:hover:bg-gold-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <>
                     <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                     Creating Account&#8230;

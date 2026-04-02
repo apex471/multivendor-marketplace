@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
+import { storeAuthToken, storeUser } from '@/lib/api/auth';
 
 export default function CustomerSignupPage() {
   const router = useRouter();
@@ -17,13 +17,12 @@ export default function CustomerSignupPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const { signup, isLoading, error: authError, clearError } = useAuth();
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    clearError();
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -40,20 +39,54 @@ export default function CustomerSignupPage() {
       return;
     }
 
-    const success = await signup({
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password,
-      confirmPassword: formData.confirmPassword,
-      ...(formData.phone.trim() ? { phoneNumber: formData.phone.trim() } : {}),
-      role: 'customer',
-    });
+    setIsLoading(true);
 
-    if (success) {
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          ...(formData.phone.trim() ? { phoneNumber: formData.phone.trim() } : {}),
+          role: 'customer',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        // Show first field-level error, or the top-level message
+        const msg = data.errors
+          ? (Object.values(data.errors)[0] as string)
+          : data.message || 'Sign up failed. Please try again.';
+        setError(msg);
+        return;
+      }
+
+      // Store credentials and redirect to dashboard
+      const u = data.data.user;
+      storeAuthToken(data.data.token);
+      storeUser({
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
+
       router.push('/dashboard/customer');
-    } else {
-      setError(authError || 'Sign up failed. Please try again.');
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -72,9 +105,9 @@ export default function CustomerSignupPage() {
         {/* Signup Form */}
         <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {(error || authError) && (
+            {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-sm text-red-800 dark:text-red-400">&#9888;&#65039; {error || authError}</p>
+                <p className="text-sm text-red-800 dark:text-red-400">&#9888;&#65039; {error}</p>
               </div>
             )}
 
