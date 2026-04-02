@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { setAuthSession } from '@/lib/api/auth';
 
 export default function CustomerSignupPage() {
   const router = useRouter();
@@ -66,10 +67,20 @@ export default function CustomerSignupPage() {
         return;
       }
 
-      // Redirect to OTP verification — all roles must verify email before accessing dashboard
-      router.push(
-        `/auth/verify-email/pending?email=${encodeURIComponent(formData.email.trim().toLowerCase())}&role=customer`
-      );
+      // Save session and redirect to dashboard
+      const u = data.data.user;
+      setAuthSession(data.data.token, {
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
+      router.push('/dashboard/customer');
     } catch {
       setError('Network error. Please check your connection and try again.');
     } finally {

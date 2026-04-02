@@ -3,7 +3,6 @@ import { connectDB } from '@/backend/config/database';
 import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateSignupInput, sanitizeInput } from '@/backend/utils/validation';
-import { sendVerificationEmail } from '@/backend/utils/email';
 import {
   sendSuccess,
   sendError,
@@ -37,6 +36,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Create and persist user. Password is hashed by the pre-save hook.
+    // OTP email verification is disabled until a custom domain is configured
+    // in Resend (free plan restricts delivery to arbitrary recipients).
     const newUser = new User({
       firstName,
       lastName,
@@ -44,32 +46,13 @@ export async function POST(request: NextRequest) {
       password,
       role,
       phoneNumber: body.phoneNumber || undefined,
-      // Only admins are auto-approved; all other roles require admin review (or just email verify for customers)
       applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
-      // Nobody is auto-verified — every signup requires email OTP (admins excepted)
-      isEmailVerified: role === UserRole.ADMIN,
+      isEmailVerified: true, // auto-verified; re-enable OTP when Resend domain is set
     });
-
-    // Every non-admin role must verify their email with an OTP
-    const rolesRequiringVerification = [UserRole.CUSTOMER, UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
-    let verifyToken = '';
-    if (rolesRequiringVerification.includes(role)) {
-      verifyToken = Math.floor(100000 + Math.random() * 900000).toString();
-      newUser.emailVerificationToken = verifyToken;
-      newUser.emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    }
 
     await newUser.save();
 
-    // Send OTP email — awaited so delivery errors are logged before responding.
-    // sendVerificationEmail never throws; it falls back to console log if all
-    // providers fail, so the OTP is always visible in server logs.
-    if (verifyToken) {
-      await sendVerificationEmail(email, firstName, verifyToken, role);
-    }
-
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.role);
-    const requiresVerification = rolesRequiringVerification.includes(role);
 
     return sendSuccess(
       {
@@ -80,10 +63,10 @@ export async function POST(request: NextRequest) {
           email: newUser.email,
           role: newUser.role,
           avatar: newUser.avatar || null,
-          isEmailVerified: newUser.isEmailVerified,
+          isEmailVerified: true,
         },
         token,
-        requiresEmailVerification: requiresVerification,
+        requiresEmailVerification: false,
       },
       'Account created successfully',
       201
@@ -92,7 +75,6 @@ export async function POST(request: NextRequest) {
     const err = error as Error;
     console.error('[Signup] Route error:', err?.message || error);
 
-    // Surface specific diagnostic errors instead of a generic message
     if (err?.message?.includes('MONGODB_URI')) {
       return sendError('Database not configured. Set MONGODB_URI in environment variables.', 503);
     }

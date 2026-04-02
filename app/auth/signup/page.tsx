@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { setAuthSession } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
 type Step = 'role-selection' | 'form';
@@ -158,10 +159,24 @@ function SignupContent() {
         return;
       }
 
-      // All roles must verify email via OTP before accessing their dashboard
-      router.push(
-        `/auth/verify-email/pending?email=${encodeURIComponent(form.email.trim().toLowerCase())}&role=${role}`
-      );
+      // Save session and redirect to role dashboard — no OTP required
+      const u = data.data.user;
+      setAuthSession(data.data.token, {
+        id: u.id,
+        email: u.email,
+        username: u.email?.split('@')[0] ?? '',
+        role: u.role,
+        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        firstName: u.firstName,
+        lastName: u.lastName,
+        avatar: u.avatar ?? undefined,
+        isEmailVerified: u.isEmailVerified,
+      });
+      const dashPath =
+        role === 'vendor' ? '/dashboard/vendor' :
+        role === 'brand'  ? '/dashboard/brand'  :
+        '/dashboard/customer';
+      router.push(dashPath);
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
     } finally {
