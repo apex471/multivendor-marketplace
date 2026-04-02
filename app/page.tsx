@@ -396,17 +396,28 @@ export default function Home() {
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-2xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1"
               >
                 {/* Banner Image */}
-                <div className="relative h-32 sm:h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800 overflow-hidden">
-                  <Image
-                    src={brand.banner}
-                    alt={brand.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
-                  
-                  {/* Brand Logo */}
-                  <div className="absolute bottom-0 left-4 sm:left-6 translate-y-1/2">
+                <div className="relative h-32 sm:h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800">
+                  {/* Image + overlay in their own overflow-hidden so hover-scale stays contained */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    <Image
+                      src={brand.banner}
+                      alt={brand.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
+                  </div>
+
+                  {/* Verified Badge */}
+                  {brand.verified && (
+                    <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                      <span>✓</span>
+                      <span className="hidden sm:inline">Official</span>
+                    </div>
+                  )}
+
+                  {/* Brand Logo — outside overflow-hidden so translate-y-1/2 correctly hangs over the banner edge */}
+                  <div className="absolute bottom-0 left-4 sm:left-6 translate-y-1/2 z-10">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white dark:bg-charcoal-800 rounded-xl shadow-lg border-4 border-white dark:border-charcoal-900 overflow-hidden">
                       <Image
                         src={brand.logo}
@@ -417,14 +428,6 @@ export default function Home() {
                       />
                     </div>
                   </div>
-
-                  {/* Verified Badge */}
-                  {brand.verified && (
-                    <div className="absolute top-3 right-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
-                      <span>✓</span>
-                      <span className="hidden sm:inline">Official</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Brand Info */}
