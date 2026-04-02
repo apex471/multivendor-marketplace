@@ -3,10 +3,11 @@
  * Handles all auth-related API calls
  */
 
-// Use relative /api path as default so the deployed Netlify site always calls
-// its own API routes (same origin). For local dev, set NEXT_PUBLIC_API_URL=
-// http://localhost:3000/api in .env.local to keep it explicit.
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+// Always use a relative path — the app and its API routes share the same origin
+// on every environment (local dev, Netlify, etc.). Using NEXT_PUBLIC_API_URL
+// was causing login failures when that variable was set to an absolute URL in
+// Netlify environment variables.
+const API_URL = '/api';
 
 export interface SignupData {
   firstName: string;
@@ -67,18 +68,28 @@ export async function loginUser(data: LoginData): Promise<AuthResponse> {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+
+    // If the server returned HTML (e.g. Netlify crash page), json() will throw
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      console.error('[loginUser] Non-JSON response:', response.status, contentType);
+      return {
+        success: false,
+        message: `Server error (${response.status}). Please try again.`,
+        statusCode: response.status,
+      };
+    }
+
     return await response.json();
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[loginUser] Fetch failed:', error);
     return {
       success: false,
-      message: 'An error occurred during login',
-      statusCode: 500,
+      message: 'Unable to reach the server. Check your connection and try again.',
+      statusCode: 0,
     };
   }
 }
