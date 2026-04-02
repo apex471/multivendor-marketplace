@@ -485,21 +485,21 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
             {mockProducts.map((product) => (
-              <div key={product.id} className="group relative">
-                <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all">
-                  {/* Image container — div (not button) so aspect-square + fill create a reliable containing block */}
+              <div key={product.id} className="group relative isolate">
+                <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow duration-300">
+                  {/* Image container — named group/img scopes zoom strictly to image-area hover, preventing text-area hover from triggering scale */}
                   <div
                     onClick={() => handleProductClick(product.id)}
-                    className="relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation"
+                    className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation"
                   >
                     <Image
                       src={product.image}
                       alt={product.name}
                       fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
-                      className="object-cover object-center group-hover:scale-110 transition-transform duration-300"
+                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
+                      className="object-cover object-center group-hover/img:scale-110 transition-transform duration-300"
                     />
                     {product.oldPrice && (
                       <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">
