@@ -34,8 +34,10 @@ export interface AuthResponse {
       email: string;
       role: string;
       avatar?: string;
+      isEmailVerified?: boolean;
     };
     token: string;
+    requiresEmailVerification?: boolean;
   };
   errors?: Record<string, string>;
   statusCode: number;

@@ -37,24 +37,15 @@ export async function POST(request: NextRequest) {
       return sendError('Your account has been deactivated. Please contact support.', 403);
     }
 
-    // Vendors, brands, and logistics must verify their email before logging in
-    const rolesRequiringVerification = ['vendor', 'brand', 'logistics'];
-    if (rolesRequiringVerification.includes(user.role) && !user.isEmailVerified) {
-      return sendError(
-        'Please verify your email address before logging in. Check your inbox for a verification link.',
-        403,
-        { requiresEmailVerification: 'true', email: user.email }
-      );
-    }
-
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
+      console.error(`[Login] Password mismatch for ${email}`);
       return sendError('Invalid email or password', 401);
     }
 
-    // Update last login timestamp
-    user.lastLogin = new Date();
-    await user.save();
+    // Use updateOne instead of save() — save() triggers the pre-save hook which
+    // would re-hash the already-hashed password, breaking every subsequent login.
+    await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
 
     const token = generateToken(user._id.toString(), user.email, user.role);
 
