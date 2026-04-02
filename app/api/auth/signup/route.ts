@@ -61,12 +61,11 @@ export async function POST(request: NextRequest) {
 
     await newUser.save();
 
-    // Send OTP email — non-blocking so signup response isn't delayed
-    // verifyToken is used directly (no DB re-fetch needed)
+    // Send OTP email — awaited so delivery errors are logged before responding.
+    // sendVerificationEmail never throws; it falls back to console log if all
+    // providers fail, so the OTP is always visible in server logs.
     if (verifyToken) {
-      sendVerificationEmail(email, firstName, verifyToken, role).catch(
-        (err) => console.error('[Auth] Failed to send verification email:', err)
-      );
+      await sendVerificationEmail(email, firstName, verifyToken, role);
     }
 
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.role);

@@ -30,15 +30,16 @@ export async function POST(request: NextRequest) {
       return sendError('This email address is already verified.', 400);
     }
 
-    const rolesRequiringVerification = [UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
+    const rolesRequiringVerification = [UserRole.CUSTOMER, UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
     if (!rolesRequiringVerification.includes(user.role)) {
       return sendError('Email verification is not required for this account type.', 400);
     }
 
     // Enforce cooldown: if a code exists and was issued less than 1 min ago, reject
+    const verificationExpires = (user as { emailVerificationExpires?: Date }).emailVerificationExpires;
     if (
-      (user as any).emailVerificationExpires &&
-      (user as any).emailVerificationExpires > new Date(Date.now() + 10 * 60 * 1000 - RESEND_COOLDOWN_MS)
+      verificationExpires &&
+      verificationExpires > new Date(Date.now() + 10 * 60 * 1000 - RESEND_COOLDOWN_MS)
     ) {
       return sendError('Please wait 1 minute before requesting another code.', 429);
     }
