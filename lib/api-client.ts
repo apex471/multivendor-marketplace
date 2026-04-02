@@ -3,7 +3,7 @@
  * Base configuration for making HTTP requests
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface RequestConfig extends RequestInit {
   token?: string;

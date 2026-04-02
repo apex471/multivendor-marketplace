@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* ─── Tailwind v4: dark mode via .dark class ─────────────────────────────────
+   tailwind.config.ts `darkMode: 'class'` is IGNORED in Tailwind v4.
+   This directive is required to make every `dark:*` utility respond to
+   a `.dark` class on any ancestor (ThemeContext adds it to <html>).
+   Without this line the entire site dark mode is broken.
+────────────────────────────────────────────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: Inter, system-ui, sans-serif;
   --font-display: Poppins, system-ui, sans-serif;

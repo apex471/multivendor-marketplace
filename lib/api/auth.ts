@@ -3,7 +3,10 @@
  * Handles all auth-related API calls
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+// Use relative /api path as default so the deployed Netlify site always calls
+// its own API routes (same origin). For local dev, set NEXT_PUBLIC_API_URL=
+// http://localhost:3000/api in .env.local to keep it explicit.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export interface SignupData {
   firstName: string;
