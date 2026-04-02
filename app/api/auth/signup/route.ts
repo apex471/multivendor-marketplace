@@ -89,8 +89,21 @@ export async function POST(request: NextRequest) {
       'Account created successfully',
       201
     );
-  } catch (error) {
-    console.error('Signup route error:', error);
-    return sendServerError('An error occurred during signup');
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[Signup] Route error:', err?.message || error);
+
+    // Surface specific diagnostic errors instead of a generic message
+    if (err?.message?.includes('MONGODB_URI')) {
+      return sendError('Database not configured. Set MONGODB_URI in environment variables.', 503);
+    }
+    if (err?.message?.includes('connect') || err?.message?.includes('ENOTFOUND') || err?.message?.includes('timed out')) {
+      return sendError('Cannot connect to database. Check MONGODB_URI in environment variables.', 503);
+    }
+    if (err?.message?.includes('duplicate key') || err?.message?.includes('E11000')) {
+      return sendError('User with this email already exists', 409, { email: 'Email is already registered' });
+    }
+
+    return sendServerError(`Signup error: ${err?.message || 'Unknown error'}`);
   }
 }

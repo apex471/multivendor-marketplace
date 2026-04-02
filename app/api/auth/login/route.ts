@@ -73,8 +73,17 @@ export async function POST(request: NextRequest) {
       },
       'Login successful'
     );
-  } catch (error) {
-    console.error('Login route error:', error);
-    return sendServerError('An error occurred during login');
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[Login] Route error:', err?.message || error);
+
+    if (err?.message?.includes('MONGODB_URI')) {
+      return sendError('Database not configured. Set MONGODB_URI in environment variables.', 503);
+    }
+    if (err?.message?.includes('connect') || err?.message?.includes('ENOTFOUND') || err?.message?.includes('timed out')) {
+      return sendError('Cannot connect to database. Check MONGODB_URI in environment variables.', 503);
+    }
+
+    return sendServerError(`Login error: ${err?.message || 'Unknown error'}`);
   }
 }
