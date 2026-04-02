@@ -237,18 +237,29 @@ export default function BrandsPage() {
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all hover:-translate-y-1"
               >
                 {/* Banner Image */}
-                <div className="relative h-40 bg-linear-to-br from-gray-100 to-gray-200 overflow-hidden">
-                  <Image
-                    src={brand.banner}
-                    alt={brand.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
-                  
-                  {/* Brand Logo */}
-                  <div className="absolute bottom-0 left-6 translate-y-1/2">
-                    <div className="w-20 h-20 bg-white rounded-xl shadow-lg border-4 border-white overflow-hidden">
+                <div className="relative h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800">
+                  {/* Inner overflow-hidden wraps only the fill image + gradient so hover-scale stays contained */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    <Image
+                      src={brand.banner}
+                      alt={brand.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
+                  </div>
+
+                  {/* Verified Badge — outside overflow-hidden */}
+                  {brand.verified && (
+                    <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                      <span>✓</span>
+                      <span>Official</span>
+                    </div>
+                  )}
+
+                  {/* Brand Logo — outside overflow-hidden so translate-y-1/2 correctly hangs over the banner edge */}
+                  <div className="absolute bottom-0 left-6 translate-y-1/2 z-10">
+                    <div className="w-20 h-20 bg-white dark:bg-charcoal-800 rounded-xl shadow-lg border-4 border-white dark:border-charcoal-900 overflow-hidden">
                       <Image
                         src={brand.logo}
                         alt={brand.name}
@@ -258,14 +269,6 @@ export default function BrandsPage() {
                       />
                     </div>
                   </div>
-
-                  {/* Verified Badge */}
-                  {brand.verified && (
-                    <div className="absolute top-3 right-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
-                      <span>✓</span>
-                      <span>Official</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Brand Info */}
