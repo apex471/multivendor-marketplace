@@ -82,6 +82,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
+  // Sync when a direct-API login/signup page fires auth-state-changed
+  // (e.g. customer login, vendor signup calling setAuthSession from lib/api/auth)
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      const token = getAuthToken();
+      const storedUser = getStoredUser();
+      if (token && storedUser) {
+        setUser(storedUser);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    };
+    window.addEventListener('auth-state-changed', handleAuthChanged);
+    return () => window.removeEventListener('auth-state-changed', handleAuthChanged);
+  }, []);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setError(null);

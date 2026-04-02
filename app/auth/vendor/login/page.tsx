@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { storeAuthToken, storeUser } from '@/lib/api/auth';
+import { setAuthSession } from '@/lib/api/auth';
 
 export default function VendorLoginPage() {
   const router = useRouter();
@@ -39,8 +39,7 @@ export default function VendorLoginPage() {
 
       // Store credentials and redirect
       const u = data.data.user;
-      storeAuthToken(data.data.token);
-      storeUser({
+      setAuthSession(data.data.token, {
         id: u.id,
         email: u.email,
         username: u.email?.split('@')[0] ?? '',
@@ -133,7 +132,7 @@ export default function VendorLoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-              Don't have a vendor account?{' '}
+              Don&apos;t have a vendor account?{' '}
               <Link href="/auth/vendor/signup" className="text-purple-600 hover:text-purple-700 font-semibold">
                 Apply now
               </Link>

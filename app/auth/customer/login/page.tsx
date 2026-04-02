@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { storeAuthToken, storeUser } from '@/lib/api/auth';
+import { setAuthSession } from '@/lib/api/auth';
 
 export default function CustomerLoginPage() {
   const router = useRouter();
@@ -52,8 +52,7 @@ export default function CustomerLoginPage() {
 
       // Store credentials
       const u = data.data.user;
-      storeAuthToken(data.data.token);
-      storeUser({
+      setAuthSession(data.data.token, {
         id: u.id,
         email: u.email,
         username: u.email?.split('@')[0] ?? '',

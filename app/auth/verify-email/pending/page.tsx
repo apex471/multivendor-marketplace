@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { storeAuthToken, storeUser } from '@/lib/api/auth';
+import { setAuthSession } from '@/lib/api/auth';
 
 function normalizeUser(u: any) {
   return {
@@ -78,8 +78,7 @@ function VerifyEmailPendingContent() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        storeAuthToken(data.data.token);
-        storeUser(normalizeUser(data.data.user));
+        setAuthSession(data.data.token, normalizeUser(data.data.user));
         setVerifyStatus('success');
         const userRole = data.data.user.role || role;
         const dashPath =

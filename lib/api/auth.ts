@@ -263,6 +263,20 @@ export function storeAuthToken(token: string): void {
   }
 }
 
+/**
+ * Store token + user together and immediately notify AuthContext.
+ * Use this after every direct API login/signup call so the session
+ * is reflected in the Header and other context consumers right away.
+ */
+export function setAuthSession(token: string, user: any): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    // Dispatch event so AuthContext picks up the new state in the same tab
+    window.dispatchEvent(new Event('auth-state-changed'));
+  }
+}
+
 export function clearAuthToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('authToken');

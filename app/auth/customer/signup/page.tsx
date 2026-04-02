@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { storeAuthToken, storeUser } from '@/lib/api/auth';
+import { setAuthSession } from '@/lib/api/auth';
 
 export default function CustomerSignupPage() {
   const router = useRouter();
@@ -69,8 +69,7 @@ export default function CustomerSignupPage() {
 
       // Store credentials and redirect to dashboard
       const u = data.data.user;
-      storeAuthToken(data.data.token);
-      storeUser({
+      const normalizedUser = {
         id: u.id,
         email: u.email,
         username: u.email?.split('@')[0] ?? '',
@@ -80,7 +79,8 @@ export default function CustomerSignupPage() {
         lastName: u.lastName,
         avatar: u.avatar ?? undefined,
         isEmailVerified: u.isEmailVerified,
-      });
+      };
+      setAuthSession(data.data.token, normalizedUser);
 
       router.push('/dashboard/customer');
     } catch {

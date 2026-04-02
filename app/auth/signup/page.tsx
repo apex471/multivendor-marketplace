@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { storeAuthToken, storeUser } from '@/lib/api/auth';
+import { setAuthSession } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
 type Step = 'role-selection' | 'form';
@@ -175,8 +175,7 @@ function SignupContent() {
 
       // Customer — store credentials and go to dashboard
       const u = data.data.user;
-      storeAuthToken(data.data.token);
-      storeUser({
+      setAuthSession(data.data.token, {
         id: u.id,
         email: u.email,
         username: u.email?.split('@')[0] ?? '',

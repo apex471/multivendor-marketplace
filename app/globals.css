@@ -8,6 +8,20 @@
 ────────────────────────────────────────────────────────────────────────────── */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─── Tailwind v4 gradient compatibility ────────────────────────────────────
+   Tailwind v4 renamed `bg-gradient-to-*` → `bg-linear-to-*`.
+   These @utility aliases restore the v3 class names so every component
+   keeps working without touching 88+ files across the codebase.
+────────────────────────────────────────────────────────────────────────────── */
+@utility bg-gradient-to-t   { background-image: linear-gradient(to top,          var(--tw-gradient-stops)); }
+@utility bg-gradient-to-tr  { background-image: linear-gradient(to top right,    var(--tw-gradient-stops)); }
+@utility bg-gradient-to-r   { background-image: linear-gradient(to right,        var(--tw-gradient-stops)); }
+@utility bg-gradient-to-br  { background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); }
+@utility bg-gradient-to-b   { background-image: linear-gradient(to bottom,       var(--tw-gradient-stops)); }
+@utility bg-gradient-to-bl  { background-image: linear-gradient(to bottom left,  var(--tw-gradient-stops)); }
+@utility bg-gradient-to-l   { background-image: linear-gradient(to left,         var(--tw-gradient-stops)); }
+@utility bg-gradient-to-tl  { background-image: linear-gradient(to top left,     var(--tw-gradient-stops)); }
+
 @theme {
   --font-sans: Inter, system-ui, sans-serif;
   --font-display: Poppins, system-ui, sans-serif;
