@@ -21,6 +21,11 @@ const nextConfig = {
     ],
     unoptimized: true,
   },
+
+  // Required: declare empty turbopack config so Next.js 16 knows Turbopack
+  // is intentional. Without this, any future webpack config additions would
+  // trigger a build error on "webpack config without turbopack config".
+  turbopack: {},
 };
 
 module.exports = nextConfig;

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
-import { sendSuccess, sendError, sendValidationError, sendServerError } from '@/backend/utils/responseAppRouter';
+import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
 // GET /api/admin/users - Paginated user list with filters
 export async function GET(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const applicationStatus = searchParams.get('applicationStatus') || 'all';
 
     // Build filter
-    const filter: Record<string, any> = {};
+    const filter: Record<string, unknown> = {};
 
     if (role !== 'all') filter.role = role;
 

@@ -5,6 +5,9 @@
 [build.environment]
   NODE_VERSION = "20"
   NEXT_TELEMETRY_DISABLED = "1"
+  # Suppress cosmetic "baseline-browser-mapping data is over two months old"
+  # warning that Tailwind v4 emits — the package is already at latest (2.10.13).
+  NODE_NO_WARNINGS = "1"
   # Force npm to install devDependencies even in production mode.
   # Netlify sets NODE_ENV=production which can cause npm to skip devDependencies
   # (tailwindcss, typescript, @netlify/plugin-nextjs, etc.) — this prevents that.
