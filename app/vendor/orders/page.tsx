@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface OrderItem {
   id: string;
@@ -28,6 +29,12 @@ interface Order {
   shippingAddress: string;
 }
 
+interface ApiStats {
+  totalOrders: number;
+  revenue: number;
+  monthlyRevenue: number;
+}
+
 export default function VendorOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,121 +42,34 @@ export default function VendorOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
-  // Mock orders data
-  const [orders] = useState<Order[]>([
-    {
-      id: '1',
-      orderNumber: 'ORD-2025001',
-      customer: {
-        name: 'Sarah Johnson',
-        email: 'sarah.j@email.com'
-      },
-      items: [
-        {
-          id: '1',
-          name: 'Designer Silk Dress',
-          image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=100',
-          quantity: 1,
-          price: 299.99
-        }
-      ],
-      total: 324.99,
-      status: 'pending',
-      createdAt: '2025-12-20T08:30:00Z',
-      shippingAddress: '123 Main St, New York, NY 10001'
-    },
-    {
-      id: '2',
-      orderNumber: 'ORD-2025002',
-      customer: {
-        name: 'Michael Chen',
-        email: 'mchen@email.com'
-      },
-      items: [
-        {
-          id: '2',
-          name: 'Evening Clutch',
-          image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100',
-          quantity: 2,
-          price: 149.99
-        }
-      ],
-      total: 324.98,
-      status: 'processing',
-      createdAt: '2025-12-19T14:20:00Z',
-      shippingAddress: '456 Oak Ave, Los Angeles, CA 90012'
-    },
-    {
-      id: '3',
-      orderNumber: 'ORD-2025003',
-      customer: {
-        name: 'Emma Wilson',
-        email: 'emma.w@email.com'
-      },
-      items: [
-        {
-          id: '3',
-          name: 'Leather Handbag',
-          image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=100',
-          quantity: 1,
-          price: 399.99
-        }
-      ],
-      total: 431.99,
-      status: 'shipped',
-      createdAt: '2025-12-18T10:15:00Z',
-      shippingAddress: '789 Pine Rd, Chicago, IL 60601'
-    },
-    {
-      id: '4',
-      orderNumber: 'ORD-2025004',
-      customer: {
-        name: 'David Martinez',
-        email: 'dmartinez@email.com'
-      },
-      items: [
-        {
-          id: '1',
-          name: 'Designer Silk Dress',
-          image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=100',
-          quantity: 1,
-          price: 299.99
-        }
-      ],
-      total: 324.99,
-      status: 'delivered',
-      createdAt: '2025-12-15T16:45:00Z',
-      shippingAddress: '321 Elm St, Houston, TX 77001'
-    },
-    {
-      id: '5',
-      orderNumber: 'ORD-2025005',
-      customer: {
-        name: 'Lisa Anderson',
-        email: 'l.anderson@email.com'
-      },
-      items: [
-        {
-          id: '2',
-          name: 'Evening Clutch',
-          image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100',
-          quantity: 1,
-          price: 149.99
-        }
-      ],
-      total: 171.99,
-      status: 'cancelled',
-      createdAt: '2025-12-19T09:00:00Z',
-      shippingAddress: '654 Maple Dr, Miami, FL 33101'
-    }
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [apiStats, setApiStats] = useState<ApiStats>({ totalOrders: 0, revenue: 0, monthlyRevenue: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Calculate stats
+  const fetchOrders = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) { setError('Not authenticated'); setLoading(false); return; }
+    try {
+      const res  = await fetch('/api/vendor/orders', { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!json.success) { setError(json.message || 'Failed to load orders'); return; }
+      setOrders(json.data.orders ?? []);
+      setApiStats(json.data.stats ?? { totalOrders: 0, revenue: 0, monthlyRevenue: 0 });
+    } catch {
+      setError('Network error — please try again');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
   const stats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
+    total:      apiStats.totalOrders,
+    pending:    orders.filter(o => o.status === 'pending').length,
     processing: orders.filter(o => o.status === 'processing').length,
-    revenue: orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0)
+    revenue:    apiStats.monthlyRevenue,
   };
 
   // Filter orders
@@ -206,8 +126,20 @@ export default function VendorOrdersPage() {
   };
 
   const handleExportCSV = () => {
-    console.log('Exporting orders to CSV...');
-    alert('CSV export feature would download filtered orders here');
+    const rows = [
+      ['Order #', 'Customer', 'Email', 'Items', 'Total', 'Status', 'Date'],
+      ...filteredOrders.map(o => [
+        o.orderNumber, o.customer.name, o.customer.email,
+        o.items.length, o.total.toFixed(2), o.status,
+        new Date(o.createdAt).toLocaleDateString(),
+      ]),
+    ];
+    const csv  = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'vendor-orders.csv'; a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -268,7 +200,7 @@ export default function VendorOrdersPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled')}
               className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
             >
               <option value="all">All Status</option>
@@ -280,7 +212,7 @@ export default function VendorOrdersPage() {
             </select>
             <select
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as any)}
+              onChange={(e) => setDateRange(e.target.value as 'all' | 'today' | 'week' | 'month')}
               className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
             >
               <option value="all">All Time</option>
@@ -291,7 +223,25 @@ export default function VendorOrdersPage() {
           </div>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 mb-6">{error}</div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 rounded-lg p-6 animate-pulse">
+                <div className="h-5 bg-cool-gray-200 dark:bg-charcoal-600 rounded w-1/4 mb-3" />
+                <div className="h-4 bg-cool-gray-100 dark:bg-charcoal-700 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Orders List */}
+        {!loading && (
         <div className="space-y-4">
           {paginatedOrders.map((order) => (
             <div
@@ -337,7 +287,7 @@ export default function VendorOrdersPage() {
                 <div className="flex items-center gap-4 mb-4">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2">
-                      <div className="relative w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                      <div className="relative w-12 h-12 rounded overflow-hidden shrink-0">
                         <Image src={item.image} alt={item.name} fill className="object-cover" />
                       </div>
                       <div>
@@ -357,16 +307,17 @@ export default function VendorOrdersPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Empty State */}
-        {filteredOrders.length === 0 && (
+        {!loading && filteredOrders.length === 0 && (
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-12 text-center">
             <div className="text-6xl mb-4">📦</div>
             <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">
-              No orders found
+              {orders.length === 0 ? 'No orders yet' : 'No orders match your filters'}
             </h3>
             <p className="text-charcoal-600 dark:text-cool-gray-400">
-              Try adjusting your filters or search query
+              {orders.length === 0 ? 'Orders will appear here once customers purchase your products' : 'Try adjusting your filters or search query'}
             </p>
           </div>
         )}

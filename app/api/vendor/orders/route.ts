@@ -68,14 +68,29 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        id:            o.orderId,
-        customer:      o.customerName,
-        customerEmail: o.customerEmail,
-        date:          o.createdAt,
-        items:         vendorItems.length,
+        id:          o.orderId,
+        orderNumber: o.orderId,
+        customer: {
+          name:  o.customerName,
+          email: o.customerEmail,
+        },
+        items: vendorItems.map(i => ({
+          id:       i.productId ?? '',
+          name:     i.name,
+          image:    i.image ?? 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=100',
+          quantity: i.quantity,
+          price:    i.price,
+        })),
         total:         vendorSubtotal,
         status:        o.status,
         paymentStatus: o.paymentStatus,
+        createdAt:     o.createdAt,
+        shippingAddress: [
+          o.shippingAddress.addressLine1,
+          o.shippingAddress.city,
+          o.shippingAddress.state,
+          o.shippingAddress.zipCode,
+        ].filter(Boolean).join(', '),
       };
     });
 

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
+
+import { getAuthToken } from '@/lib/api/auth';
 
 interface OrderItem {
   id: string;
@@ -51,7 +53,6 @@ interface Order {
 }
 
 export default function OrderDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const orderId = params?.id as string;
 
@@ -63,53 +64,23 @@ export default function OrderDetailPage() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    // Mock order fetch - in production, fetch from API
-    const mockOrder: Order = {
-      id: orderId,
-      orderNumber: 'ORD-2025001',
-      customer: {
-        name: 'Sarah Johnson',
-        email: 'sarah.j@email.com',
-        phone: '+1 (555) 123-4567'
-      },
-      items: [
-        {
-          id: '1',
-          name: 'Designer Silk Dress',
-          image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=200',
-          size: 'M',
-          color: 'Black',
-          quantity: 1,
-          price: 299.99
-        }
-      ],
-      subtotal: 299.99,
-      shipping: 25.00,
-      tax: 26.00,
-      total: 350.99,
-      status: 'pending',
-      shippingAddress: {
-        fullName: 'Sarah Johnson',
-        phone: '+1 (555) 123-4567',
-        addressLine1: '123 Main Street',
-        addressLine2: 'Apt 4B',
-        city: 'New York',
-        state: 'NY',
-        zipCode: '10001',
-        country: 'United States'
-      },
-      createdAt: '2025-12-20T08:30:00Z',
-      statusHistory: [
-        {
-          status: 'Order Placed',
-          timestamp: '2025-12-20T08:30:00Z',
-          note: 'Order received and confirmed'
-        }
-      ]
-    };
-
-    setOrder(mockOrder);
-    setTrackingNumber(mockOrder.trackingNumber || '');
+    const token = getAuthToken();
+    if (!token || !orderId) return;
+    fetch(`/api/vendor/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success) return;
+        const o = json.data.order;
+        setOrder({
+          ...o,
+          shipping: o.shippingCost ?? 0,
+          statusHistory: [],
+        });
+        setTrackingNumber(o.trackingNumber ?? '');
+      })
+      .catch(() => {});
   }, [orderId]);
 
   const getStatusBadge = (status: string) => {
@@ -164,44 +135,50 @@ export default function OrderDetailPage() {
   const handleUpdateStatus = async () => {
     if (!newStatus || !order) return;
 
-    // Validate tracking number for shipped status
     if (newStatus === 'shipped' && !trackingNumber.trim()) {
       alert('Please enter a tracking number');
       return;
     }
-
-    // Validate cancel reason
     if (newStatus === 'cancelled' && !cancelReason.trim()) {
       alert('Please provide a cancellation reason');
       return;
     }
 
     setIsUpdating(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Update order status
-    const updatedOrder = {
-      ...order,
-      status: newStatus,
-      trackingNumber: newStatus === 'shipped' ? trackingNumber : order.trackingNumber,
-      statusHistory: [
-        ...order.statusHistory,
-        {
-          status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1),
-          timestamp: new Date().toISOString(),
-          note: newStatus === 'cancelled' ? cancelReason : newStatus === 'shipped' ? `Tracking: ${trackingNumber}` : undefined
-        }
-      ]
-    };
-
-    console.log('Updating order status:', updatedOrder);
-    setOrder(updatedOrder);
-    
-    setIsUpdating(false);
-    setShowStatusModal(false);
-    setNewStatus(null);
-    setTrackingNumber('');
-    setCancelReason('');
+    try {
+      const token = getAuthToken();
+      const res  = await fetch(`/api/vendor/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus, trackingNumber, cancelReason }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setOrder(prev => prev ? {
+          ...prev,
+          status: newStatus,
+          trackingNumber: newStatus === 'shipped' ? trackingNumber : prev.trackingNumber,
+          statusHistory: [
+            ...prev.statusHistory,
+            {
+              status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1),
+              timestamp: new Date().toISOString(),
+              note: newStatus === 'cancelled' ? cancelReason : newStatus === 'shipped' ? `Tracking: ${trackingNumber}` : undefined,
+            },
+          ],
+        } : prev);
+        setShowStatusModal(false);
+        setNewStatus(null);
+        setTrackingNumber('');
+        setCancelReason('');
+      } else {
+        alert(json.message || 'Failed to update order status');
+      }
+    } catch {
+      alert('Network error — please try again');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const openStatusModal = (status: 'processing' | 'shipped' | 'delivered' | 'cancelled') => {
@@ -286,7 +263,7 @@ export default function OrderDetailPage() {
                   {availableUpdates.map((update) => (
                     <button
                       key={update.value}
-                      onClick={() => openStatusModal(update.value as any)}
+                      onClick={() => openStatusModal(update.value as 'processing' | 'shipped' | 'delivered' | 'cancelled')}
                       className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
                         update.color === 'blue' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
                         update.color === 'purple' ? 'bg-purple-600 hover:bg-purple-700 text-white' :
@@ -314,11 +291,10 @@ export default function OrderDetailPage() {
               <div className="space-y-4">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 pb-4 border-b border-cool-gray-200 dark:border-charcoal-700 last:border-0">
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
                       <Image src={item.image} alt={item.name} fill className="object-cover" />
                     </div>
-                    <div className="flex-grow">
-                      <h3 className="font-semibold text-charcoal-900 dark:text-white mb-1">{item.name}</h3>
+                    <div className="grow">
                       <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
                         Size: {item.size} • Color: {item.color}
                       </p>
@@ -368,12 +344,12 @@ export default function OrderDetailPage() {
                 {order.statusHistory.map((event, index) => (
                   <div key={index} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 rounded-full bg-gold-600 flex-shrink-0"></div>
+                      <div className="w-3 h-3 rounded-full bg-gold-600 shrink-0"></div>
                       {index < order.statusHistory.length - 1 && (
                         <div className="w-0.5 h-full bg-cool-gray-300 dark:bg-charcoal-700 my-1"></div>
                       )}
                     </div>
-                    <div className="flex-grow pb-4">
+                    <div className="grow pb-4">
                       <p className="font-semibold text-charcoal-900 dark:text-white">{event.status}</p>
                       <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
                         {formatDate(event.timestamp)}
