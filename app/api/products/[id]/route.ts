@@ -13,13 +13,14 @@ import {
  */
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
     const product = await Product.findOne({
-      _id: params.id,
+      _id: id,
       status: 'active',
     })
       .select('-costPrice')
@@ -30,7 +31,7 @@ export async function GET(
     const related = await Product.find({
       category: (product as any).category,
       status: 'active',
-      _id: { $ne: params.id },
+      _id: { $ne: id },
     })
       .select('name price salePrice images rating salesCount vendorName category')
       .sort({ salesCount: -1 })

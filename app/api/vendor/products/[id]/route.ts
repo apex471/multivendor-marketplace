@@ -12,14 +12,15 @@ import {
 // ── GET /api/vendor/products/[id] ─────────────────────────────────────────────
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { error, userId } = await verifyVendorAuth(request);
   if (error) return sendError(error, 401);
 
   try {
     await connectDB();
-    const product = await Product.findOne({ _id: params.id, vendorId: userId }).lean();
+    const product = await Product.findOne({ _id: id, vendorId: userId }).lean();
     if (!product) return sendNotFound('Product not found');
     return sendSuccess({ product });
   } catch (err) {
@@ -31,14 +32,15 @@ export async function GET(
 // ── PATCH /api/vendor/products/[id] ──────────────────────────────────────────
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { error, userId } = await verifyVendorAuth(request);
   if (error) return sendError(error, 401);
 
   try {
     await connectDB();
-    const product = await Product.findOne({ _id: params.id, vendorId: userId });
+    const product = await Product.findOne({ _id: id, vendorId: userId });
     if (!product) return sendNotFound('Product not found');
 
     const body = await request.json().catch(() => ({}));
@@ -69,14 +71,15 @@ export async function PATCH(
 // ── DELETE /api/vendor/products/[id] ─────────────────────────────────────────
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { error, userId } = await verifyVendorAuth(request);
   if (error) return sendError(error, 401);
 
   try {
     await connectDB();
-    const product = await Product.findOneAndDelete({ _id: params.id, vendorId: userId });
+    const product = await Product.findOneAndDelete({ _id: id, vendorId: userId });
     if (!product) return sendNotFound('Product not found');
     return sendSuccess(null, 'Product deleted successfully');
   } catch (err) {
