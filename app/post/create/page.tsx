@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface UploadedImage {
   id: string;
@@ -20,63 +21,98 @@ interface TaggedProduct {
 }
 
 export default function CreatePostPage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [images, setImages] = useState<UploadedImage[]>([]);
-  const [caption, setCaption] = useState('');
-  const [hashtags, setHashtags] = useState('');
-  const [location, setLocation] = useState('');
-  const [showProductSearch, setShowProductSearch] = useState(false);
-  const [taggedProducts, setTaggedProducts] = useState<TaggedProduct[]>([]);
-  const [productSearchQuery, setProductSearchQuery] = useState('');
-  const [privacy, setPrivacy] = useState<'public' | 'followers' | 'private'>('public');
-  const [allowComments, setAllowComments] = useState(true);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  // Mock products for search
-  const mockProducts: TaggedProduct[] = [
-    {
-      id: '1',
-      name: 'Designer Silk Dress',
-      price: 299.99,
-      image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=100',
-    },
-    {
-      id: '2',
-      name: 'Leather Handbag',
-      price: 399.99,
-      image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=100',
-    },
-    {
-      id: '3',
-      name: 'Evening Clutch',
-      price: 149.99,
-      image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100',
-    },
+  const [images, setImages]                   = useState<UploadedImage[]>([]);
+  const [caption, setCaption]                 = useState('');
+  const [hashtags, setHashtags]               = useState('');
+  const [location, setLocation]               = useState('');
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [taggedProducts, setTaggedProducts]   = useState<TaggedProduct[]>([]);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [privacy, setPrivacy]                 = useState<'public' | 'followers' | 'private'>('public');
+  const [allowComments, setAllowComments]     = useState(true);
+  const [isPublishing, setIsPublishing]       = useState(false);
+  const [isSavingDraft, setIsSavingDraft]     = useState(false);
+  const [vendorProducts, setVendorProducts]   = useState<TaggedProduct[]>([]);
+  const [publishError, setPublishError]       = useState('');
+
+  // ── Fetch vendor/brand products for product tagging ──────────────────────
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    fetch('/api/vendor/products?limit=50', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data?.products) {
+          const mapped: TaggedProduct[] = json.data.products.map((p: {
+            _id: string; name: string; price: number; images?: string[];
+          }) => ({
+            id:    p._id,
+            name:  p.name,
+            price: p.price,
+            image: p.images?.[0] ?? '/images/placeholder.jpg',
+          }));
+          setVendorProducts(mapped);
+        }
+      })
+      .catch(() => { /* silently ignore — mock fallback below */ });
+  }, []);
+
+  // ── Pre-fill product from URL ?productId=xxx ─────────────────────────────
+  useEffect(() => {
+    const productId = searchParams.get('productId');
+    if (!productId) return;
+    const token = getAuthToken();
+    if (!token) return;
+    fetch(`/api/vendor/products/${productId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          const p = json.data;
+          const product: TaggedProduct = {
+            id:    p._id ?? productId,
+            name:  p.name,
+            price: p.price,
+            image: p.images?.[0] ?? '/images/placeholder.jpg',
+          };
+          setTaggedProducts([product]);
+          setCaption(`Check out my latest product: ${p.name}! 🛍️`);
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, [searchParams]);
+
+  // Products shown in the search dropdown
+  const mockProducts: TaggedProduct[] = vendorProducts.length > 0 ? vendorProducts : [
+    { id: '1', name: 'Designer Silk Dress',  price: 299.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=100' },
+    { id: '2', name: 'Leather Handbag',       price: 399.99, image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=100' },
+    { id: '3', name: 'Evening Clutch',        price: 149.99, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100' },
   ];
 
   const filteredProducts = mockProducts.filter(
-    product => 
+    product =>
       product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) &&
       !taggedProducts.find(tp => tp.id === product.id)
   );
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
     if (images.length + files.length > 10) {
       alert('Maximum 10 images allowed per post');
       return;
     }
-
     const newImages = files.map(file => ({
-      id: Date.now().toString() + Math.random(),
+      id:  Date.now().toString() + Math.random(),
       url: URL.createObjectURL(file),
       file,
     }));
-
     setImages([...images, ...newImages]);
   };
 
@@ -87,14 +123,11 @@ export default function CreatePostPage() {
   const moveImage = (id: string, direction: 'left' | 'right') => {
     const index = images.findIndex(img => img.id === id);
     if (
-      (direction === 'left' && index === 0) ||
+      (direction === 'left'  && index === 0) ||
       (direction === 'right' && index === images.length - 1)
-    ) {
-      return;
-    }
-
+    ) return;
     const newImages = [...images];
-    const newIndex = direction === 'left' ? index - 1 : index + 1;
+    const newIndex  = direction === 'left' ? index - 1 : index + 1;
     [newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]];
     setImages(newImages);
   };
@@ -112,63 +145,102 @@ export default function CreatePostPage() {
     setTaggedProducts(taggedProducts.filter(p => p.id !== id));
   };
 
+  // ── Publish — wired to POST /api/posts ───────────────────────────────────
   const handlePublish = async () => {
-    if (images.length === 0) {
-      alert('Please add at least one image');
+    if (images.length === 0 && !caption.trim()) {
+      alert('Please add an image or caption');
       return;
     }
-
     if (!caption.trim()) {
       alert('Please add a caption');
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      alert('You must be logged in to publish a post');
+      router.push('/auth/login');
+      return;
+    }
+
     setIsPublishing(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    setPublishError('');
 
-    const postData = {
-      images: images.map(img => img.url),
-      caption,
-      hashtags: hashtags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      location,
-      taggedProducts,
-      privacy,
-      allowComments,
-      status: 'published',
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const postData = {
+        content:  caption.trim(),
+        images:   images.map(img => img.url),
+        product:  taggedProducts.length > 0
+          ? {
+              id:       taggedProducts[0].id,
+              name:     taggedProducts[0].name,
+              price:    taggedProducts[0].price,
+              image:    taggedProducts[0].image,
+              vendorId: '', // server fills from JWT
+              vendor:   '', // server fills from JWT
+            }
+          : undefined,
+        hashtags: hashtags.split(',').map(t => t.trim()).filter(t => t),
+        privacy,
+        status:   'published',
+      };
 
-    console.log('Publishing post:', postData);
-    
-    setIsPublishing(false);
-    router.push('/feed');
+      const res  = await fetch('/api/posts', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify(postData),
+      });
+      const json = await res.json();
+
+      if (!json.success) {
+        setPublishError(json.message || 'Failed to publish post');
+        return;
+      }
+
+      router.push('/feed');
+    } catch {
+      setPublishError('Network error — please try again');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleSaveDraft = async () => {
-    if (images.length === 0) {
-      alert('Please add at least one image');
+    if (images.length === 0 && !caption.trim()) {
+      alert('Please add an image or caption');
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      alert('You must be logged in to save a draft');
       return;
     }
 
     setIsSavingDraft(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const draftData = {
-      images: images.map(img => img.url),
-      caption,
-      hashtags,
-      location,
-      taggedProducts,
-      privacy,
-      allowComments,
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-    };
-
-    console.log('Saving draft:', draftData);
-    
-    setIsSavingDraft(false);
-    router.push('/dashboard/customer');
+    try {
+      const res  = await fetch('/api/posts', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({
+          content:  caption.trim() || '(draft)',
+          images:   images.map(img => img.url),
+          hashtags: hashtags.split(',').map(t => t.trim()).filter(t => t),
+          privacy,
+          status:   'draft',
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        router.push('/dashboard/vendor');
+      } else {
+        alert(json.message || 'Failed to save draft');
+      }
+    } catch {
+      alert('Network error — please try again');
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const suggestedHashtags = ['#fashion', '#style', '#ootd', '#luxury', '#fashionista', '#trendy'];
@@ -387,8 +459,7 @@ export default function CreatePostPage() {
                           onClick={() => addTaggedProduct(product)}
                           className="w-full flex items-center gap-2 p-2 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 rounded-lg transition-colors"
                         >
-                          <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                            <Image src={product.image} alt={product.name} fill className="object-cover" />
+                          <div className="relative w-10 h-10 rounded overflow-hidden shrink-0">
                           </div>
                           <div className="text-left flex-1">
                             <p className="text-sm font-semibold text-charcoal-900 dark:text-white truncate">
@@ -431,8 +502,7 @@ export default function CreatePostPage() {
                       key={product.id}
                       className="flex items-center gap-2 p-2 bg-cool-gray-50 dark:bg-charcoal-900 rounded"
                     >
-                      <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                        <Image src={product.image} alt={product.name} fill className="object-cover" />
+                      <div className="relative w-10 h-10 rounded overflow-hidden shrink-0">
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-charcoal-900 dark:text-white truncate">
@@ -441,7 +511,7 @@ export default function CreatePostPage() {
                       </div>
                       <button
                         onClick={() => removeTaggedProduct(product.id)}
-                        className="text-red-600 hover:text-red-700 text-sm flex-shrink-0"
+                        className="text-red-600 hover:text-red-700 text-sm shrink-0"
                       >
                         ×
                       </button>
@@ -458,7 +528,7 @@ export default function CreatePostPage() {
               </h3>
               <select
                 value={privacy}
-                onChange={(e) => setPrivacy(e.target.value as any)}
+                onChange={(e) => setPrivacy(e.target.value as 'public' | 'followers' | 'private')}
                 className="w-full px-3 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
               >
                 <option value="public">🌍 Public</option>
@@ -481,16 +551,19 @@ export default function CreatePostPage() {
 
             {/* Action Buttons */}
             <div className="space-y-3">
+              {publishError && (
+                <p className="text-sm text-red-600 dark:text-red-400 font-medium">{publishError}</p>
+              )}
               <button
                 onClick={handlePublish}
-                disabled={isPublishing || images.length === 0}
+                disabled={isPublishing}
                 className="w-full px-6 py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPublishing ? 'Publishing...' : '🚀 Publish Post'}
               </button>
               <button
                 onClick={handleSaveDraft}
-                disabled={isSavingDraft || images.length === 0}
+                disabled={isSavingDraft}
                 className="w-full px-6 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingDraft ? 'Saving...' : '💾 Save Draft'}

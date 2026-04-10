@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
@@ -35,6 +36,7 @@ interface RawProduct {
 
 
 export default function VendorProductsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'draft' | 'out-of-stock'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -376,6 +378,13 @@ export default function VendorProductsPage() {
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => router.push(`/post/create?productId=${product.id}`)}
+                          className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:underline font-semibold"
+                          title="Share this product to the feed"
+                        >
+                          📢 Share
+                        </button>
                         <Link
                           href={`/vendor/products/${product.id}/edit`}
                           className="px-3 py-1 text-sm text-gold-600 dark:text-gold-500 hover:underline"

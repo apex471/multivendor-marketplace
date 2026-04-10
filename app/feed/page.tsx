@@ -6,6 +6,16 @@ import Image from 'next/image';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
+import { useCart } from '../../contexts/CartContext';
+
+interface PostProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  vendor: string;
+  vendorId: string;
+}
 
 interface Post {
   id: string;
@@ -23,66 +33,83 @@ interface Post {
   timestamp: string;
   liked: boolean;
   saved: boolean;
+  product?: PostProduct;
 }
 
 export default function FeedPage() {
   const router = useRouter();
+  const { addItem } = useCart();
 
-  const [posts, setPosts] = useState<Post[]>([
+  // Seed with demo product-tagged posts so vendors/brands are visible immediately
+  const SEED_POSTS: Post[] = [
     {
-      id: '1',
-      author: {
-        name: 'Luxury Fashion Co.',
-        avatar: '/images/vendors/vendor1.jpg',
-        verified: true,
-        isVendor: true
-      },
+      id: 'seed-1',
+      author: { name: 'Luxury Fashion Co.', avatar: '/images/vendors/vendor1.jpg', verified: true, isVendor: true },
       content: 'New Spring Collection dropping this Friday! ✨ Get ready for the most exquisite pieces of the season. #LuxuryFashion #SpringCollection',
-      images: ['/images/posts/post1.jpg', '/images/posts/post2.jpg'],
-      likes: 1245,
-      comments: 89,
-      shares: 34,
-      timestamp: '2 hours ago',
-      liked: false,
-      saved: false
+      images: ['/images/posts/post1.jpg'],
+      likes: 1245, comments: 89, shares: 34,
+      timestamp: '2 hours ago', liked: false, saved: false,
+      product: { id: 'demo-1', name: 'Designer Silk Dress', price: 299.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400', vendor: 'Luxury Fashion Co.', vendorId: 'vendor-1' },
     },
     {
-      id: '2',
-      author: {
-        name: 'Sarah Chen',
-        avatar: '/images/users/user1.jpg',
-        verified: false,
-        isVendor: false
-      },
+      id: 'seed-2',
+      author: { name: 'Sarah Chen', avatar: '/images/users/user1.jpg', verified: false, isVendor: false },
       content: 'Loving my new dress from @LuxuryFashionCo! The quality is absolutely amazing 😍 #OOTD #FashionInspo',
       images: ['/images/posts/post3.jpg'],
-      likes: 567,
-      comments: 43,
-      shares: 12,
-      timestamp: '5 hours ago',
-      liked: true,
-      saved: false
+      likes: 567, comments: 43, shares: 12,
+      timestamp: '5 hours ago', liked: true, saved: false,
     },
     {
-      id: '3',
-      author: {
-        name: 'Elite Wear',
-        avatar: '/images/vendors/vendor2.jpg',
-        verified: true,
-        isVendor: true
-      },
+      id: 'seed-3',
+      author: { name: 'Elite Wear', avatar: '/images/vendors/vendor2.jpg', verified: true, isVendor: true },
       content: 'Timeless elegance meets modern sophistication. Our new tailored suit collection is now available. Limited pieces. 🖤',
-      images: ['/images/posts/post4.jpg', '/images/posts/post5.jpg', '/images/posts/post6.jpg'],
-      likes: 2103,
-      comments: 156,
-      shares: 78,
-      timestamp: '1 day ago',
-      liked: false,
-      saved: true
+      images: ['/images/posts/post4.jpg'],
+      likes: 2103, comments: 156, shares: 78,
+      timestamp: '1 day ago', liked: false, saved: true,
+      product: { id: 'demo-3', name: 'Tailored Suit', price: 549.00, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400', vendor: 'Elite Wear', vendorId: 'vendor-2' },
     },
-  ]);
+  ];
 
+  const [posts, setPosts] = useState<Post[]>(SEED_POSTS);
   const [newPostContent, setNewPostContent] = useState('');
+  const [, setIsLoadingFeed] = useState(true);
+
+  // Fetch live posts from API (prepend to seed posts so feed is never empty)
+  useEffect(() => {
+    fetch('/api/posts?limit=20')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data?.posts?.length) {
+          const livePosts: Post[] = json.data.posts.map((p: {
+            _id: string; authorName: string; authorRole: string;
+            content: string; images: string[]; product?: PostProduct;
+            likes: number; comments: number; shares: number; createdAt: string;
+          }) => ({
+            id:        p._id,
+            author: {
+              name:     p.authorName,
+              avatar:   '/images/placeholder.jpg',
+              verified: p.authorRole !== 'customer',
+              isVendor: p.authorRole === 'vendor' || p.authorRole === 'brand',
+            },
+            content:   p.content,
+            images:    p.images ?? [],
+            product:   p.product,
+            likes:     p.likes,
+            comments:  p.comments,
+            shares:    p.shares,
+            timestamp: new Date(p.createdAt).toLocaleDateString(),
+            liked:     false,
+            saved:     false,
+          }));
+          // Live posts on top, seed posts as fallback below
+          setPosts([...livePosts, ...SEED_POSTS]);
+        }
+      })
+      .catch(() => { /* keep seed posts */ })
+      .finally(() => setIsLoadingFeed(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLike = (postId: string) => {
     setPosts(posts.map(post =>
@@ -96,6 +123,20 @@ export default function FeedPage() {
     setPosts(posts.map(post =>
       post.id === postId ? { ...post, saved: !post.saved } : post
     ));
+  };
+
+  const handleBuyNow = (product: PostProduct) => {
+    addItem({
+      productId: product.id,
+      name:      product.name,
+      price:     product.price,
+      image:     product.image,
+      vendor:    product.vendor,
+      size:      'One Size',
+      color:     'Default',
+      quantity:  1,
+    });
+    router.push('/checkout/review');
   };
 
   const handleCreatePost = () => {
@@ -126,7 +167,7 @@ export default function FeedPage() {
           {/* Create Post */}
           <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-md mb-6">
             <div className="flex gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-linear-to-br from-gold-600 to-gold-700 flex items-center justify-center text-white font-bold flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-linear-to-br from-gold-600 to-gold-700 flex items-center justify-center text-white font-bold shrink-0">
                 U
               </div>
               <div className="flex-1">
@@ -151,7 +192,7 @@ export default function FeedPage() {
                   </div>
                   <button
                     onClick={handleCreatePost}
-                    className="px-4 sm:px-6 py-2 min-h-[36px] bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-xs sm:text-sm touch-manipulation"
+                    className="px-4 sm:px-6 py-2 min-h-9 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-xs sm:text-sm touch-manipulation"
                   >
                     Post
                   </button>
@@ -167,7 +208,7 @@ export default function FeedPage() {
                 {/* Post Header */}
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0">
                       <Image
                         src={post.author.avatar}
                         alt={post.author.name}
@@ -181,7 +222,7 @@ export default function FeedPage() {
                           {post.author.name}
                         </h3>
                         {post.author.verified && (
-                          <span className="text-blue-600 text-sm sm:text-base flex-shrink-0">✓</span>
+                          <span className="text-blue-600 text-sm sm:text-base shrink-0">✓</span>
                         )}
                         {post.author.isVendor && (
                           <span className="px-2 py-0.5 bg-secondary-100 text-secondary-800 text-[10px] sm:text-xs font-semibold rounded">
@@ -204,11 +245,11 @@ export default function FeedPage() {
 
                 {/* Post Images */}
                 {post.images.length > 0 && (
-                  <div className={`grid ${post.images.length === 1 ? 'grid-cols-1' : post.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2'} gap-1`}>
+                  <div className={`grid ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-1`}>
                     {post.images.slice(0, 4).map((image, index) => (
                       <div
                         key={index}
-                        className={`relative ${post.images.length === 1 ? 'aspect-[4/3]' : post.images.length === 3 && index === 0 ? 'col-span-2 aspect-[16/9]' : 'aspect-square'}`}
+                        className={`relative ${post.images.length === 1 ? 'aspect-4/3' : post.images.length === 3 && index === 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
                       >
                         <Image
                           src={image}
@@ -218,6 +259,54 @@ export default function FeedPage() {
                         />
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* ── Product Card (vendor / brand posts only) ──────────────── */}
+                {post.product && (
+                  <div className="mx-4 sm:mx-6 my-3 border border-gold-200 dark:border-gold-800 rounded-xl overflow-hidden bg-gold-50 dark:bg-gold-900/20">
+                    <div className="flex items-center gap-3 p-3">
+                      {/* Product image */}
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0">
+                        <Image
+                          src={post.product.image}
+                          alt={post.product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      {/* Product info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-charcoal-900 dark:text-white truncate">
+                          {post.product.name}
+                        </p>
+                        <p className="text-gold-600 font-bold text-base">
+                          ${post.product.price.toFixed(2)}
+                        </p>
+                        {post.product.vendor && (
+                          <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 truncate">
+                            by {post.product.vendor}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* CTA buttons */}
+                    <div className="flex border-t border-gold-200 dark:border-gold-800 divide-x divide-gold-200 dark:divide-gold-800">
+                      <Link
+                        href={`/product/${post.product.id}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-gold-100 dark:hover:bg-gold-900/40 transition-colors"
+                      >
+                        <span>👁️</span>
+                        <span>View Product</span>
+                      </Link>
+                      <button
+                        onClick={() => handleBuyNow(post.product!)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold bg-gold-600 text-white hover:bg-gold-700 transition-colors"
+                      >
+                        <span>🛍️</span>
+                        <span>Buy Now</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -234,7 +323,7 @@ export default function FeedPage() {
                   <div className="flex items-center gap-2 sm:gap-4 pt-4 border-t border-gray-200">
                     <button
                       onClick={() => handleLike(post.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-[36px] ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
                         post.liked
                           ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
                           : 'text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
@@ -243,13 +332,13 @@ export default function FeedPage() {
                       <span className="text-base sm:text-lg">{post.liked ? '❤️' : '🤍'}</span>
                       <span>Like</span>
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 transition-all text-xs sm:text-sm touch-manipulation min-h-[36px]">
+                    <button className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 transition-all text-xs sm:text-sm touch-manipulation min-h-9">
                       <span className="text-base sm:text-lg">💬</span>
                       <span>Comment</span>
                     </button>
                     <button
                       onClick={() => handleSave(post.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-[36px] ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
                         post.saved
                           ? 'text-gold-600 bg-gold-50 dark:bg-gold-900/30'
                           : 'text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
@@ -266,7 +355,7 @@ export default function FeedPage() {
 
           {/* Load More */}
           <div className="text-center mt-8">
-            <button className="px-6 py-3 bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 border-2 border-cool-gray-300 dark:border-charcoal-600 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-sm sm:text-base touch-manipulation min-h-[44px]">
+            <button className="px-6 py-3 bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 border-2 border-cool-gray-300 dark:border-charcoal-600 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-sm sm:text-base touch-manipulation min-h-11">
               Load More Posts
             </button>
           </div>

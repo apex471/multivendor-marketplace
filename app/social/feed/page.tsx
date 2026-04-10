@@ -2,8 +2,20 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { useCart } from '../../../contexts/CartContext';
+
+interface PostProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  vendor: string;
+  vendorId: string;
+}
 
 interface Post {
   id: string;
@@ -24,6 +36,7 @@ interface Post {
   timestamp: string;
   tags: string[];
   isLiked: boolean;
+  product?: PostProduct;
 }
 
 interface Story {
@@ -37,6 +50,8 @@ interface Story {
 }
 
 export default function FeedPage() {
+  const router = useRouter();
+  const { addItem } = useCart();
   const [activeTab, setActiveTab] = useState<'foryou' | 'following' | 'trending'>('foryou');
   
   const [stories] = useState<Story[]>([
@@ -85,7 +100,8 @@ export default function FeedPage() {
       shares: 92,
       timestamp: '2 hours ago',
       tags: ['summer', 'sustainable', 'collection'],
-      isLiked: false
+      isLiked: false,
+      product: { id: 'social-p1', name: 'Summer Linen Dress', price: 189.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400', vendor: 'Fashion Daily', vendorId: 'vendor-social-1' },
     },
     {
       id: '2',
@@ -125,7 +141,8 @@ export default function FeedPage() {
       shares: 890,
       timestamp: '6 hours ago',
       tags: ['gucci', 'luxury', 'newcollection'],
-      isLiked: false
+      isLiked: false,
+      product: { id: 'social-p3', name: 'Gucci Encore Bag', price: 2450.00, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400', vendor: 'Gucci', vendorId: 'vendor-gucci' },
     },
   ]);
 
@@ -150,6 +167,23 @@ export default function FeedPage() {
     }
   };
 
+  const handleBuyNow = (product: PostProduct) => {
+    addItem({
+      productId: product.id,
+      name:      product.name,
+      price:     product.price,
+      image:     product.image,
+      vendor:    product.vendor,
+      size:      'One Size',
+      color:     'Default',
+      quantity:  1,
+    });
+    router.push('/checkout/review');
+  };
+
+  // Static post counts — no Math.random during render
+  const trendingCounts = [24, 47, 13, 31, 8];
+
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       <Header />
@@ -162,7 +196,7 @@ export default function FeedPage() {
             <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-4">
               <div className="flex gap-4 overflow-x-auto">
                 {/* Add Story */}
-                <button className="flex-shrink-0 flex flex-col items-center gap-2">
+                <button className="shrink-0 flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-2xl border-4 border-white dark:border-charcoal-800">
                     +
                   </div>
@@ -171,7 +205,7 @@ export default function FeedPage() {
 
                 {/* Stories */}
                 {stories.map((story) => (
-                  <button key={story.id} className="flex-shrink-0 flex flex-col items-center gap-2">
+                  <button key={story.id} className="shrink-0 flex flex-col items-center gap-2">
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl border-4 ${
                       story.viewed 
                         ? 'border-cool-gray-300 dark:border-charcoal-600' 
@@ -179,7 +213,7 @@ export default function FeedPage() {
                     } ${!story.viewed ? 'ring-2 ring-gold-600' : ''}`}>
                       {story.author.avatar}
                     </div>
-                    <span className="text-xs text-charcoal-600 dark:text-cool-gray-400 max-w-[64px] truncate">
+                    <span className="text-xs text-charcoal-600 dark:text-cool-gray-400 max-w-16 truncate">
                       {story.author.name}
                     </span>
                   </button>
@@ -249,6 +283,51 @@ export default function FeedPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* ── Product Card (vendor / brand only) ─────────────────────────── */}
+                  {post.product && (
+                    <div className="mt-3 border border-gold-200 dark:border-gold-800 rounded-xl overflow-hidden bg-gold-50 dark:bg-gold-900/20">
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0">
+                          <Image
+                            src={post.product.image}
+                            alt={post.product.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-charcoal-900 dark:text-white truncate">
+                            {post.product.name}
+                          </p>
+                          <p className="text-gold-600 font-bold text-base">
+                            ${post.product.price.toFixed(2)}
+                          </p>
+                          {post.product.vendor && (
+                            <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 truncate">
+                              by {post.product.vendor}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex border-t border-gold-200 dark:border-gold-800 divide-x divide-gold-200 dark:divide-gold-800">
+                        <Link
+                          href={`/product/${post.product.id}`}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-gold-100 dark:hover:bg-gold-900/40 transition-colors"
+                        >
+                          <span>👁️</span>
+                          <span>View Product</span>
+                        </Link>
+                        <button
+                          onClick={() => handleBuyNow(post.product!)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold bg-gold-600 text-white hover:bg-gold-700 transition-colors"
+                        >
+                          <span>🛍️</span>
+                          <span>Buy Now</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -325,7 +404,7 @@ export default function FeedPage() {
                     className="block hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 p-2 rounded-lg transition-colors"
                   >
                     <div className="font-semibold text-charcoal-900 dark:text-white">{tag}</div>
-                    <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">{Math.floor(Math.random() * 50)}K posts</div>
+                    <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">{trendingCounts[idx]}K posts</div>
                   </Link>
                 ))}
               </div>

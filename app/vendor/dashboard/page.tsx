@@ -93,11 +93,16 @@ export default function VendorDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link href="/vendor/products/add" className="bg-linear-to-br from-gold-600 to-gold-700 dark:from-gold-700 dark:to-gold-800 text-white rounded-xl p-6 hover:from-gold-700 hover:to-gold-800 dark:hover:from-gold-800 dark:hover:to-gold-900 transition-all shadow-lg">
                 <div className="text-3xl mb-2">➕</div>
                 <div className="font-bold">Add New Product</div>
                 <div className="text-sm opacity-90">List a new item for sale</div>
+              </Link>
+              <Link href="/post/create" className="bg-linear-to-br from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 text-white rounded-xl p-6 hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg">
+                <div className="text-3xl mb-2">📢</div>
+                <div className="font-bold">Share to Feed</div>
+                <div className="text-sm opacity-90">Post a product to the feed</div>
               </Link>
               <Link href="/vendor/orders" className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                 <div className="text-3xl mb-2">📋</div>
