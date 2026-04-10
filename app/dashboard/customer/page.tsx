@@ -2,47 +2,53 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { useAuth } from '@/contexts/AuthContext';
+import { getAuthToken } from '@/lib/api/auth';
+
+type OrderRow = { id: string; date: string; items: number; total: number; status: string; image: string };
 
 export default function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
+  const { user } = useAuth();
 
-  // Mock data
-  const stats = {
-    totalOrders: 12,
-    totalSpent: 3450.00,
-    wishlistItems: 8,
-    savedPosts: 23,
-  };
+  // ── Real order data ───────────────────────────────────────────────────────
+  const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0 });
+  const [orders, setOrders] = useState<OrderRow[]>([]);
 
-  const recentOrders = [
-    {
-      id: 'ORD-001',
-      date: '2025-12-10',
-      items: 2,
-      total: 450.00,
-      status: 'Delivered',
-      image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400',
-    },
-    {
-      id: 'ORD-002',
-      date: '2025-12-08',
-      items: 1,
-      total: 890.00,
-      status: 'In Transit',
-      image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400',
-    },
-    {
-      id: 'ORD-003',
-      date: '2025-12-05',
-      items: 3,
-      total: 1200.00,
-      status: 'Delivered',
-      image: 'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=400',
-    },
-  ];
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    fetch('/api/customer/orders', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          const rows: OrderRow[] = (json.data.orders ?? []).map((o: {
+            id: string; date: string; status: string; total: number;
+            itemCount: number; items: { image?: string }[];
+          }) => ({
+            id: o.id,
+            date: new Date(o.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            items: o.itemCount,
+            total: o.total,
+            status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
+            image: o.items?.[0]?.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+          }));
+          setOrders(rows);
+          setStats({
+            totalOrders: json.data.total,
+            totalSpent: rows.reduce((s, o) => s + o.total, 0),
+            wishlistItems: 0,
+            savedPosts: 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const recentOrders = orders.slice(0, 3);
 
   const wishlistItems = [
     {
@@ -81,8 +87,10 @@ export default function CustomerDashboard() {
                 👤
               </div>
               <div className="text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold mb-2">Welcome Back, Sarah</h1>
-                <p className="text-white/80">Member since January 2025</p>
+                <h1 className="text-2xl sm:text-3xl font-display font-bold mb-2">
+                  Welcome Back, {user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'there'}
+                </h1>
+                <p className="text-white/80">{user?.email || ''}</p>
               </div>
             </div>
           </div>
@@ -123,7 +131,7 @@ export default function CustomerDashboard() {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all min-h-[44px] ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white shadow-md'
@@ -248,7 +256,15 @@ export default function CustomerDashboard() {
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Order History</h2>
               <div className="space-y-4">
-                {recentOrders.map((order) => (
+                {orders.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">🛍️</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No orders yet</h3>
+                    <p className="text-gray-600 dark:text-cool-gray-400 mb-4">Start shopping to see your orders here</p>
+                    <Link href="/shop" className="inline-block px-6 py-3 bg-primary-700 text-white rounded-lg font-semibold hover:bg-primary-800 transition-colors">Browse Products</Link>
+                  </div>
+                )}
+                {orders.map((order) => (
                   <div key={order.id} className="border border-gray-200 dark:border-charcoal-700 rounded-xl p-4 hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="relative w-full sm:w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">

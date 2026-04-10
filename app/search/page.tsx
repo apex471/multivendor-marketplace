@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -16,28 +16,57 @@ function SearchContent() {
   const [activeTab, setActiveTab] = useState<'all' | 'products' | 'vendors' | 'posts'>('all');
   const [sortBy, setSortBy] = useState('relevance');
 
+  // ── Real search results ───────────────────────────────────────────────
+  type ProductResult = { id: string; name: string; price: number; image: string; rating: number };
+  const [searchProducts, setSearchProducts] = useState<ProductResult[]>([]);
+
+  useEffect(() => {
+    if (!initialQuery.trim()) return; // empty query — just bail, displayed list is derived below
+    const apiSort: Record<string, string> = {
+      relevance: 'popular', price_low: 'price-asc',
+      price_high: 'price-high', rating: 'rating', newest: 'newest',
+    };
+    const params = new URLSearchParams({
+      search: initialQuery,
+      sort:   apiSort[sortBy] ?? 'popular',
+      limit:  '24',
+    });
+    const controller = new AbortController();
+    fetch(`/api/products?${params}`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setSearchProducts(
+            (json.data.products ?? []).map((p: {
+              _id: string; name: string; price: number; images?: string[]; rating?: number;
+            }) => ({
+              id:     p._id,
+              name:   p.name,
+              price:  p.price,
+              image:  p.images?.[0] ?? 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+              rating: p.rating ?? 0,
+            }))
+          );
+        }
+      })
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+    return () => controller.abort();
+  }, [initialQuery, sortBy]);
+
+  const results = {
+    products: initialQuery.trim() ? searchProducts : [],
+    vendors:  [] as { id: string; name: string; logo: string; products: number; rating: number }[],
+    posts:    [] as { id: string; author: string; content: string; image: string }[],
+  };
+
+  const totalResults = results.products.length;
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
-
-  // Mock results
-  const results = {
-    products: [
-      { id: '1', name: 'Gucci Marmont Bag', price: 2200, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400', rating: 4.9 },
-      { id: '2', name: 'Designer Sunglasses', price: 450, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400', rating: 4.8 },
-    ],
-    vendors: [
-      { id: '1', name: 'Luxury Fashion Co.', logo: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=200', products: 234, rating: 4.9 },
-    ],
-    posts: [
-      { id: '1', author: 'fashionista', content: 'Love my new Gucci bag!', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400' },
-    ],
-  };
-
-  const totalResults = results.products.length + results.vendors.length + results.posts.length;
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -64,7 +93,7 @@ function SearchContent() {
             Search Results {initialQuery && `for "${initialQuery}"`}
           </h1>
           <p className="text-charcoal-600 dark:text-cool-gray-400">
-            {totalResults} results found
+            {initialQuery ? `${totalResults} result${totalResults !== 1 ? 's' : ''} found` : 'Enter a search term above'}
           </p>
         </div>
 
@@ -78,7 +107,7 @@ function SearchContent() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'bg-gold-600 text-white'
@@ -199,9 +228,11 @@ function SearchContent() {
             {totalResults === 0 && (
               <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-12 text-center">
                 <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">No results found</h3>
+                <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">
+                  {initialQuery ? 'No results found' : 'Start searching'}
+                </h3>
                 <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
-                  Try adjusting your search or filters
+                  {initialQuery ? 'Try adjusting your search or filters' : 'Enter a search term to find products'}
                 </p>
                 <Link
                   href="/shop"

@@ -167,9 +167,33 @@ export default function CreatePostPage() {
     setPublishError('');
 
     try {
+      // Upload any locally-selected images to CDN first
+      let imageUrls: string[];
+      try {
+        imageUrls = await Promise.all(
+          images.map(async (img) => {
+            if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
+            const fd = new FormData();
+            fd.append('file', img.file);
+            const up = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+            const upJson = await up.json();
+            if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+            return upJson.data.url as string;
+          })
+        );
+      } catch (uploadErr) {
+        setPublishError(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload images');
+        setIsPublishing(false);
+        return;
+      }
+
       const postData = {
         content:  caption.trim(),
-        images:   images.map(img => img.url),
+        images:   imageUrls,
         product:  taggedProducts.length > 0
           ? {
               id:       taggedProducts[0].id,
@@ -219,12 +243,36 @@ export default function CreatePostPage() {
 
     setIsSavingDraft(true);
     try {
+      // Upload any locally-selected images to CDN first
+      let draftUrls: string[];
+      try {
+        draftUrls = await Promise.all(
+          images.map(async (img) => {
+            if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
+            const fd = new FormData();
+            fd.append('file', img.file);
+            const up = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+            const upJson = await up.json();
+            if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+            return upJson.data.url as string;
+          })
+        );
+      } catch (uploadErr) {
+        alert(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload images');
+        setIsSavingDraft(false);
+        return;
+      }
+
       const res  = await fetch('/api/posts', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({
           content:  caption.trim() || '(draft)',
-          images:   images.map(img => img.url),
+          images:   draftUrls,
           hashtags: hashtags.split(',').map(t => t.trim()).filter(t => t),
           privacy,
           status:   'draft',

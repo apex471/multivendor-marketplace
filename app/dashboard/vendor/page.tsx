@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAuthToken } from '@/lib/api/auth';
 
 type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 'settings';
 
@@ -15,7 +16,10 @@ export default function VendorDashboard() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
-
+  // ── Dashboard data state ────────────────────────────────────────────
+  type VendorOrder = { id: string; customer: string; date: string; items: number; total: number; status: string };
+  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, avgRating: 0 });
+  const [recentOrders, setRecentOrders] = useState<VendorOrder[]>([]);
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isLoading) return; // wait for hydration
@@ -43,6 +47,39 @@ export default function VendorDashboard() {
       router.replace(paths[user.role] || '/');
     }
   }, [isLoading, isAuthenticated, user, router]);
+
+  // ── Fetch vendor data once auth confirms vendor role ─────────────────────
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !user || user.role !== 'vendor') return;
+    const token = getAuthToken();
+    if (!token) return;
+    Promise.all([
+      fetch('/api/vendor/orders',         { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/vendor/products?limit=1', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([ordersJson, productsJson]) => {
+      if (ordersJson.success) {
+        const rows: VendorOrder[] = (ordersJson.data.orders ?? []).map((o: {
+          id: string; customer: string; date: string; items: number; total: number; status: string;
+        }) => ({
+          id:       o.id,
+          customer: o.customer,
+          date:     new Date(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          items:    o.items,
+          total:    o.total,
+          status:   o.status.charAt(0).toUpperCase() + o.status.slice(1),
+        }));
+        setRecentOrders(rows);
+        setStats(prev => ({
+          ...prev,
+          totalOrders: ordersJson.data.stats?.totalOrders ?? rows.length,
+          revenue:     ordersJson.data.stats?.monthlyRevenue ?? 0,
+        }));
+      }
+      if (productsJson.success) {
+        setStats(prev => ({ ...prev, totalProducts: productsJson.data.total ?? 0 }));
+      }
+    }).catch(() => {});
+  }, [isLoading, isAuthenticated, user]);
 
   // Show nothing while auth is being checked
   if (isLoading || !isAuthenticated || !user || !user.isEmailVerified || user.role !== 'vendor') {
@@ -82,41 +119,6 @@ export default function VendorDashboard() {
     setReferralCopied(true);
     setTimeout(() => setReferralCopied(false), 2500);
   };
-
-  // Mock data
-  const stats = {
-    totalProducts: 45,
-    totalOrders: 128,
-    revenue: 12450.00,
-    avgRating: 4.8,
-  };
-
-  const recentOrders = [
-    {
-      id: 'ORD-501',
-      customer: 'John Smith',
-      date: '2025-12-14',
-      items: 2,
-      total: 890.00,
-      status: 'Pending',
-    },
-    {
-      id: 'ORD-502',
-      customer: 'Emma Wilson',
-      date: '2025-12-14',
-      items: 1,
-      total: 450.00,
-      status: 'Processing',
-    },
-    {
-      id: 'ORD-503',
-      customer: 'Michael Brown',
-      date: '2025-12-13',
-      items: 3,
-      total: 1200.00,
-      status: 'Shipped',
-    },
-  ];
 
   const products = [
     {
@@ -187,7 +189,7 @@ export default function VendorDashboard() {
                   Vendor Dashboard
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">
-                  {user?.fullName || user?.email || 'My Store'} · {stats.avgRating}★ Rating
+                  {user?.fullName || user?.email || 'My Store'}{stats.avgRating > 0 ? ` · ${stats.avgRating}★` : ''}
                 </p>
               </div>
             </div>
@@ -399,6 +401,13 @@ export default function VendorDashboard() {
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Order Management</h2>
               <div className="space-y-4">
+                {recentOrders.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">🛍️</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No orders yet</h3>
+                    <p className="text-sm text-gray-600 dark:text-cool-gray-400">Orders containing your products will appear here</p>
+                  </div>
+                )}
                 {recentOrders.map((order) => (
                   <div key={order.id} className="border border-gray-200 dark:border-charcoal-600 rounded-xl p-4">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
