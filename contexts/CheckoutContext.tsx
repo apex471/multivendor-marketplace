@@ -66,27 +66,7 @@ const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [checkoutData, setCheckoutData] = useState<CheckoutData>({
-    cartItems: [
-      {
-        id: '1',
-        name: 'Designer Silk Dress',
-        price: 299.99,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=300',
-        size: 'M',
-        color: 'Navy Blue',
-        vendor: 'Luxury Fashion Co.'
-      },
-      {
-        id: '2',
-        name: 'Evening Clutch',
-        price: 149.99,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=300',
-        color: 'Black',
-        vendor: 'Elite Accessories'
-      }
-    ],
+    cartItems: [],
     shippingAddress: null,
     paymentMethod: null,
     selectedCourierId: 'quickbox',

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
@@ -10,19 +11,65 @@ import { getCourierById } from '../../../lib/couriers';
 export default function ReviewPage() {
   const router = useRouter();
   const { checkoutData, clearCheckout } = useCheckout();
-  const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total } = checkoutData;
+  const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total, couponCode } = checkoutData;
   const selectedCourier = getCourierById(selectedCourierId);
 
+  const [isPlacing, setIsPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState('');
+
   const handlePlaceOrder = async () => {
-    // Simulate order processing
-    const orderNumber = `ORD-${Date.now()}`;
-    localStorage.setItem('lastOrderNumber', orderNumber);
-    
-    // Clear checkout data
-    clearCheckout();
-    
-    // Redirect to confirmation
-    router.push('/checkout/confirmation');
+    setPlaceError('');
+    setIsPlacing(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+      const body = {
+        shippingInfo: shippingAddress,
+        cartItems,
+        courierId:       selectedCourier.id,
+        courierName:     selectedCourier.name,
+        courierIcon:     selectedCourier.icon,
+        courierPrice:    selectedCourier.price,
+        courierEta:      selectedCourier.estimatedDate,
+        courierCarrier:  selectedCourier.carrier,
+        courierTracking: selectedCourier.tracking,
+        subtotal,
+        shippingCost,
+        tax,
+        discount,
+        total,
+        couponCode: couponCode || undefined,
+        paymentMethod: paymentMethod
+          ? { type: paymentMethod.type, cardNumber: paymentMethod.cardNumber, cardHolder: paymentMethod.cardHolder }
+          : null,
+      };
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        setPlaceError(data.message || 'Failed to place order. Please try again.');
+        return;
+      }
+
+      const orderId: string = data.data.orderId;
+      localStorage.setItem('lastOrderNumber', orderId);
+      localStorage.setItem('lastOrderData', JSON.stringify(data.data.order));
+
+      clearCheckout();
+      router.push('/checkout/confirmation');
+    } catch {
+      setPlaceError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
   const discountAmount = (subtotal * discount) / 100;
@@ -243,10 +290,14 @@ export default function ReviewPage() {
               </div>
               <button
                 onClick={handlePlaceOrder}
-                className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold mb-3"
+                disabled={isPlacing}
+                className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Place Order
+                {isPlacing ? '⏳ Placing Order…' : 'Place Order'}
               </button>
+              {placeError && (
+                <p className="text-sm text-red-600 dark:text-red-400 text-center mb-2">{placeError}</p>
+              )}
               <button
                 onClick={() => router.push('/checkout/payment')}
                 className="w-full py-2 text-charcoal-600 dark:text-cool-gray-400 hover:text-gold-600 text-sm"

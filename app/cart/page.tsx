@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCheckout } from '../../contexts/CheckoutContext';
+import { useCart } from '../../contexts/CartContext';
 
 interface CartItem {
   id: string;
@@ -22,69 +23,36 @@ interface CartItem {
 
 export default function CartPage() {
   const router = useRouter();
-  const { checkoutData, updateCartItems, calculateTotals } = useCheckout();
-  
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '1',
-      productId: 'p1',
-      name: 'Designer Silk Dress',
-      price: 299,
-      image: '/images/products/product1.jpg',
-      vendor: 'Luxury Fashion Co.',
-      quantity: 1,
-      size: 'M',
-      color: 'Navy Blue'
-    },
-    {
-      id: '2',
-      productId: 'p2',
-      name: 'Premium Leather Jacket',
-      price: 599,
-      image: '/images/products/product2.jpg',
-      vendor: 'Elite Wear',
-      quantity: 1,
-      size: 'L',
-      color: 'Black'
-    },
-    {
-      id: '3',
-      productId: 'p3',
-      name: 'Gold Chain Necklace',
-      price: 899,
-      image: '/images/products/product3.jpg',
-      vendor: 'Jewel Masters',
-      quantity: 2
-    },
-  ]);
+  const { updateCartItems, calculateTotals } = useCheckout();
+  const { items: cartContextItems, removeItem: removeCartItem, updateQuantity: updateCartQuantity } = useCart();
 
-  // Sync cart items with checkout context on mount
+  // Map CartContext items to CartItem shape for this page
+  const cartItems: CartItem[] = cartContextItems.map(i => ({
+    id:        i.id,
+    productId: i.productId,
+    name:      i.name,
+    price:     i.price,
+    image:     i.image,
+    vendor:    i.vendor,
+    quantity:  i.quantity,
+    size:      i.size || undefined,
+    color:     i.color || undefined,
+  }));
+
+  // Keep CheckoutContext in sync whenever cart items change
   useEffect(() => {
     updateCartItems(cartItems);
     calculateTotals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update checkout context when cart items change
-  useEffect(() => {
-    if (cartItems.length > 0) {
-      updateCartItems(cartItems);
-      calculateTotals();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartItems.length, cartItems.map(item => item.quantity).join(',')]);
+  }, [cartContextItems]);
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
+    updateCartQuantity(itemId, newQuantity);
   };
 
   const removeItem = (itemId: string) => {
-    setCartItems(items => items.filter(item => item.id !== itemId));
+    removeCartItem(itemId);
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -123,7 +91,7 @@ export default function CartPage() {
             <p className="text-sm sm:text-base text-charcoal-600 dark:text-cool-gray-400 mb-6">Add some luxury items to get started</p>
             <Link
               href="/shop"
-              className="inline-block px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-sm sm:text-base touch-manipulation min-h-[44px]"
+              className="inline-block px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-sm sm:text-base touch-manipulation min-h-11"
             >
               Start Shopping
             </Link>
@@ -136,7 +104,7 @@ export default function CartPage() {
                 <div key={item.id} className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg sm:rounded-xl p-4 sm:p-6">
                   <div className="flex gap-4">
                     {/* Product Image */}
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-lg overflow-hidden">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-lg overflow-hidden">
                       <Image
                         src={item.image}
                         alt={item.name}
@@ -246,7 +214,7 @@ export default function CartPage() {
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-3 sm:py-4 min-h-[48px] bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-sm sm:text-base touch-manipulation mb-3"
+                  className="w-full py-3 sm:py-4 min-h-12 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-sm sm:text-base touch-manipulation mb-3"
                 >
                   Proceed to Checkout
                 </button>

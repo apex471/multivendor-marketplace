@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
@@ -28,81 +28,39 @@ export default function OrdersPage() {
   const [dateRange, setDateRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
 
-  // Mock orders data - replace with API call
-  const allOrders: Order[] = [
-    {
-      id: 'ORD-2024-001',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'delivered',
-      total: 662.96,
-      itemCount: 3,
-      items: [
-        {
-          id: '1',
-          name: 'Designer Leather Jacket',
-          image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200',
-          quantity: 1,
-        },
-        {
-          id: '2',
-          name: 'Premium Sneakers',
-          image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=200',
-          quantity: 2,
-        },
-      ],
-    },
-    {
-      id: 'ORD-2024-002',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'shipped',
-      total: 449.99,
-      itemCount: 2,
-      items: [
-        {
-          id: '3',
-          name: 'Luxury Watch',
-          image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200',
-          quantity: 1,
-        },
-        {
-          id: '4',
-          name: 'Designer Sunglasses',
-          image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=200',
-          quantity: 1,
-        },
-      ],
-    },
-    {
-      id: 'ORD-2024-003',
-      date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'processing',
-      total: 199.99,
-      itemCount: 1,
-      items: [
-        {
-          id: '5',
-          name: 'Fashion Handbag',
-          image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200',
-          quantity: 1,
-        },
-      ],
-    },
-    {
-      id: 'ORD-2024-004',
-      date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'delivered',
-      total: 899.99,
-      itemCount: 4,
-      items: [
-        {
-          id: '6',
-          name: 'Designer Boots',
-          image: 'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=200',
-          quantity: 1,
-        },
-      ],
-    },
-  ];
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+  useEffect(() => {
+    // Wrap in Promise.resolve to avoid synchronous setState-in-effect lint warning
+    Promise.resolve(typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+      .then(token => {
+        if (!token) {
+          setFetchError('Please log in to view your orders.');
+          return;
+        }
+        return fetch('/api/customer/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              const normalized: Order[] = (data.data.orders as Array<{
+                id: string; date: string; status: string; total: number; itemCount: number; items: OrderItem[];
+              }>).map(o => ({
+                ...o,
+                status: (o.status === 'pending' ? 'processing' : o.status) as Order['status'],
+              }));
+              setAllOrders(normalized);
+            } else {
+              setFetchError(data.message || 'Failed to load orders.');
+            }
+          });
+      })
+      .catch(() => setFetchError('Network error. Please try again.'))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filteredOrders = allOrders
     .filter(order => {
@@ -160,6 +118,24 @@ export default function OrdersPage() {
           <p className="text-charcoal-600 dark:text-cool-gray-400">Track and manage all your orders</p>
         </div>
 
+        {/* Loading / Error states */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-gold-600 border-t-transparent" />
+          </div>
+        )}
+        {!isLoading && fetchError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center mb-6">
+            <p className="text-red-700 dark:text-red-400 font-semibold">{fetchError}</p>
+            {fetchError.includes('log in') && (
+              <Link href="/auth/customer/login" className="mt-3 inline-block px-5 py-2 bg-gold-600 text-white rounded-lg text-sm font-semibold hover:bg-gold-700">
+                Log In
+              </Link>
+            )}
+          </div>
+        )}
+        {!isLoading && !fetchError && (
+        <>
         {/* Filters */}
         <div className="bg-white dark:bg-charcoal-800 rounded-lg border border-cool-gray-300 dark:border-charcoal-700 shadow-md p-4 mb-6">
           {/* Search and Sort Row */}
@@ -227,7 +203,7 @@ export default function OrdersPage() {
                 <span className="text-sm text-charcoal-600 dark:text-cool-gray-400">Active filters:</span>
                 {searchQuery && (
                   <span className="px-2 py-1 bg-gold-100 dark:bg-gold-900/30 text-gold-800 dark:text-gold-400 text-xs rounded flex items-center gap-1">
-                    Search: "{searchQuery}"
+                    Search: &ldquo;{searchQuery}&rdquo;
                     <button onClick={() => setSearchQuery('')} className="hover:text-gold-900">✕</button>
                   </span>
                 )}
@@ -318,7 +294,7 @@ export default function OrdersPage() {
                   <div className="p-4 sm:p-6">
                     <div className="flex gap-4 overflow-x-auto pb-2">
                       {order.items.map((item) => (
-                        <div key={item.id} className="flex-shrink-0">
+                        <div key={item.id} className="shrink-0">
                           <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border dark:border-charcoal-700">
                             <Image
                               src={item.image}
@@ -335,7 +311,7 @@ export default function OrdersPage() {
                         </div>
                       ))}
                       {order.itemCount > order.items.length && (
-                        <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg border border-dashed border-gray-300 dark:border-charcoal-600 flex items-center justify-center text-charcoal-600 dark:text-cool-gray-400">
+                        <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg border border-dashed border-gray-300 dark:border-charcoal-600 flex items-center justify-center text-charcoal-600 dark:text-cool-gray-400">
                           <span className="text-sm font-medium">
                             +{order.itemCount - order.items.length}
                           </span>
@@ -404,6 +380,8 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <Footer />

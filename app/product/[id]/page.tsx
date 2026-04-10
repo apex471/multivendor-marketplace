@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useRouter } from 'next/navigation';
+import { useCart } from '@/contexts/CartContext';
 
 interface Review {
   id: string;
@@ -51,6 +52,7 @@ interface RelatedProduct {
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { addItem: addToCart } = useCart();
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -150,8 +152,17 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       alert('Please select a color');
       return;
     }
-    console.log('Adding to cart:', { productId: product.id, size: selectedSize, color: selectedColor, quantity });
-    alert('Added to cart!');
+    addToCart({
+      productId: product.id,
+      name:      product.name,
+      price:     product.price,
+      image:     product.images[0] ?? '/images/placeholder.jpg',
+      vendor:    product.vendor.name,
+      size:      selectedSize,
+      color:     selectedColor,
+      quantity,
+    });
+    alert(`"${product.name}" added to cart! 🛒`);
   };
 
   const handleBuyNow = () => {
