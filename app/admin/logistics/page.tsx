@@ -18,6 +18,20 @@ interface Provider {
 
 interface Counts { pending: number; approved: number; rejected: number; }
 
+interface LiveOrder {
+  id: string;
+  customerName: string;
+  shippingAddress: string;
+  products: string[];
+  total: number;
+  status: 'processing' | 'shipped' | 'pending';
+  assignedDriverName?: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  courier: { id: string; name: string; icon: string; price: number };
+  orderDate: string;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-900/40 text-yellow-300',
   approved: 'bg-green-900/40 text-green-300',
@@ -38,6 +52,31 @@ export default function AdminLogisticsPage() {
   const [selected, setSelected] = useState<Provider | null>(null);
   const [notes, setNotes] = useState('');
   const [action, setAction] = useState('');
+
+  // ── Live deliveries state ─────────────────────────────────────────────
+  const [liveOrders,  setLiveOrders]  = useState<LiveOrder[]>([]);
+  const [courierStats, setCourierStats] = useState<Record<string, { orders: number; revenue: number }>>({});
+  const [liveLoading, setLiveLoading] = useState(true);
+  const [liveSummary, setLiveSummary] = useState({ total: 0, active: 0, queue: 0, delivered: 0 });
+
+  const fetchLive = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/admin/logistics/orders?type=active', { headers: { Authorization: `Bearer ${getToken()}` } });
+      const data = await res.json();
+      if (data.success) {
+        setLiveOrders(data.data.orders ?? []);
+        setCourierStats(data.data.courierStats ?? {});
+        setLiveSummary(data.data.summary ?? { total: 0, active: 0, queue: 0, delivered: 0 });
+      }
+    } catch { /* silent — stale data stays visible */ }
+    finally { setLiveLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    fetchLive();
+    const interval = setInterval(fetchLive, 15_000);
+    return () => clearInterval(interval);
+  }, [fetchLive]);
 
   const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
@@ -193,7 +232,79 @@ export default function AdminLogisticsPage() {
         ))}
       </div>
 
-      {/* Courier Analytics */}
+      {/* ── Live Deliveries Monitor ─────────────────────────────────────── */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">📡 Live Deliveries</h2>
+            <p className="text-cool-gray-400 text-xs mt-0.5">Active orders currently being delivered — refreshes every 15s</p>
+          </div>
+          <div className="flex gap-3 text-xs">
+            <span className="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full">{liveSummary.active} active</span>
+            <span className="px-2 py-1 bg-yellow-900/40 text-yellow-300 rounded-full">{liveSummary.queue} in queue</span>
+            <span className="px-2 py-1 bg-green-900/40 text-green-300 rounded-full">{liveSummary.delivered} delivered</span>
+          </div>
+        </div>
+
+        {liveLoading ? (
+          <div className="text-center py-8 text-cool-gray-500">Loading live deliveries…</div>
+        ) : liveOrders.length === 0 ? (
+          <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl py-10 text-center">
+            <div className="text-4xl mb-2">📤</div>
+            <p className="text-white font-semibold">No active deliveries right now</p>
+            <p className="text-cool-gray-400 text-xs mt-1">Orders in queue will appear here once a driver accepts them.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {liveOrders.map(order => (
+              <div key={order.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-4 flex flex-col sm:flex-row gap-4 sm:items-center">
+                {/* Courier icon + order id */}
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-2xl">{order.courier.icon}</span>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{order.id}</p>
+                    <p className="text-cool-gray-400 text-xs">{order.courier.name}</p>
+                  </div>
+                </div>
+
+                {/* Customer + address */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium truncate">{order.customerName}</p>
+                  <p className="text-cool-gray-400 text-xs truncate">{order.shippingAddress}</p>
+                  <p className="text-cool-gray-500 text-xs mt-0.5">{order.products.slice(0, 2).join(', ')}{order.products.length > 2 ? ` +${order.products.length - 2} more` : ''}</p>
+                </div>
+
+                {/* Driver + timestamps */}
+                <div className="shrink-0 text-right">
+                  {order.assignedDriverName ? (
+                    <>
+                      <p className="text-green-400 text-xs font-semibold">🚴 {order.assignedDriverName}</p>
+                      {order.acceptedAt  && <p className="text-cool-gray-500 text-[10px]">Accepted {new Date(order.acceptedAt).toLocaleTimeString()}</p>}
+                      {order.pickedUpAt  && <p className="text-cool-gray-500 text-[10px]">Picked up {new Date(order.pickedUpAt).toLocaleTimeString()}</p>}
+                    </>
+                  ) : (
+                    <p className="text-yellow-400 text-xs">⏳ Awaiting driver</p>
+                  )}
+                </div>
+
+                {/* Status badge */}
+                <div className="shrink-0">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                    order.status === 'shipped'    ? 'bg-purple-900/40 text-purple-300' :
+                    order.status === 'processing' ? 'bg-blue-900/40 text-blue-300' :
+                                                    'bg-yellow-900/40 text-yellow-300'
+                  }`}>
+                    {order.status === 'processing' ? '✅ Accepted' : order.status === 'shipped' ? '📦 Picked Up' : order.status}
+                  </span>
+                  <p className="text-cool-gray-500 text-[10px] mt-1 text-right">${order.total.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Courier Analytics ────────────────────────────────────────── */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -203,12 +314,12 @@ export default function AdminLogisticsPage() {
           <Link href="/admin/orders" className="text-xs text-gold-500 hover:text-gold-400 font-medium">View Orders →</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {COURIERS.map((courier, index) => {
-            // Mock usage data — replace with real API data in production
-            const mockOrders = [18, 34, 27, 12, 6][index] ?? 0;
-            const mockRevenue = courier.price * mockOrders;
-            const maxOrders = 34;
-            const barPct = Math.round((mockOrders / maxOrders) * 100);
+          {COURIERS.map((courier) => {
+            const stats     = courierStats[courier.id] ?? { orders: 0, revenue: 0 };
+            const realOrders  = stats.orders;
+            const realRevenue = stats.revenue;
+            const maxOrders   = Math.max(...Object.values(courierStats).map(s => s.orders), 1);
+            const barPct      = Math.round((realOrders / maxOrders) * 100);
             return (
               <div key={courier.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl overflow-hidden">
                 {/* Header */}
@@ -229,7 +340,7 @@ export default function AdminLogisticsPage() {
                 <div className="px-4 py-3 space-y-3">
                   <div className="flex justify-between text-xs text-cool-gray-400">
                     <span>Orders this month</span>
-                    <span className="text-white font-semibold">{mockOrders}</span>
+                    <span className="text-white font-semibold">{realOrders}</span>
                   </div>
                   {/* Bar */}
                   <div className="h-2 bg-charcoal-700 rounded-full overflow-hidden">
@@ -241,7 +352,7 @@ export default function AdminLogisticsPage() {
                   <div className="flex justify-between text-xs text-cool-gray-400">
                     <span>Revenue generated</span>
                     <span className={`font-semibold ${courier.price === 0 ? 'text-green-400' : 'text-gold-400'}`}>
-                      {courier.price === 0 ? '—' : `$${mockRevenue.toFixed(2)}`}
+                      {courier.price === 0 ? '—' : `$${realRevenue.toFixed(2)}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-cool-gray-400">

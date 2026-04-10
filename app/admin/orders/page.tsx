@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface CourierInfo {
@@ -26,6 +26,10 @@ interface Order {
   trackingNumber?: string;
   shippingAddress: string;
   courier: CourierInfo;
+  assignedDriverName?: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
 }
 
 export default function OrderManagementPage() {
@@ -36,7 +40,29 @@ export default function OrderManagementPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState('');
+  const [toast, setToast]   = useState('');
+
+  const getToken  = () => typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const res  = await fetch('/api/orders', { headers: { Authorization: `Bearer ${getToken()}` } });
+      const data = await res.json();
+      if (data.success) setOrders(data.data.orders ?? []);
+      else setError(data.message || 'Failed to load orders');
+    } catch { setError('Network error — could not load orders.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  // ── placeholder to keep the old array syntax intact below ──────────────────
+  const _unused = [
     {
       id: 'ORD-2024-1001',
       customerName: 'John Doe',
@@ -118,7 +144,7 @@ export default function OrderManagementPage() {
       shippingAddress: '777 Birch Ln, Seattle, WA 98101',
       courier: { id: 'quickbox', name: 'QuickBox Express', icon: '🚀', price: 12.99, eta: 'Apr 14–15', carrier: 'QuickBox Courier', tracking: 'realtime' },
     },
-  ]);
+  ] as Order[]; void _unused; // replaced by real API data above
 
   const filteredOrders = orders.filter(order => {
     const matchesStatus  = statusFilter === 'all'  || order.status === statusFilter;
@@ -130,30 +156,44 @@ export default function OrderManagementPage() {
     return matchesStatus && matchesPayment && matchesCourier && matchesSearch;
   });
 
-  const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
-    }
-    alert(`Order ${orderId} status updated to ${newStatus}`);
+  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: newStatus } : prev);
+      showToast(`✅ Status updated to ${newStatus}`);
+    } catch { showToast('Failed to update status'); }
   };
 
-  const handleUpdateTracking = (orderId: string, trackingNumber: string) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, trackingNumber } : o));
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, trackingNumber });
-    }
-    alert(`Tracking number updated for order ${orderId}`);
+  const handleUpdateTracking = async (orderId: string, trackingNumber: string) => {
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ trackingNumber }),
+      });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, trackingNumber } : o));
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, trackingNumber } : prev);
+      showToast('✅ Tracking number updated');
+    } catch { showToast('Failed to update tracking'); }
   };
 
-  const handleRefund = (orderId: string) => {
-    if (confirm('Are you sure you want to process a refund for this order?')) {
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'refunded', paymentStatus: 'refunded' } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: 'refunded', paymentStatus: 'refunded' });
-      }
-      alert(`Refund processed for order ${orderId}`);
-    }
+  const handleRefund = async (orderId: string) => {
+    if (!window.confirm('Process a full refund for this order?')) return;
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ status: 'refunded', paymentStatus: 'refunded' }),
+      });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'refunded', paymentStatus: 'refunded' } : o));
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: 'refunded', paymentStatus: 'refunded' } : prev);
+      showToast('✅ Refund processed');
+    } catch { showToast('Failed to process refund'); }
   };
 
   const getStatusColor = (status: string) => {
@@ -187,6 +227,13 @@ export default function OrderManagementPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-charcoal-800 border border-gold-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -318,6 +365,13 @@ export default function OrderManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cool-gray-200 dark:divide-charcoal-700">
+                {loading ? (
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-charcoal-500 dark:text-cool-gray-500">Loading orders…</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-red-400">{error}</td></tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-charcoal-500 dark:text-cool-gray-500">No orders match your filters.</td></tr>
+                ) : null}
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -472,6 +526,37 @@ export default function OrderManagementPage() {
                         <p className="text-sm font-semibold text-charcoal-900 dark:text-white">{selectedOrder.courier.id}</p>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Driver Assignment */}
+              {selectedOrder.assignedDriverName && (
+                <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-4">
+                  <h3 className="font-semibold text-charcoal-900 dark:text-white mb-3">🚴 Driver Assignment</h3>
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-charcoal-600 dark:text-cool-gray-400">Driver</span>
+                      <span className="font-semibold text-charcoal-900 dark:text-white">{selectedOrder.assignedDriverName}</span>
+                    </div>
+                    {selectedOrder.acceptedAt && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-charcoal-600 dark:text-cool-gray-400">Accepted</span>
+                        <span className="text-charcoal-700 dark:text-cool-gray-300">{new Date(selectedOrder.acceptedAt).toLocaleTimeString()}</span>
+                      </div>
+                    )}
+                    {selectedOrder.pickedUpAt && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-charcoal-600 dark:text-cool-gray-400">Picked up</span>
+                        <span className="text-charcoal-700 dark:text-cool-gray-300">{new Date(selectedOrder.pickedUpAt).toLocaleTimeString()}</span>
+                      </div>
+                    )}
+                    {selectedOrder.deliveredAt && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-charcoal-600 dark:text-cool-gray-400">Delivered</span>
+                        <span className="text-green-600 dark:text-green-400 font-semibold">{new Date(selectedOrder.deliveredAt).toLocaleTimeString()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

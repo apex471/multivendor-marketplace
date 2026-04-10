@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -34,55 +35,104 @@ interface Order {
   };
   trackingNumber?: string;
   estimatedDelivery?: string;
+  // Courier + driver fields from shared store
+  courierIcon?: string;
+  courierName?: string;
+  courierCarrier?: string;
+  assignedDriverName?: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
 }
 
 export default function OrderDetailPage() {
-  const params = useParams();
-  const router = useRouter();
+  const params  = useParams();
+  const router  = useRouter();
   const orderId = params.id as string;
 
-  // Mock order data - replace with API call
-  const order: Order = {
-    id: orderId,
-    status: 'shipped',
-    date: new Date().toISOString(),
-    items: [
-      {
-        id: '1',
-        name: 'Designer Leather Jacket',
-        price: 299.99,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400',
-        vendor: 'Luxury Fashion Co.',
-      },
-      {
-        id: '2',
-        name: 'Premium Sneakers',
-        price: 149.99,
-        quantity: 2,
-        image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400',
-        vendor: 'Urban Footwear',
-      },
-    ],
-    subtotal: 599.97,
-    shipping: 15.00,
-    tax: 47.99,
-    total: 662.96,
-    shippingAddress: {
-      name: 'John Doe',
-      address: '123 Main Street, Apt 4B',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      phone: '+1 (555) 123-4567',
-    },
-    trackingNumber: 'TRK-' + Date.now(),
-    estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }),
-  };
+  const [order,    setOrder]    = useState<Order | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/orders/${orderId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success || !d.data?.order) { setNotFound(true); return; }
+        const raw = d.data.order;
+        const statusMap: Record<string, Order['status']> = {
+          pending:    'processing',
+          processing: 'processing',
+          shipped:    'shipped',
+          delivered:  'delivered',
+          cancelled:  'cancelled',
+        };
+        setOrder({
+          id:     raw.id,
+          status: statusMap[raw.status] ?? 'processing',
+          date:   raw.orderDate,
+          items:  (raw.products as string[]).map((name: string, i: number) => ({
+            id:       String(i),
+            name,
+            price:    0,
+            quantity: 1,
+            image:    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+            vendor:   raw.vendorName,
+          })),
+          subtotal:         raw.subtotal ?? raw.total,
+          shipping:         raw.courier?.price ?? 0,
+          tax:              raw.tax ?? 0,
+          total:            raw.total,
+          shippingAddress: {
+            name:    raw.customerName,
+            address: raw.shippingAddress,
+            city: '', state: '', zipCode: '',
+            phone:   raw.customerPhone ?? '',
+          },
+          trackingNumber:    raw.trackingNumber,
+          estimatedDelivery: raw.courier?.eta,
+          courierIcon:       raw.courier?.icon,
+          courierName:       raw.courier?.name,
+          courierCarrier:    raw.courier?.carrier,
+          assignedDriverName: raw.assignedDriverName,
+          acceptedAt:        raw.acceptedAt,
+          pickedUpAt:        raw.pickedUpAt,
+          deliveredAt:       raw.deliveredAt,
+        });
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900">
+        <Header />
+        <div className="container mx-auto px-4 py-24 text-center">
+          <div className="text-5xl mb-4 animate-pulse">📦</div>
+          <p className="text-charcoal-600 dark:text-cool-gray-400">Loading your order…</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (notFound || !order) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900">
+        <Header />
+        <div className="container mx-auto px-4 py-24 text-center">
+          <div className="text-6xl mb-4">🔍</div>
+          <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-2">Order not found</h2>
+          <p className="text-charcoal-600 dark:text-cool-gray-400 mb-8">This order ID doesn&apos;t exist or may have been removed.</p>
+          <Link href="/orders" className="px-6 py-3 bg-gold-600 text-white rounded-xl font-semibold hover:bg-gold-700 transition-colors">
+            View My Orders
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   const statusConfig = {
     processing: { color: 'bg-yellow-100 text-yellow-800', icon: '⏳', label: 'Processing' },
@@ -94,10 +144,10 @@ export default function OrderDetailPage() {
   const currentStatus = statusConfig[order.status];
 
   const orderSteps = [
-    { status: 'processing', label: 'Order Placed', date: new Date(order.date).toLocaleDateString() },
-    { status: 'processing', label: 'Processing', date: new Date(order.date).toLocaleDateString() },
-    { status: 'shipped', label: 'Shipped', date: order.status === 'shipped' || order.status === 'delivered' ? new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toLocaleDateString() : '' },
-    { status: 'delivered', label: 'Delivered', date: order.status === 'delivered' ? new Date().toLocaleDateString() : '' },
+    { status: 'processing', label: 'Order Placed',  date: new Date(order.date).toLocaleDateString() },
+    { status: 'processing', label: 'Processing',    date: new Date(order.date).toLocaleDateString() },
+    { status: 'shipped',    label: 'Shipped',       date: order.pickedUpAt   ? new Date(order.pickedUpAt).toLocaleDateString()  : order.status === 'shipped'    || order.status === 'delivered' ? new Date(order.date).toLocaleDateString() : '' },
+    { status: 'delivered',  label: 'Delivered',     date: order.deliveredAt  ? new Date(order.deliveredAt).toLocaleDateString() : order.status === 'delivered' ? new Date(order.date).toLocaleDateString() : '' },
   ];
 
   const getStepStatus = (stepStatus: string) => {
@@ -165,6 +215,31 @@ export default function OrderDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Courier info */}
+          {order.courierName && (
+            <div className="mt-3 flex items-center gap-3 bg-gray-50 dark:bg-charcoal-700 border border-gray-200 dark:border-charcoal-600 rounded-lg px-4 py-3">
+              <span className="text-2xl select-none">{order.courierIcon}</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-charcoal-900 dark:text-white">{order.courierName}</p>
+                <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">{order.courierCarrier}</p>
+              </div>
+              <span className="text-xs text-charcoal-500 dark:text-cool-gray-400">Delivery fee: {order.shipping === 0 ? 'FREE' : `$${order.shipping.toFixed(2)}`}</span>
+            </div>
+          )}
+
+          {/* Driver info */}
+          {order.assignedDriverName && (
+            <div className="mt-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">🚴 Driver assigned</p>
+              <p className="text-sm font-medium text-green-900 dark:text-green-300">{order.assignedDriverName}</p>
+              <div className="mt-1 flex flex-wrap gap-3 text-xs text-green-700 dark:text-green-400">
+                {order.acceptedAt && <span>✅ Accepted {new Date(order.acceptedAt).toLocaleTimeString()}</span>}
+                {order.pickedUpAt && <span>📦 Picked up {new Date(order.pickedUpAt).toLocaleTimeString()}</span>}
+                {order.deliveredAt && <span>🏠 Delivered {new Date(order.deliveredAt).toLocaleTimeString()}</span>}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -226,7 +301,7 @@ export default function OrderDetailPage() {
               <div className="space-y-4">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex gap-4 pb-4 border-b last:border-b-0 last:pb-0">
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
                       <Image
                         src={item.image}
                         alt={item.name}
