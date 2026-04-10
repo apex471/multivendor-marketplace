@@ -3,7 +3,7 @@ import { sendSuccess, sendError, sendNotFound, sendServerError } from '@/backend
 import * as OrderStore from '@/lib/store/orders';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { connectDB } from '@/backend/config/database';
-import { Order } from '@/backend/models/Order';
+import { Order, IOrder } from '@/backend/models/Order';
 
 /**
  * GET /api/orders/[id]
@@ -20,7 +20,7 @@ export async function GET(
     // Try MongoDB first
     try {
       await connectDB();
-      const dbOrder = await Order.findOne({ orderId: id }).lean();
+      const dbOrder = await Order.findOne({ orderId: id }).lean() as IOrder | null;
       if (dbOrder) {
         return sendSuccess({
           order: {
