@@ -5,11 +5,13 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
+import { getCourierById } from '../../../lib/couriers';
 
 export default function ReviewPage() {
   const router = useRouter();
   const { checkoutData, clearCheckout } = useCheckout();
-  const { cartItems, shippingAddress, paymentMethod, shippingMethod, subtotal, discount, shippingCost, tax, total } = checkoutData;
+  const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total } = checkoutData;
+  const selectedCourier = getCourierById(selectedCourierId);
 
   const handlePlaceOrder = async () => {
     // Simulate order processing
@@ -25,14 +27,8 @@ export default function ReviewPage() {
 
   const discountAmount = (subtotal * discount) / 100;
 
-  const getShippingMethodName = () => {
-    switch (shippingMethod) {
-      case 'standard': return 'Standard Shipping (5-7 days)';
-      case 'express': return 'Express Shipping (2-3 days)';
-      case 'overnight': return 'Overnight Shipping (Next day)';
-      default: return 'Standard Shipping';
-    }
-  };
+  const getShippingMethodName = () =>
+    `${selectedCourier.name} (${selectedCourier.deliveryDays})`;
 
   if (!shippingAddress || !paymentMethod) {
     return (
@@ -99,7 +95,7 @@ export default function ReviewPage() {
               <div className="space-y-4">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4">
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
                       <Image src={item.image} alt={item.name} fill className="object-cover" />
                     </div>
                     <div className="flex-1">

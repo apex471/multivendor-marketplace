@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IProductVariant {
+  size: string;
+  color: string;
+  stock: number;
+  sku?: string;
+}
+
 export interface IProduct extends Document {
   name: string;
   description: string;
@@ -7,7 +14,13 @@ export interface IProduct extends Document {
   vendorName: string;
   category: string;
   price: number;
+  salePrice?: number;
+  costPrice?: number;
   stock: number;
+  sku?: string;
+  tags: string[];
+  variants: IProductVariant[];
+  lowStockAlert: number;
   status: 'pending' | 'active' | 'rejected' | 'suspended';
   featured: boolean;
   salesCount: number;
@@ -19,6 +32,16 @@ export interface IProduct extends Document {
   updatedAt: Date;
 }
 
+const variantSchema = new Schema<IProductVariant>(
+  {
+    size:  { type: String, required: true, trim: true },
+    color: { type: String, required: true, trim: true },
+    stock: { type: Number, default: 0, min: 0 },
+    sku:   { type: String, trim: true },
+  },
+  { _id: false }
+);
+
 const productSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true, trim: true },
@@ -27,7 +50,13 @@ const productSchema = new Schema<IProduct>(
     vendorName: { type: String, required: true },
     category: { type: String, required: true, default: 'Uncategorized' },
     price: { type: Number, required: true, min: 0 },
+    salePrice: { type: Number, min: 0 },
+    costPrice: { type: Number, min: 0, select: false }, // hidden from public API
     stock: { type: Number, default: 0, min: 0 },
+    sku: { type: String, trim: true },
+    tags: [{ type: String, trim: true }],
+    variants: [variantSchema],
+    lowStockAlert: { type: Number, default: 5, min: 0 },
     status: {
       type: String,
       enum: ['pending', 'active', 'rejected', 'suspended'],
@@ -46,6 +75,9 @@ const productSchema = new Schema<IProduct>(
 productSchema.index({ status: 1, createdAt: -1 });
 productSchema.index({ vendorId: 1 });
 productSchema.index({ category: 1 });
+productSchema.index({ featured: 1, status: 1 });
+productSchema.index({ salesCount: -1, status: 1 });
+productSchema.index({ tags: 1, status: 1 });
 productSchema.index({ name: 'text', description: 'text', vendorName: 'text' });
 
 export const Product =

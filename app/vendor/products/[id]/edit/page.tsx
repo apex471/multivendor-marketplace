@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '../../../../../components/common/Header';
 import Footer from '../../../../../components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface ProductVariant {
   id: string;
@@ -65,51 +66,60 @@ export default function EditProductPage() {
   const [status, setStatus] = useState<'active' | 'draft' | 'out-of-stock'>('active');
 
   useEffect(() => {
-    // Mock product fetch
-    const mockProduct: Product = {
-      id: productId,
-      name: 'Designer Silk Dress',
-      description: 'Elegant silk dress perfect for any formal occasion. Features a flowing A-line silhouette and delicate pleating.',
-      category: 'Dresses',
-      tags: 'formal, silk, elegant, evening',
-      regularPrice: '299.99',
-      salePrice: '249.99',
-      costPrice: '150.00',
-      sku: 'DRS-001',
-      stock: '23',
-      lowStockAlert: '5',
-      images: [
-        'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400',
-        'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400',
-        'https://images.unsplash.com/photo-1539008835657-9e8e9680c956?w=400',
-      ],
-      primaryImageIndex: 0,
-      variants: [
-        { id: '1', size: 'S', color: 'Black', stock: 8, sku: 'DRS-001-S-BLK' },
-        { id: '2', size: 'M', color: 'Black', stock: 10, sku: 'DRS-001-M-BLK' },
-        { id: '3', size: 'L', color: 'Navy', stock: 5, sku: 'DRS-001-L-NVY' },
-      ],
-      status: 'active',
-      updatedAt: '2025-12-15T10:30:00Z',
-    };
+    if (!productId) return;
+    const token = getAuthToken();
+    if (!token) return;
 
-    setProduct(mockProduct);
-    setFormData({
-      name: mockProduct.name,
-      description: mockProduct.description,
-      category: mockProduct.category,
-      tags: mockProduct.tags,
-      regularPrice: mockProduct.regularPrice,
-      salePrice: mockProduct.salePrice,
-      costPrice: mockProduct.costPrice,
-      sku: mockProduct.sku,
-      stock: mockProduct.stock,
-      lowStockAlert: mockProduct.lowStockAlert,
-    });
-    setImages(mockProduct.images);
-    setPrimaryImageIndex(mockProduct.primaryImageIndex);
-    setVariants(mockProduct.variants);
-    setStatus(mockProduct.status);
+    fetch(`/api/vendor/products/${productId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success) return;
+        const p = json.data.product;
+        const mapped: Product = {
+          id:                p._id,
+          name:              p.name ?? '',
+          description:       p.description ?? '',
+          category:          p.category ?? '',
+          tags:              Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags ?? ''),
+          regularPrice:      String(p.price ?? ''),
+          salePrice:         String(p.salePrice ?? ''),
+          costPrice:         String(p.costPrice ?? ''),
+          sku:               p.sku ?? '',
+          stock:             String(p.stock ?? ''),
+          lowStockAlert:     String(p.lowStockAlert ?? '5'),
+          images:            p.images ?? [],
+          primaryImageIndex: 0,
+          variants:          (p.variants ?? []).map((v: Record<string, unknown>, i: number) => ({
+            id:    String(i),
+            size:  v.size  ?? '',
+            color: v.color ?? '',
+            stock: v.stock ?? 0,
+            sku:   v.sku   ?? '',
+          })),
+          status:    p.status ?? 'draft',
+          updatedAt: p.updatedAt ?? new Date().toISOString(),
+        };
+        setProduct(mapped);
+        setFormData({
+          name:          mapped.name,
+          description:   mapped.description,
+          category:      mapped.category,
+          tags:          mapped.tags,
+          regularPrice:  mapped.regularPrice,
+          salePrice:     mapped.salePrice,
+          costPrice:     mapped.costPrice,
+          sku:           mapped.sku,
+          stock:         mapped.stock,
+          lowStockAlert: mapped.lowStockAlert,
+        });
+        setImages(mapped.images);
+        setPrimaryImageIndex(mapped.primaryImageIndex);
+        setVariants(mapped.variants.length ? mapped.variants : [{ id: '1', size: '', color: '', stock: 0, sku: '' }]);
+        setStatus(mapped.status);
+      })
+      .catch(err => console.error('[EditProduct] fetch error:', err));
   }, [productId]);
 
   const categories = [
@@ -123,11 +133,29 @@ export default function EditProductPage() {
     'Jewelry'
   ];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-      setImages(prev => [...prev, ...newImages]);
+    if (!files || files.length === 0) return;
+
+    const token = getAuthToken();
+    const uploads = Array.from(files).map(async (file) => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Upload failed');
+      return json.data.url as string;
+    });
+
+    try {
+      const urls = await Promise.all(uploads);
+      setImages(prev => [...prev, ...urls]);
+    } catch (err) {
+      alert(`Image upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -158,33 +186,65 @@ export default function EditProductPage() {
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) { alert('You must be logged in.'); return; }
+
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const res = await fetch(`/api/vendor/products/${productId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name:          formData.name,
+          description:   formData.description,
+          category:      formData.category,
+          tags:          formData.tags,
+          price:         parseFloat(formData.regularPrice),
+          salePrice:     formData.salePrice ? parseFloat(formData.salePrice) : undefined,
+          costPrice:     formData.costPrice ? parseFloat(formData.costPrice) : undefined,
+          sku:           formData.sku,
+          stock:         parseInt(formData.stock || '0', 10),
+          lowStockAlert: parseInt(formData.lowStockAlert || '5', 10),
+          images,
+          variants,
+          status,
+        }),
+      });
 
-    const updatedProduct = {
-      ...formData,
-      images,
-      primaryImageIndex,
-      variants,
-      status,
-      updatedAt: new Date().toISOString(),
-    };
+      const json = await res.json();
+      if (!json.success) { alert(json.error ?? 'Save failed'); return; }
 
-    console.log('Updating product:', updatedProduct);
-    
-    setIsSaving(false);
-    router.push('/vendor/products');
+      router.push('/vendor/products');
+    } catch (err) {
+      alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
-    setIsDeleting(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const token = getAuthToken();
+    if (!token) { alert('You must be logged in.'); return; }
 
-    console.log('Deleting product:', productId);
-    
-    setIsDeleting(false);
-    setShowDeleteModal(false);
-    router.push('/vendor/products');
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/vendor/products/${productId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (!json.success) { alert(json.error ?? 'Delete failed'); return; }
+
+      setShowDeleteModal(false);
+      router.push('/vendor/products');
+    } catch (err) {
+      alert(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const profitMargin = formData.regularPrice && formData.costPrice
@@ -291,7 +351,7 @@ export default function EditProductPage() {
                 ].map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as 'basic' | 'images' | 'variants' | 'pricing' | 'inventory')}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
                       activeTab === tab.id
                         ? 'bg-gold-100 dark:bg-gold-900/30 text-gold-800 dark:text-gold-400'
@@ -694,7 +754,7 @@ export default function EditProductPage() {
               Delete Product?
             </h2>
             <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
-              Are you sure you want to delete "{formData.name}"? This action cannot be undone.
+              Are you sure you want to delete &ldquo;{formData.name}&rdquo;? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button

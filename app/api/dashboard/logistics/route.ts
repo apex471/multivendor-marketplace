@@ -14,10 +14,13 @@ export async function GET(request: NextRequest) {
 
   try {
     await connectDB();
-    const provider = await User.findById(decoded.userId).lean();
-    if (!provider || (provider as any).role !== 'logistics') return sendError('Access denied', 403);
+    const provider = await User.findById(decoded.userId).lean() as import('@/backend/models/User').IUser | null;
+    if (!provider || provider.role !== 'logistics') return sendError('Access denied', 403);
 
-    const [revenueAgg, monthRevenueAgg] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [revenueAgg, monthRevenueAgg, todayRevenueAgg] = await Promise.all([
       Transaction.aggregate([
         { $match: { toUser: provider._id, status: 'completed' } },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
@@ -32,27 +35,38 @@ export async function GET(request: NextRequest) {
         },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
       ]),
+      Transaction.aggregate([
+        {
+          $match: {
+            toUser: provider._id,
+            status: 'completed',
+            createdAt: { $gte: todayStart },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      ]),
     ]);
 
     return sendSuccess({
       profile: {
-        firstName: (provider as any).firstName,
-        lastName: (provider as any).lastName,
-        email: (provider as any).email,
-        applicationStatus: (provider as any).applicationStatus,
-        isActive: (provider as any).isActive,
-        createdAt: (provider as any).createdAt,
+        firstName:         provider.firstName,
+        lastName:          provider.lastName,
+        email:             provider.email,
+        applicationStatus: provider.applicationStatus,
+        isActive:          provider.isActive,
+        createdAt:         provider.createdAt,
       },
       stats: {
-        totalRevenue: revenueAgg[0]?.total ?? 0,
-        totalDeliveries: revenueAgg[0]?.count ?? 0,
-        monthRevenue: monthRevenueAgg[0]?.total ?? 0,
-        monthDeliveries: monthRevenueAgg[0]?.count ?? 0,
+        totalRevenue:    revenueAgg[0]?.total        ?? 0,
+        totalDeliveries: revenueAgg[0]?.count        ?? 0,
+        monthRevenue:    monthRevenueAgg[0]?.total   ?? 0,
+        monthDeliveries: monthRevenueAgg[0]?.count   ?? 0,
+        todayRevenue:    todayRevenueAgg[0]?.total   ?? 0,
+        todayDeliveries: todayRevenueAgg[0]?.count   ?? 0,
         // Shipment data placeholder — to be wired when Shipment model exists
         activeShipments: 0,
-        deliveredToday: 0,
         avgDeliveryTime: 0,
-        onTimeRate: 0,
+        onTimeRate:      0,
       },
     });
   } catch (err) {

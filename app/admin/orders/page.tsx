@@ -3,6 +3,16 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
+interface CourierInfo {
+  id: string;
+  name: string;
+  icon: string;
+  price: number;
+  eta: string;
+  carrier: string;
+  tracking: string;
+}
+
 interface Order {
   id: string;
   customerName: string;
@@ -15,11 +25,13 @@ interface Order {
   orderDate: string;
   trackingNumber?: string;
   shippingAddress: string;
+  courier: CourierInfo;
 }
 
 export default function OrderManagementPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | Order['paymentStatus']>('all');
+  const [courierFilter, setCourierFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -35,7 +47,8 @@ export default function OrderManagementPage() {
       status: 'pending',
       paymentStatus: 'paid',
       orderDate: '2024-12-15T10:30:00',
-      shippingAddress: '123 Main St, New York, NY 10001'
+      shippingAddress: '123 Main St, New York, NY 10001',
+      courier: { id: 'quickbox', name: 'QuickBox Express', icon: '🚀', price: 12.99, eta: 'Apr 14–15', carrier: 'QuickBox Courier', tracking: 'realtime' },
     },
     {
       id: 'ORD-2024-1002',
@@ -48,7 +61,8 @@ export default function OrderManagementPage() {
       paymentStatus: 'paid',
       orderDate: '2024-12-14T15:45:00',
       trackingNumber: 'TRK123456789',
-      shippingAddress: '456 Oak Ave, Los Angeles, CA 90001'
+      shippingAddress: '456 Oak Ave, Los Angeles, CA 90001',
+      courier: { id: 'swiftship', name: 'SwiftShip Standard', icon: '📦', price: 5.99, eta: 'Apr 17–21', carrier: 'SwiftShip Express', tracking: 'standard' },
     },
     {
       id: 'ORD-2024-1003',
@@ -61,7 +75,8 @@ export default function OrderManagementPage() {
       paymentStatus: 'paid',
       orderDate: '2024-12-13T09:20:00',
       trackingNumber: 'TRK987654321',
-      shippingAddress: '789 Pine Rd, Chicago, IL 60601'
+      shippingAddress: '789 Pine Rd, Chicago, IL 60601',
+      courier: { id: 'flashrun', name: 'FlashRunner Next Day', icon: '⚡', price: 24.99, eta: 'Apr 11', carrier: 'FlashRunner Logistics', tracking: 'realtime' },
     },
     {
       id: 'ORD-2024-1004',
@@ -74,7 +89,8 @@ export default function OrderManagementPage() {
       paymentStatus: 'paid',
       orderDate: '2024-12-10T11:15:00',
       trackingNumber: 'TRK555666777',
-      shippingAddress: '321 Elm St, Boston, MA 02101'
+      shippingAddress: '321 Elm St, Boston, MA 02101',
+      courier: { id: 'ecopost', name: 'EcoPost Free', icon: '🌿', price: 0, eta: 'Apr 28 – May 8', carrier: 'EcoPost Logistics', tracking: 'basic' },
     },
     {
       id: 'ORD-2024-1005',
@@ -86,7 +102,8 @@ export default function OrderManagementPage() {
       status: 'cancelled',
       paymentStatus: 'refunded',
       orderDate: '2024-12-12T14:00:00',
-      shippingAddress: '555 Maple Dr, Miami, FL 33101'
+      shippingAddress: '555 Maple Dr, Miami, FL 33101',
+      courier: { id: 'ecopost', name: 'EcoPost Free', icon: '🌿', price: 0, eta: 'Apr 28 – May 8', carrier: 'EcoPost Logistics', tracking: 'basic' },
     },
     {
       id: 'ORD-2024-1006',
@@ -98,17 +115,19 @@ export default function OrderManagementPage() {
       status: 'processing',
       paymentStatus: 'paid',
       orderDate: '2024-12-16T08:30:00',
-      shippingAddress: '777 Birch Ln, Seattle, WA 98101'
+      shippingAddress: '777 Birch Ln, Seattle, WA 98101',
+      courier: { id: 'quickbox', name: 'QuickBox Express', icon: '🚀', price: 12.99, eta: 'Apr 14–15', carrier: 'QuickBox Courier', tracking: 'realtime' },
     },
   ]);
 
   const filteredOrders = orders.filter(order => {
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesStatus  = statusFilter === 'all'  || order.status === statusFilter;
     const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
-    const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesPayment && matchesSearch;
+    const matchesCourier = courierFilter === 'all' || order.courier?.id === courierFilter;
+    const matchesSearch  = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           order.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesPayment && matchesCourier && matchesSearch;
   });
 
   const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
@@ -222,7 +241,7 @@ export default function OrderManagementPage() {
 
         {/* Search and Filters */}
         <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6 mb-6">
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">Search Orders</label>
               <input
@@ -237,7 +256,7 @@ export default function OrderManagementPage() {
               <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">Filter by Status</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) => setStatusFilter(e.target.value as Order['status'] | 'all')}
                 className="w-full px-4 py-2 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500"
               >
                 <option value="all">All Status</option>
@@ -253,7 +272,7 @@ export default function OrderManagementPage() {
               <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">Filter by Payment</label>
               <select
                 value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value as any)}
+                onChange={(e) => setPaymentFilter(e.target.value as Order['paymentStatus'] | 'all')}
                 className="w-full px-4 py-2 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500"
               >
                 <option value="all">All Payments</option>
@@ -261,6 +280,21 @@ export default function OrderManagementPage() {
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">Filter by Courier</label>
+              <select
+                value={courierFilter}
+                onChange={(e) => setCourierFilter(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500"
+              >
+                <option value="all">All Couriers</option>
+                <option value="ecopost">🌿 EcoPost Free</option>
+                <option value="swiftship">📦 SwiftShip Standard</option>
+                <option value="quickbox">🚀 QuickBox Express</option>
+                <option value="flashrun">⚡ FlashRunner Next Day</option>
+                <option value="zerowait">🏠️ ZeroWait Same Day</option>
               </select>
             </div>
           </div>
@@ -275,7 +309,7 @@ export default function OrderManagementPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Order ID</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Customer</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Vendor</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Products</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Courier</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Total</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-charcoal-600 dark:text-cool-gray-400 uppercase">Payment</th>
@@ -296,9 +330,17 @@ export default function OrderManagementPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-charcoal-700 dark:text-cool-gray-300">{order.vendorName}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-charcoal-700 dark:text-cool-gray-300">
-                        {order.products.length} item{order.products.length > 1 ? 's' : ''}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg select-none">{order.courier?.icon ?? '📦'}</span>
+                        <div>
+                          <div className="text-sm font-medium text-charcoal-900 dark:text-white leading-tight">
+                            {order.courier?.name ?? '—'}
+                          </div>
+                          <div className="text-xs text-charcoal-400 dark:text-cool-gray-500">
+                            {order.courier?.price === 0 ? 'FREE' : order.courier?.price != null ? `$${order.courier.price.toFixed(2)}` : '—'}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -395,6 +437,44 @@ export default function OrderManagementPage() {
                   <span className="text-gold-600">${selectedOrder.total.toFixed(2)}</span>
                 </div>
               </div>
+
+              {/* Courier */}
+              {selectedOrder.courier && (
+                <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-4">
+                  <h3 className="font-semibold text-charcoal-900 dark:text-white mb-3">🚚 Delivery Method</h3>
+                  <div className="rounded-xl overflow-hidden border border-cool-gray-200 dark:border-charcoal-700">
+                    {/* Dark header */}
+                    <div className="bg-charcoal-900 dark:bg-charcoal-950 px-4 py-3 flex items-center gap-3">
+                      <span className="text-2xl select-none">{selectedOrder.courier.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-bold leading-tight">{selectedOrder.courier.name}</p>
+                        <p className="text-charcoal-400 text-xs">{selectedOrder.courier.carrier}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`font-bold text-lg leading-tight ${selectedOrder.courier.price === 0 ? 'text-green-400' : 'text-gold-400'}`}>
+                          {selectedOrder.courier.price === 0 ? 'FREE' : `$${selectedOrder.courier.price.toFixed(2)}`}
+                        </p>
+                        <p className="text-charcoal-400 text-xs">shipping fee</p>
+                      </div>
+                    </div>
+                    {/* Details row */}
+                    <div className="bg-cool-gray-50 dark:bg-charcoal-800 px-4 py-3 grid grid-cols-3 gap-3 text-center">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-charcoal-400 dark:text-cool-gray-500 mb-0.5">Est. Arrival</p>
+                        <p className="text-sm font-semibold text-charcoal-900 dark:text-white">{selectedOrder.courier.eta}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-charcoal-400 dark:text-cool-gray-500 mb-0.5">Tracking</p>
+                        <p className="text-sm font-semibold text-charcoal-900 dark:text-white capitalize">{selectedOrder.courier.tracking}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-charcoal-400 dark:text-cool-gray-500 mb-0.5">Courier ID</p>
+                        <p className="text-sm font-semibold text-charcoal-900 dark:text-white">{selectedOrder.courier.id}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Tracking */}
               <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-4">

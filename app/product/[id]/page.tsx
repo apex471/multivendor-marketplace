@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
@@ -19,6 +19,36 @@ interface Review {
   helpful: number;
 }
 
+interface ProductData {
+  id: string;
+  name: string;
+  price: number;
+  oldPrice?: number;
+  vendor: { name: string; id: string; rating: number; verified: boolean };
+  rating: number;
+  reviews: number;
+  sales: number;
+  description: string;
+  features: string[];
+  specifications: { label: string; value: string }[];
+  images: string[];
+  sizes: string[];
+  colors: { name: string; hex: string }[];
+  inStock: boolean;
+  stockCount: number;
+  category: string;
+  sku: string;
+  tags: string[];
+}
+
+interface RelatedProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  rating: number;
+}
+
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [selectedSize, setSelectedSize] = useState('');
@@ -30,104 +60,86 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Mock product data
-  const product = {
-    id: params.id,
-    name: 'Designer Silk Dress - Premium Collection',
-    price: 299.99,
-    oldPrice: 399.99,
-    vendor: {
-      name: 'Luxury Fashion Co.',
-      id: '1',
-      rating: 4.9,
-      verified: true
-    },
-    rating: 4.8,
-    reviews: 234,
-    sales: 1500,
-    description: 'Elegant silk dress featuring a timeless design that combines sophistication with comfort. Made from premium quality mulberry silk, this dress is perfect for any special occasion. The flowing silhouette flatters all body types while the attention to detail in the stitching showcases true craftsmanship.',
-    features: [
-      '100% Premium Mulberry Silk',
-      'Handcrafted with attention to detail',
-      'Breathable and luxurious fabric',
-      'Perfect for special occasions',
-      'Dry clean only',
-      'Imported from Italy',
-      'Size true to fit',
-      'Elegant flowing design'
-    ],
-    specifications: [
-      { label: 'Material', value: '100% Silk' },
-      { label: 'Origin', value: 'Made in Italy' },
-      { label: 'Care', value: 'Dry Clean Only' },
-      { label: 'Fit', value: 'True to Size' },
-      { label: 'Length', value: 'Midi' },
-      { label: 'Closure', value: 'Back Zipper' },
-      { label: 'Weight', value: '350g' },
-      { label: 'SKU', value: 'LUX-SILK-001' }
-    ],
-    images: [
-      'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800',
-      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800',
-      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800',
-      'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=800'
-    ],
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Navy Blue', hex: '#1e3a8a' },
-      { name: 'Black', hex: '#000000' },
-      { name: 'Burgundy', hex: '#7c2d12' },
-      { name: 'Emerald', hex: '#047857' }
-    ],
-    inStock: true,
-    stockCount: 23,
-    category: "Women's Fashion",
-    sku: 'LUX-SILK-001',
-    tags: ['Silk', 'Evening Wear', 'Designer', 'Italian', 'Luxury']
-  };
+  const [product,        setProduct]        = useState<ProductData | null>(null);
+  const reviews: Review[]                    = []; // reviews endpoint not yet wired
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+  const [isLoading,       setIsLoading]       = useState(true);
+  const [notFound,        setNotFound]        = useState(false);
 
-  // Mock reviews
-  const reviews: Review[] = [
-    {
-      id: '1',
-      author: 'Sarah Johnson',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      rating: 5,
-      date: '2025-12-15',
-      comment: 'Absolutely stunning dress! The silk quality is exceptional and it fits perfectly. Worth every penny!',
-      images: ['https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=300'],
-      verified: true,
-      helpful: 24
-    },
-    {
-      id: '2',
-      author: 'Emma Williams',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-      rating: 5,
-      date: '2025-12-10',
-      comment: 'This dress exceeded my expectations. The fabric is luxurious and the craftsmanship is top-notch. Highly recommend!',
-      verified: true,
-      helpful: 18
-    },
-    {
-      id: '3',
-      author: 'Michael Chen',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-      rating: 4,
-      date: '2025-12-05',
-      comment: 'Bought this as a gift for my wife. She loves it! Great quality and fast shipping.',
-      verified: true,
-      helpful: 12
-    }
-  ];
+  useEffect(() => {
+    fetch(`/api/products/${params.id}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.product) { setNotFound(true); return; }
+        const p = json.data.product;
+        const displayPrice  = p.salePrice && p.salePrice < p.price ? p.salePrice : p.price;
+        const originalPrice = p.salePrice && p.salePrice < p.price ? p.price    : undefined;
+        const sizes = [...new Set<string>(
+          (p.variants ?? []).map((v: Record<string, string>) => v.size).filter(Boolean)
+        )];
+        const colorMap = new Map<string, { name: string; hex: string }>();
+        (p.variants ?? []).forEach((v: Record<string, string>) => {
+          if (v.color) colorMap.set(v.color, { name: v.color, hex: '#888888' });
+        });
+        setProduct({
+          id:             p._id,
+          name:           p.name,
+          price:          displayPrice,
+          oldPrice:       originalPrice,
+          vendor: {
+            name:     p.vendorId?.firstName
+              ? `${p.vendorId.firstName} ${p.vendorId.lastName ?? ''}`.trim()
+              : 'Vendor',
+            id:       typeof p.vendorId === 'string' ? p.vendorId : (p.vendorId?._id ?? ''),
+            rating:   0,
+            verified: true,
+          },
+          rating:         p.averageRating ?? 0,
+          reviews:        p.reviewCount   ?? 0,
+          sales:          p.salesCount    ?? 0,
+          description:    p.description   ?? '',
+          features:       [],
+          specifications: p.sku
+            ? [{ label: 'SKU', value: p.sku }, { label: 'Category', value: p.category ?? '' }]
+            : [],
+          images:     p.images?.length ? p.images : ['/images/placeholder.jpg'],
+          sizes,
+          colors:     [...colorMap.values()],
+          inStock:    (p.stock ?? 0) > 0,
+          stockCount: p.stock ?? 0,
+          category:   p.category ?? '',
+          sku:        p.sku ?? '',
+          tags:       p.tags ?? [],
+        });
+        setRelatedProducts(
+          (json.data.related ?? []).map((r: Record<string, unknown>) => ({
+            id:     r._id as string,
+            name:   r.name as string,
+            price:  r.price as number,
+            image:  (r.images as string[])?.[0] ?? '/images/placeholder.jpg',
+            rating: (r.averageRating as number) ?? 0,
+          }))
+        );
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setIsLoading(false));
+  }, [params.id]);
 
-  // Related products
-  const relatedProducts = [
-    { id: '2', name: 'Silk Scarf', price: 89.99, image: 'https://images.unsplash.com/photo-1601924287667-cf925d0fd8d5?w=300', rating: 4.7 },
-    { id: '3', name: 'Evening Clutch', price: 149.99, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=300', rating: 4.6 },
-    { id: '4', name: 'Designer Heels', price: 249.99, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300', rating: 4.8 },
-    { id: '5', name: 'Pearl Necklace', price: 199.99, image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=300', rating: 4.9 }
-  ];
+  useEffect(() => {
+    if (notFound) router.push('/shop');
+  }, [notFound, router]);
+
+  if (isLoading) return (
+    <div className="min-h-screen bg-white dark:bg-charcoal-900">
+      <Header />
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gold-600 border-t-transparent" />
+      </div>
+      <Footer />
+    </div>
+  );
+
+  if (!product) return null;
 
   const handleAddToCart = () => {
     if (!selectedSize) {

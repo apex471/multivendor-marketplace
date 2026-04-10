@@ -1,13 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 
-interface Product {
+// ── Types ────────────────────────────────────────────────────────────────────
+interface ApiProduct {
+  _id: string;
+  name: string;
+  price: number;
+  salePrice?: number;
+  images: string[];
+  vendorName: string;
+  rating: number;
+  salesCount: number;
+  category: string;
+}
+
+interface UiProduct {
   id: string;
   name: string;
   price: number;
@@ -19,60 +31,108 @@ interface Product {
   category: string;
 }
 
+function normalize(p: ApiProduct): UiProduct {
+  return {
+    id:       p._id,
+    name:     p.name,
+    price:    p.salePrice ?? p.price,
+    oldPrice: p.salePrice ? p.price : undefined,
+    image:    p.images[0] ?? '',
+    vendor:   p.vendorName,
+    rating:   p.rating,
+    sales:    p.salesCount,
+    category: p.category,
+  };
+}
+
+const PRICE_RANGES: Record<string, { minPrice?: number; maxPrice?: number }> = {
+  all:        {},
+  under200:   { maxPrice: 200 },
+  '200-500':  { minPrice: 200, maxPrice: 500 },
+  '500-1000': { minPrice: 500, maxPrice: 1000 },
+  over1000:   { minPrice: 1000 },
+};
+
+const SORT_MAP: Record<string, string> = {
+  popular:      'popular',
+  rating:       'rating',
+  'price-low':  'price-asc',
+  'price-high': 'price-high',
+};
+// ─────────────────────────────────────────────────────────────────────────────
+const CATEGORY_META: Record<string, { name: string; icon: string }> = {
+  all:         { name: 'All Products',    icon: '🛍️' },
+  women:       { name: "Women's Fashion", icon: '👗' },
+  men:         { name: "Men's Fashion",   icon: '👔' },
+  accessories: { name: 'Accessories',     icon: '👜' },
+  footwear:    { name: 'Footwear',        icon: '👟' },
+  electronics: { name: 'Electronics',     icon: '📱' },
+  beauty:      { name: 'Beauty',          icon: '💄' },
+  home:        { name: 'Home & Living',   icon: '🏠' },
+};
+const FALLBACK_CAT_IDS = ['all', 'women', 'men', 'accessories', 'footwear'] as const;
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ShopPage() {
   const router = useRouter();
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [priceRange, setPriceRange] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('popular');
+  const [priceRange,  setPriceRange]  = useState<string>('all');
+  const [sortBy,      setSortBy]      = useState<string>('popular');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Mock products data
-  const allProducts: Product[] = [
-    { id: '1', name: 'Designer Silk Dress', price: 299, oldPrice: 399, image: '/images/products/product1.jpg', vendor: 'Luxury Fashion Co.', rating: 4.8, sales: 234, category: 'women' },
-    { id: '2', name: 'Premium Leather Jacket', price: 599, image: '/images/products/product2.jpg', vendor: 'Elite Wear', rating: 4.9, sales: 567, category: 'men' },
-    { id: '3', name: 'Gold Chain Necklace', price: 899, image: '/images/products/product3.jpg', vendor: 'Jewel Masters', rating: 5.0, sales: 123, category: 'accessories' },
-    { id: '4', name: 'Italian Leather Boots', price: 449, oldPrice: 599, image: '/images/products/product4.jpg', vendor: 'Footwear Elite', rating: 4.7, sales: 345, category: 'footwear' },
-    { id: '5', name: 'Cashmere Sweater', price: 249, image: '/images/products/product5.jpg', vendor: 'Luxury Fashion Co.', rating: 4.6, sales: 189, category: 'women' },
-    { id: '6', name: 'Designer Sunglasses', price: 349, image: '/images/products/product6.jpg', vendor: 'Vision Luxury', rating: 4.8, sales: 278, category: 'accessories' },
-    { id: '7', name: 'Tailored Suit', price: 799, oldPrice: 999, image: '/images/products/product1.jpg', vendor: 'Elite Wear', rating: 4.9, sales: 456, category: 'men' },
-    { id: '8', name: 'Diamond Earrings', price: 1299, image: '/images/products/product2.jpg', vendor: 'Jewel Masters', rating: 5.0, sales: 89, category: 'accessories' },
-    { id: '9', name: 'Evening Gown', price: 549, image: '/images/products/product3.jpg', vendor: 'Luxury Fashion Co.', rating: 4.7, sales: 167, category: 'women' },
-    { id: '10', name: 'Leather Loafers', price: 329, image: '/images/products/product4.jpg', vendor: 'Footwear Elite', rating: 4.8, sales: 423, category: 'footwear' },
-    { id: '11', name: 'Designer Handbag', price: 699, oldPrice: 899, image: '/images/products/product5.jpg', vendor: 'Luxury Fashion Co.', rating: 4.9, sales: 234, category: 'accessories' },
-    { id: '12', name: 'Oxford Shirt', price: 149, image: '/images/products/product6.jpg', vendor: 'Elite Wear', rating: 4.6, sales: 567, category: 'men' },
-  ];
+  const [products,     setProducts]     = useState<UiProduct[]>([]);
+  const [total,        setTotal]        = useState(0);
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [isLoading,    setIsLoading]    = useState(true);
 
-  const categories = [
-    { id: 'all', name: 'All Products', icon: '🛍️' },
-    { id: 'women', name: "Women's Fashion", icon: '👗' },
-    { id: 'men', name: "Men's Fashion", icon: '👔' },
-    { id: 'accessories', name: 'Accessories', icon: '👜' },
-    { id: 'footwear', name: 'Footwear', icon: '👟' },
-  ];
+  // Debounce search — avoid API calls on every keystroke
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
-  // Filter products
-  const filteredProducts = allProducts.filter(product => {
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         product.vendor.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesPrice = true;
-    if (priceRange === 'under200') matchesPrice = product.price < 200;
-    else if (priceRange === '200-500') matchesPrice = product.price >= 200 && product.price <= 500;
-    else if (priceRange === '500-1000') matchesPrice = product.price >= 500 && product.price <= 1000;
-    else if (priceRange === 'over1000') matchesPrice = product.price > 1000;
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        sort:  SORT_MAP[sortBy] ?? 'popular',
+        limit: '24',
+      });
+      if (selectedCategory !== 'all') params.set('category', selectedCategory);
+      if (debouncedSearch)            params.set('search', debouncedSearch);
 
-    return matchesCategory && matchesSearch && matchesPrice;
-  });
+      const range = PRICE_RANGES[priceRange];
+      if (range?.minPrice) params.set('minPrice', String(range.minPrice));
+      if (range?.maxPrice) params.set('maxPrice', String(range.maxPrice));
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'price-low') return a.price - b.price;
-    if (sortBy === 'price-high') return b.price - a.price;
-    if (sortBy === 'rating') return b.rating - a.rating;
-    if (sortBy === 'popular') return b.sales - a.sales;
-    return 0;
-  });
+      const res  = await fetch(`/api/products?${params}`);
+      const json = await res.json();
+
+      if (json.success) {
+        setProducts((json.data.products as ApiProduct[]).map(normalize));
+        setTotal(json.data.pagination.total);
+        if (json.data.categories?.length) setDbCategories(json.data.categories);
+      }
+    } catch (err) {
+      console.error('[Shop] fetch error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory, priceRange, sortBy, debouncedSearch]);
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Build category list from DB; fall back to hardcoded set until first API response
+  const categoryIds = dbCategories.length ? ['all', ...dbCategories] : [...FALLBACK_CAT_IDS];
+  const categories = categoryIds.map(id => ({
+    id,
+    name: CATEGORY_META[id]?.name ?? id.charAt(0).toUpperCase() + id.slice(1),
+    icon: CATEGORY_META[id]?.icon ?? '🏷️',
+  }));
 
   const handleAddToCart = (productId: string) => {
     console.log('Adding to cart:', productId);
@@ -118,7 +178,7 @@ export default function ShopPage() {
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold whitespace-nowrap transition-all text-xs sm:text-sm touch-manipulation min-h-[36px] ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold whitespace-nowrap transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
                   selectedCategory === category.id
                     ? 'bg-gold-600 text-white'
                     : 'bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
@@ -186,7 +246,7 @@ export default function ShopPage() {
                   setSortBy('popular');
                   setSearchQuery('');
                 }}
-                className="w-full mt-6 px-4 py-2 sm:py-3 border-2 border-primary-700 text-primary-700 rounded-lg font-semibold hover:bg-primary-50 transition-colors text-sm sm:text-base touch-manipulation min-h-[40px]"
+                className="w-full mt-6 px-4 py-2 sm:py-3 border-2 border-primary-700 text-primary-700 rounded-lg font-semibold hover:bg-primary-50 transition-colors text-sm sm:text-base touch-manipulation min-h-10"
               >
                 Clear All Filters
               </button>
@@ -197,12 +257,23 @@ export default function ShopPage() {
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <p className="text-sm sm:text-base text-gray-600">
-                <span className="font-semibold text-gray-900">{sortedProducts.length}</span> products found
+                <span className="font-semibold text-gray-900">{total}</span> products found
               </p>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-              {sortedProducts.map(product => (
+              {isLoading && Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl overflow-hidden shadow-md animate-pulse">
+                  <div className="aspect-square bg-cool-gray-200 dark:bg-charcoal-700" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 bg-cool-gray-200 dark:bg-charcoal-700 rounded w-2/3" />
+                    <div className="h-4 bg-cool-gray-200 dark:bg-charcoal-700 rounded" />
+                    <div className="h-3 bg-cool-gray-200 dark:bg-charcoal-700 rounded w-1/2" />
+                    <div className="h-8 bg-cool-gray-200 dark:bg-charcoal-700 rounded mt-2" />
+                  </div>
+                </div>
+              ))}
+              {!isLoading && products.map(product => (
                 <div key={product.id} className="group relative">
                   <div className="bg-white rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
                     <button
@@ -252,7 +323,7 @@ export default function ShopPage() {
                           e.preventDefault();
                           handleAddToCart(product.id);
                         }}
-                        className="w-full py-1.5 sm:py-2 min-h-[36px] bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
+                        className="w-full py-1.5 sm:py-2 min-h-9 bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
                       >
                         Add to Cart
                       </button>
@@ -263,7 +334,7 @@ export default function ShopPage() {
             </div>
 
             {/* Empty State */}
-            {sortedProducts.length === 0 && (
+            {!isLoading && products.length === 0 && (
               <div className="text-center py-12 sm:py-16">
                 <div className="text-5xl sm:text-6xl mb-4">🔍</div>
                 <h3 className="text-xl sm:text-2xl font-display font-bold text-gray-900 mb-2">No products found</h3>
@@ -274,7 +345,7 @@ export default function ShopPage() {
                     setPriceRange('all');
                     setSearchQuery('');
                   }}
-                  className="px-6 py-3 bg-primary-700 text-white rounded-lg font-semibold hover:bg-primary-800 transition-colors text-sm sm:text-base touch-manipulation min-h-[44px]"
+                  className="px-6 py-3 bg-primary-700 text-white rounded-lg font-semibold hover:bg-primary-800 transition-colors text-sm sm:text-base touch-manipulation min-h-11"
                 >
                   Clear Filters
                 </button>

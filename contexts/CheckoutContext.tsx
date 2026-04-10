@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { COURIERS } from '../lib/couriers';
 
 interface CartItem {
   id: string;
@@ -39,7 +40,7 @@ interface CheckoutData {
   cartItems: CartItem[];
   shippingAddress: ShippingAddress | null;
   paymentMethod: PaymentMethod | null;
-  shippingMethod: 'standard' | 'express' | 'overnight';
+  selectedCourierId: string;
   couponCode: string;
   discount: number;
   subtotal: number;
@@ -55,7 +56,7 @@ interface CheckoutContextType {
   removeCartItem: (itemId: string) => void;
   updateShippingAddress: (address: ShippingAddress) => void;
   updatePaymentMethod: (payment: PaymentMethod) => void;
-  updateShippingMethod: (method: 'standard' | 'express' | 'overnight') => void;
+  updateCourierId: (id: string) => void;
   applyCoupon: (code: string) => void;
   calculateTotals: () => void;
   clearCheckout: () => void;
@@ -88,7 +89,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     ],
     shippingAddress: null,
     paymentMethod: null,
-    shippingMethod: 'standard',
+    selectedCourierId: 'quickbox',
     couponCode: '',
     discount: 0,
     subtotal: 0,
@@ -128,8 +129,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setCheckoutData(prev => ({ ...prev, paymentMethod: payment }));
   };
 
-  const updateShippingMethod = (method: 'standard' | 'express' | 'overnight') => {
-    setCheckoutData(prev => ({ ...prev, shippingMethod: method }));
+  const updateCourierId = (id: string) => {
+    setCheckoutData(prev => ({ ...prev, selectedCourierId: id }));
     setTimeout(calculateTotals, 0);
   };
 
@@ -150,10 +151,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setCheckoutData(prev => {
       const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
-      let shippingCost = 0;
-      if (prev.shippingMethod === 'standard') shippingCost = 10;
-      else if (prev.shippingMethod === 'express') shippingCost = 25;
-      else if (prev.shippingMethod === 'overnight') shippingCost = 50;
+      const courier = COURIERS.find(c => c.id === prev.selectedCourierId) ?? COURIERS[2];
+      const shippingCost = courier.price;
       
       const discountAmount = (subtotal * prev.discount) / 100;
       const tax = (subtotal - discountAmount) * 0.08; // 8% tax
@@ -174,7 +173,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       cartItems: [],
       shippingAddress: null,
       paymentMethod: null,
-      shippingMethod: 'standard',
+      selectedCourierId: 'quickbox',
       couponCode: '',
       discount: 0,
       subtotal: 0,
@@ -198,7 +197,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         removeCartItem,
         updateShippingAddress,
         updatePaymentMethod,
-        updateShippingMethod,
+        updateCourierId,
         applyCoupon,
         calculateTotals,
         clearCheckout

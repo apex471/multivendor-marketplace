@@ -1,23 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface Product {
   id: string;
   name: string;
   price: number;
   stock: number;
-  status: 'active' | 'draft' | 'out-of-stock';
+  status: 'active' | 'draft' | 'out-of-stock' | 'pending' | 'rejected';
   category: string;
   image: string;
   sales: number;
   sku: string;
   createdAt: string;
 }
+
+interface RawProduct {
+  _id: string;
+  name: string;
+  price: number;
+  stock?: number;
+  status: Product['status'];
+  category: string;
+  images?: string[];
+  salesCount?: number;
+  sku?: string;
+  createdAt: string;
+}
+
 
 export default function VendorProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,73 +42,74 @@ export default function VendorProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 10;
 
-  // Mock products data
-  const [products] = useState<Product[]>([
-    {
-      id: '1',
-      name: 'Designer Silk Dress',
-      price: 299.99,
-      stock: 23,
-      status: 'active',
-      category: 'Dresses',
-      image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=200',
-      sales: 156,
-      sku: 'DRS-001',
-      createdAt: '2025-11-15'
-    },
-    {
-      id: '2',
-      name: 'Evening Clutch',
-      price: 149.99,
-      stock: 0,
-      status: 'out-of-stock',
-      category: 'Accessories',
-      image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200',
-      sales: 89,
-      sku: 'ACC-002',
-      createdAt: '2025-11-10'
-    },
-    {
-      id: '3',
-      name: 'Leather Handbag',
-      price: 399.99,
-      stock: 45,
-      status: 'active',
-      category: 'Bags',
-      image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200',
-      sales: 234,
-      sku: 'BAG-003',
-      createdAt: '2025-10-20'
-    },
-    {
-      id: '4',
-      name: 'Summer Collection Preview',
-      price: 199.99,
-      stock: 100,
-      status: 'draft',
-      category: 'Dresses',
-      image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=200',
-      sales: 0,
-      sku: 'DRS-004',
-      createdAt: '2025-12-01'
+  const [products,   setProducts]   = useState<Product[]>([]);
+  const [stats,      setStats]      = useState({ total: 0, active: 0, outOfStock: 0, draft: 0 });
+  const [isLoading,  setIsLoading]  = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Debounce search input so we don't fire on every keystroke
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
+
+  const fetchProducts = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page:  String(currentPage),
+        limit: String(productsPerPage),
+      });
+      if (debouncedSearch)          params.set('search',   debouncedSearch);
+      if (statusFilter !== 'all')   params.set('status',   statusFilter);
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+
+      const res  = await fetch(`/api/vendor/products?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        const normalized: Product[] = (json.data.products as RawProduct[]).map(p => ({
+          id:        p._id,
+          name:      p.name,
+          price:     p.price,
+          stock:     p.stock ?? 0,
+          status:    p.status,
+          category:  p.category,
+          image:     p.images?.[0] ?? '/images/placeholder.jpg',
+          sales:     p.salesCount ?? 0,
+          sku:       p.sku ?? '—',
+          createdAt: p.createdAt,
+        }));
+        setProducts(normalized);
+        setTotalPages(json.data.pagination.totalPages);
+        setTotalCount(json.data.pagination.total);
+        setStats({
+          total:      json.data.pagination.total,
+          active:     normalized.filter(p => p.status === 'active').length,
+          outOfStock: normalized.filter(p => p.status === 'out-of-stock').length,
+          draft:      normalized.filter(p => p.status === 'draft').length,
+        });
+      }
+    } catch (err) {
+      console.error('[VendorProducts] fetch error:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  }, [currentPage, debouncedSearch, statusFilter, categoryFilter]);
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const categories = ['All', 'Dresses', 'Accessories', 'Bags', 'Shoes'];
 
-  // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const startIndex = (currentPage - 1) * productsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+  const paginatedProducts = products; // server paginates
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -111,18 +127,36 @@ export default function VendorProductsPage() {
     );
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedProducts.length === 0) return;
-    if (confirm(`Delete ${selectedProducts.length} selected products?`)) {
-      console.log('Deleting products:', selectedProducts);
-      setSelectedProducts([]);
-    }
+    if (!confirm(`Delete ${selectedProducts.length} selected product(s)?`)) return;
+    const token = getAuthToken();
+    await Promise.all(
+      selectedProducts.map(id =>
+        fetch(`/api/vendor/products/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      )
+    );
+    setSelectedProducts([]);
+    fetchProducts();
   };
 
-  const handleBulkStatusChange = (newStatus: string) => {
+  const handleBulkStatusChange = async (newStatus: string) => {
     if (selectedProducts.length === 0) return;
-    console.log(`Changing ${selectedProducts.length} products to ${newStatus}`);
+    const token = getAuthToken();
+    await Promise.all(
+      selectedProducts.map(id =>
+        fetch(`/api/vendor/products/${id}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        })
+      )
+    );
     setSelectedProducts([]);
+    fetchProducts();
   };
 
   const getStatusBadge = (status: string) => {
@@ -166,24 +200,24 @@ export default function VendorProductsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-1">Total Products</p>
-            <p className="text-2xl font-bold text-charcoal-900 dark:text-white">{products.length}</p>
+            <p className="text-2xl font-bold text-charcoal-900 dark:text-white">{stats.total}</p>
           </div>
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-1">Active</p>
             <p className="text-2xl font-bold text-green-600">
-              {products.filter(p => p.status === 'active').length}
+              {stats.active}
             </p>
           </div>
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-1">Out of Stock</p>
             <p className="text-2xl font-bold text-red-600">
-              {products.filter(p => p.status === 'out-of-stock').length}
+              {stats.outOfStock}
             </p>
           </div>
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4">
             <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-1">Draft</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {products.filter(p => p.status === 'draft').length}
+              {stats.draft}
             </p>
           </div>
         </div>
@@ -202,7 +236,7 @@ export default function VendorProductsPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'draft' | 'out-of-stock')}
               className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
             >
               <option value="all">All Status</option>
@@ -291,7 +325,16 @@ export default function VendorProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-cool-gray-200 dark:divide-charcoal-700">
-                {paginatedProducts.map((product) => (
+                {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    {Array.from({ length: 8 }).map((__, j) => (
+                      <td key={j} className="px-4 py-4">
+                        <div className="h-4 bg-cool-gray-200 dark:bg-charcoal-700 rounded" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {!isLoading && paginatedProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-cool-gray-50 dark:hover:bg-charcoal-900 transition-colors">
                     <td className="px-4 py-4">
                       <input
@@ -303,7 +346,7 @@ export default function VendorProductsPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
                           <Image src={product.image} alt={product.name} fill className="object-cover" />
                         </div>
                         <div>
@@ -340,7 +383,15 @@ export default function VendorProductsPage() {
                           Edit
                         </Link>
                         <button
-                          onClick={() => confirm('Delete this product?') && console.log('Delete', product.id)}
+                          onClick={async () => {
+                            if (!confirm('Delete this product?')) return;
+                            const token = getAuthToken();
+                            await fetch(`/api/vendor/products/${product.id}`, {
+                              method: 'DELETE',
+                              headers: { Authorization: `Bearer ${token}` },
+                            });
+                            fetchProducts();
+                          }}
                           className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:underline"
                         >
                           Delete
@@ -357,7 +408,7 @@ export default function VendorProductsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-cool-gray-300 dark:border-charcoal-700">
               <div className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                Showing {startIndex + 1} to {Math.min(startIndex + productsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+                Showing {startIndex + 1} to {Math.min(startIndex + productsPerPage, totalCount)} of {totalCount} products
               </div>
               <div className="flex gap-2">
                 <button

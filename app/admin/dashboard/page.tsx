@@ -304,6 +304,56 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Delivery Overview */}
+      <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold text-white">🚚 Delivery Overview</h2>
+            <p className="text-xs text-cool-gray-400 mt-0.5">Courier usage breakdown across all orders</p>
+          </div>
+          <Link href="/admin/orders" className="text-xs text-gold-500 hover:text-gold-400 font-medium">All Orders →</Link>
+        </div>
+        <div className="space-y-3">
+          {[
+            { id: 'ecopost',     icon: '🌿', name: 'EcoPost',         price: 0,     orders: 18, color: 'bg-green-500' },
+            { id: 'swiftship',   icon: '📦', name: 'SwiftShip',       price: 4.99,  orders: 34, color: 'bg-blue-500' },
+            { id: 'quickbox',    icon: '🚀', name: 'QuickBox Express',price: 12.99, orders: 27, color: 'bg-gold-500' },
+            { id: 'flashrunner', icon: '⚡', name: 'FlashRunner',     price: 24.99, orders: 12, color: 'bg-orange-500' },
+            { id: 'zerowait',    icon: '🔥', name: 'ZeroWait',        price: 49.99, orders: 6,  color: 'bg-red-500' },
+          ].map(courier => {
+            const maxOrders = 34;
+            const pct = Math.round((courier.orders / maxOrders) * 100);
+            return (
+              <div key={courier.id} className="flex items-center gap-3">
+                <span className="text-xl w-7 text-center select-none shrink-0">{courier.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-white truncate">{courier.name}</span>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className="text-xs text-cool-gray-400">{courier.orders} orders</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        courier.price === 0 ? 'bg-green-900/50 text-green-400' : 'bg-charcoal-700 text-gold-400'
+                      }`}>
+                        {courier.price === 0 ? 'FREE' : `$${courier.price}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-charcoal-700 rounded-full overflow-hidden">
+                    <div className={`h-full ${courier.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <Link
+                  href={`/admin/orders?courier=${courier.id}`}
+                  className="shrink-0 text-[10px] text-cool-gray-500 hover:text-gold-400 transition-colors"
+                >
+                  →
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Quick Action Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { COURIERS } from '@/lib/couriers';
 
 interface Provider {
   _id: string;
@@ -189,6 +191,77 @@ export default function AdminLogisticsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Courier Analytics */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">📦 Courier Tier Analytics</h2>
+            <p className="text-cool-gray-400 text-xs mt-0.5">Order volume and revenue breakdown by courier tier</p>
+          </div>
+          <Link href="/admin/orders" className="text-xs text-gold-500 hover:text-gold-400 font-medium">View Orders →</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {COURIERS.map((courier, index) => {
+            // Mock usage data — replace with real API data in production
+            const mockOrders = [18, 34, 27, 12, 6][index] ?? 0;
+            const mockRevenue = courier.price * mockOrders;
+            const maxOrders = 34;
+            const barPct = Math.round((mockOrders / maxOrders) * 100);
+            return (
+              <div key={courier.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl overflow-hidden">
+                {/* Header */}
+                <div className="bg-charcoal-900 px-4 py-3 flex items-center gap-3">
+                  <span className="text-2xl select-none">{courier.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-sm leading-tight">{courier.name}</p>
+                    <p className="text-charcoal-400 text-xs">{courier.carrier}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`font-bold text-sm ${courier.price === 0 ? 'text-green-400' : 'text-gold-400'}`}>
+                      {courier.price === 0 ? 'FREE' : `$${courier.price.toFixed(2)}`}
+                    </p>
+                    <p className="text-charcoal-500 text-[10px]">per order</p>
+                  </div>
+                </div>
+                {/* Stats */}
+                <div className="px-4 py-3 space-y-3">
+                  <div className="flex justify-between text-xs text-cool-gray-400">
+                    <span>Orders this month</span>
+                    <span className="text-white font-semibold">{mockOrders}</span>
+                  </div>
+                  {/* Bar */}
+                  <div className="h-2 bg-charcoal-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gold-600 rounded-full transition-all"
+                      style={{ width: `${barPct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-cool-gray-400">
+                    <span>Revenue generated</span>
+                    <span className={`font-semibold ${courier.price === 0 ? 'text-green-400' : 'text-gold-400'}`}>
+                      {courier.price === 0 ? '—' : `$${mockRevenue.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-cool-gray-400">
+                    <span>Avg. delivery</span>
+                    <span className="text-white font-semibold">{courier.deliveryDays}</span>
+                  </div>
+                </div>
+                {/* Footer */}
+                <div className="px-4 pb-3">
+                  <Link
+                    href={`/admin/orders?courier=${courier.id}`}
+                    className="block w-full text-center py-1.5 bg-charcoal-700 hover:bg-charcoal-600 text-cool-gray-300 hover:text-white text-xs font-medium rounded-lg transition-colors"
+                  >
+                    View {courier.name} orders →
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Action Modal */}

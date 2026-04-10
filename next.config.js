@@ -10,6 +10,7 @@ const nextConfig = {
     'bcryptjs',        // native crypto fallback
     'nodemailer',      // dynamic require() for transports
     'google-auth-library', // uses fs, crypto, net built-ins directly
+    'cloudinary',      // uses http/https + Buffer streams
   ],
 
   images: {

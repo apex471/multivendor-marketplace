@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface ProductVariant {
   id: string;
@@ -50,12 +51,29 @@ export default function AddProductPage() {
     'Jewelry'
   ];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      // Mock image upload - in production, upload to cloud storage
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-      setImages(prev => [...prev, ...newImages]);
+    if (!files || files.length === 0) return;
+
+    const token = getAuthToken();
+    const uploads = Array.from(files).map(async (file) => {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Upload failed');
+      return json.data.url as string;
+    });
+
+    try {
+      const urls = await Promise.all(uploads);
+      setImages(prev => [...prev, ...urls]);
+    } catch (err) {
+      alert(`Image upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -81,30 +99,54 @@ export default function AddProductPage() {
   };
 
   const handleSubmit = async (isDraft: boolean) => {
-    // Validation
     if (!formData.name || !formData.category || !formData.regularPrice) {
       alert('Please fill in required fields: Name, Category, and Price');
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      alert('You must be logged in to add products.');
+      return;
+    }
+
     setIsSaving(true);
-    
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const res = await fetch('/api/vendor/products', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name:          formData.name,
+          description:   formData.description,
+          category:      formData.category,
+          tags:          formData.tags,
+          price:         parseFloat(formData.regularPrice),
+          salePrice:     formData.salePrice ? parseFloat(formData.salePrice) : undefined,
+          costPrice:     formData.costPrice ? parseFloat(formData.costPrice) : undefined,
+          sku:           formData.sku,
+          stock:         parseInt(formData.stock || '0', 10),
+          lowStockAlert: parseInt(formData.lowStockAlert || '5', 10),
+          images,
+          variants,
+          status:        isDraft ? 'draft' : 'pending',
+        }),
+      });
 
-    const productData = {
-      ...formData,
-      images,
-      primaryImageIndex,
-      variants,
-      status: isDraft ? 'draft' : 'active',
-      createdAt: new Date().toISOString(),
-    };
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error ?? 'Failed to save product');
+        return;
+      }
 
-    console.log('Saving product:', productData);
-    
-    setIsSaving(false);
-    router.push('/vendor/products');
+      router.push('/vendor/products');
+    } catch (err) {
+      alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const profitMargin = formData.regularPrice && formData.costPrice
@@ -140,7 +182,7 @@ export default function AddProductPage() {
                 ].map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as 'basic' | 'images' | 'variants' | 'pricing' | 'inventory')}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
                       activeTab === tab.id
                         ? 'bg-gold-100 dark:bg-gold-900/30 text-gold-800 dark:text-gold-400'
