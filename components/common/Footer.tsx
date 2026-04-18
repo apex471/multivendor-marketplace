@@ -21,11 +21,11 @@ export default function Footer() {
                 />
               </div>
               <Image
-                src="/images/brand/clw-logotext.jpg"
+                src="/images/brand/clw-logo.jpg"
                 alt="Certified Luxury World"
                 width={110}
                 height={44}
-                className="h-6 w-auto object-contain brightness-0 invert sepia"
+                className="h-6 w-auto object-contain"
               />
             </div>
             <p className="text-xs sm:text-sm text-gray-300 pr-4 md:pr-0">

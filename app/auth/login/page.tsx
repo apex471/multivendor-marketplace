@@ -80,11 +80,11 @@ function LoginForm() {
               />
             </div>
             <Image
-              src="/images/brand/clw-logotext.jpg"
+              src="/images/brand/clw-logo.jpg"
               alt="Certified Luxury World"
               width={130}
               height={36}
-              className="h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+              className="hidden dark:inline h-6 w-auto object-contain"
             />
           </Link>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-2">

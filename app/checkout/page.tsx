@@ -122,11 +122,11 @@ export default function CheckoutPage() {
               />
             </div>
             <Image
-              src="/images/brand/clw-logotext.jpg"
+              src="/images/brand/clw-logo.jpg"
               alt="Certified Luxury World"
               width={90}
               height={28}
-              className="h-5 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+              className="hidden dark:inline h-5 w-auto object-contain"
             />
             <span className="text-sm font-medium text-cool-gray-400 dark:text-cool-gray-500">/ Secure Checkout</span>
           </Link>

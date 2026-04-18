@@ -93,11 +93,11 @@ export default function Header() {
               />
             </div>
             <NextImage
-              src="/images/brand/clw-logotext.jpg"
+              src="/images/brand/clw-logo.jpg"
               alt="Certified Luxury World"
               width={90}
               height={36}
-              className="h-5 sm:h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+              className="hidden dark:inline h-5 sm:h-6 w-auto object-contain"
             />
           </Link>
 

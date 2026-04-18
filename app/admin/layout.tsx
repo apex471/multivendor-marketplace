@@ -162,11 +162,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="flex flex-col gap-0.5 min-w-0">
             <Image
-              src="/images/brand/clw-logotext.jpg"
+              src="/images/brand/clw-logo.jpg"
               alt="Certified Luxury World"
               width={100}
               height={28}
-              className="h-5 w-auto object-contain brightness-0 invert sepia"
+              className="h-5 w-auto object-contain"
             />
             <p className="text-cool-gray-500 text-xs">Admin Portal</p>
           </div>

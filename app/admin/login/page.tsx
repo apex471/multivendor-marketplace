@@ -87,11 +87,11 @@ export default function AdminLoginPage() {
           </div>
           <div className="flex justify-center mb-2">
             <Image
-              src="/images/brand/clw-logotext.jpg"
+              src="/images/brand/clw-logo.jpg"
               alt="Certified Luxury World"
               width={160}
               height={48}
-              className="h-8 w-auto object-contain brightness-0 invert sepia"
+              className="h-8 w-auto object-contain"
             />
           </div>
           <p className="text-cool-gray-400 text-sm">Admin Portal — Secure Access</p>
