@@ -3,15 +3,29 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
 interface Post {
   id: string;
-  image: string;
+  image: string | null;
   likes: number;
   comments: number;
+}
+
+interface UserData {
+  username: string;
+  fullName: string;
+  avatar: string;
+  bio: string;
+  location: string;
+  website: string;
+  joinedDate: string;
+  stats: { posts: number; followers: number; following: number };
+  isVerified: boolean;
+  isFollowing: boolean;
+  userId: string;
 }
 
 export default function ProfilePage() {
@@ -19,41 +33,67 @@ export default function ProfilePage() {
   const username = params.username as string;
   const [activeTab, setActiveTab] = useState('posts');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
 
-  // Mock user data
-  const user = {
-    username: username,
-    fullName: 'John Doe',
-    avatar: 'https://i.pravatar.cc/300?u=' + username,
-    bio: 'Fashion enthusiast | Style curator | NYC 🗽\nLiving life one outfit at a time ✨',
-    location: 'New York, NY',
-    website: 'https://johndoe.com',
-    joinedDate: 'January 2024',
-    stats: {
-      posts: 127,
-      followers: 2345,
-      following: 892,
-    },
-    isVerified: true,
-  };
+  useEffect(() => {
+    fetch(`/api/users/${username}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.user) return;
+        const u = json.data.user;
+        setUser({
+          userId:     String(u.id),
+          username:   u.username,
+          fullName:   u.fullName,
+          avatar:     u.avatar ?? `https://i.pravatar.cc/300?u=${username}`,
+          bio:        u.bio ?? '',
+          location:   '',
+          website:    '',
+          joinedDate: new Date(u.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          stats:      { posts: u.stats.posts, followers: u.stats.followers, following: u.stats.following },
+          isVerified: u.verified,
+          isFollowing: u.isFollowing,
+        });
+        setIsFollowing(u.isFollowing);
+        setPosts((json.data.posts ?? []).map((p: { _id: string; images?: string[]; likes: number; comments: number }) => ({
+          id:       String(p._id),
+          image:    p.images?.[0] ?? null,
+          likes:    p.likes,
+          comments: p.comments,
+        })));
+      });
+  }, [username]);
 
-  // Mock posts
-  const posts: Post[] = Array.from({ length: 12 }, (_, i) => ({
-    id: String(i + 1),
-    image: `https://images.unsplash.com/photo-${1551028719 + i}00167b16eac5?w=400`,
-    likes: Math.floor(Math.random() * 1000) + 100,
-    comments: Math.floor(Math.random() * 100) + 10,
-  }));
-
-  const handleFollow = () => {
+  const handleFollow = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token || !user) { alert('Please log in to follow users'); return; }
+    const method = isFollowing ? 'DELETE' : 'POST';
+    const url = isFollowing ? `/api/follow?followingId=${user.userId}` : '/api/follow';
+    const opts: RequestInit = {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    };
+    if (!isFollowing) opts.body = JSON.stringify({ followingId: user.userId });
+    await fetch(url, opts);
     setIsFollowing(!isFollowing);
-    console.log(isFollowing ? 'Unfollowed' : 'Followed', username);
+    setUser(prev => prev ? {
+      ...prev,
+      stats: { ...prev.stats, followers: prev.stats.followers + (isFollowing ? -1 : 1) },
+    } : prev);
   };
 
   const handleMessage = () => {
-    console.log('Message user:', username);
     alert('Messaging feature coming soon!');
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <p className="text-charcoal-600 dark:text-cool-gray-400">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -64,7 +104,7 @@ export default function ProfilePage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Avatar */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className="relative w-32 h-32 sm:w-40 sm:h-40 mx-auto sm:mx-0">
                 <Image
                   src={user.avatar}
@@ -93,7 +133,6 @@ export default function ProfilePage() {
                     )}
                   </div>
                   <p className="text-charcoal-600 mb-1">@{user.username}</p>
-                  <p className="text-sm text-charcoal-600">📍 {user.location}</p>
                 </div>
 
                 {/* Action Buttons */}
@@ -204,12 +243,14 @@ export default function ProfilePage() {
                 href={`/post/${post.id}`}
                 className="group relative aspect-square overflow-hidden rounded-lg bg-gray-200"
               >
-                <Image
-                  src={post.image}
-                  alt={`Post ${post.id}`}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform"
-                />
+                {post.image && (
+                  <Image
+                    src={post.image}
+                    alt={`Post ${post.id}`}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                  />
+                )}
                 {/* Overlay on hover */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white">
                   <div className="flex items-center gap-2">

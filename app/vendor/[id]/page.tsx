@@ -1,47 +1,111 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
-import { useRouter } from 'next/navigation';
+import { useCart } from '../../../contexts/CartContext';
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
+  const { addItem: addToCart } = useCart();
   const [activeTab, setActiveTab] = useState<'products' | 'posts' | 'about'>('products');
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // Mock vendor data
-  const vendor = {
-    id: params.id,
-    name: 'Luxury Fashion Co.',
-    logo: '/images/vendors/vendor1.jpg',
-    banner: '/images/vendors/banner1.jpg',
-    description: 'Premium designer clothing and accessories for the modern individual. Established in 2010, we bring you the finest luxury fashion from around the world.',
-    category: 'Fashion',
-    rating: 4.9,
-    reviews: 1234,
-    products: 250,
-    followers: 15600,
-    verified: true,
-    location: 'New York, NY',
-    distance: 2.5,
-    responseTime: '2 hours',
-    joinedDate: 'January 2020'
+  interface VendorInfo {
+    id: string; name: string; logo: string; banner: string; description: string;
+    category: string; rating: number; reviews: number; products: number;
+    followers: number; verified: boolean; location: string; distance: number;
+    responseTime: string; joinedDate: string;
+  }
+  interface VendorProduct {
+    id: string; name: string; price: number; oldPrice?: number;
+    image: string; rating: number; sales: number; inStock: boolean;
+  }
+
+  const [vendor, setVendor] = useState<VendorInfo | null>(null);
+  const [products, setProducts] = useState<VendorProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/vendors/${params.id}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.vendor) return;
+        const v = json.data.vendor;
+        setVendor({
+          id:           String(v.id),
+          name:         v.name,
+          logo:         v.avatar || '/images/placeholder.jpg',
+          banner:       '/images/placeholder.jpg',
+          description:  v.bio || `Welcome to ${v.name}'s store.`,
+          category:     'Vendor',
+          rating:       0,
+          reviews:      0,
+          products:     v.productCount,
+          followers:    0,
+          verified:     true,
+          location:     '',
+          distance:     0,
+          responseTime: 'N/A',
+          joinedDate:   new Date(v.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setProducts((json.data.products ?? []).map((p: any) => ({
+          id:      String(p.id),
+          name:    p.name,
+          price:   p.price,
+          oldPrice: p.oldPrice,
+          image:   p.image,
+          rating:  p.rating ?? 0,
+          sales:   p.salesCount ?? 0,
+          inStock: p.inStock ?? true,
+        })));
+      })
+      .finally(() => setIsLoading(false));
+  }, [params.id]);
+
+  const handleAddToCart = (product: VendorProduct) => {
+    addToCart({
+      productId: product.id,
+      name:      product.name,
+      price:     product.price,
+      image:     product.image,
+      vendor:    vendor?.name ?? 'Vendor',
+      size:      '',
+      color:     '',
+      quantity:  1,
+    });
   };
 
-  const products = [
-    { id: '1', name: 'Designer Silk Dress', price: 299, oldPrice: 399, image: '/images/products/product1.jpg', rating: 4.8, sales: 234 },
-    { id: '2', name: 'Cashmere Sweater', price: 249, image: '/images/products/product2.jpg', rating: 4.6, sales: 189 },
-    { id: '3', name: 'Designer Handbag', price: 699, oldPrice: 899, image: '/images/products/product3.jpg', rating: 4.9, sales: 234 },
-    { id: '4', name: 'Evening Gown', price: 549, image: '/images/products/product4.jpg', rating: 4.7, sales: 167 },
-  ];
-
-  const handleAddToCart = (productId: string) => {
-    console.log('Adding to cart:', productId);
-    alert('Product added to cart!');
+  const handleFollow = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) { alert('Please log in to follow vendors'); return; }
+    const method = isFollowing ? 'DELETE' : 'POST';
+    const url = isFollowing ? `/api/follow?followingId=${params.id}` : '/api/follow';
+    const opts: RequestInit = {
+      method,
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    };
+    if (!isFollowing) opts.body = JSON.stringify({ followingId: params.id });
+    await fetch(url, opts);
+    setIsFollowing(!isFollowing);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="text-center"><div className="text-6xl mb-4">⏳</div><p>Loading...</p></div>
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="text-center"><div className="text-6xl mb-4">❌</div><p>Vendor not found</p></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -93,7 +157,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                     <p className="text-sm sm:text-base text-gray-500">Member since {vendor.joinedDate}</p>
                   </div>
                   <button
-                    onClick={() => setIsFollowing(!isFollowing)}
+                    onClick={handleFollow}
                     className={`px-6 py-3 min-h-[44px] rounded-lg font-semibold transition-all text-sm sm:text-base touch-manipulation ${
                       isFollowing
                         ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -170,9 +234,9 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {products.map(product => (
                 <div key={product.id} className="group bg-white rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
-                  <button
-                    onClick={() => router.push(`/product/${product.id}`)}
-                    className="relative aspect-square overflow-hidden w-full touch-manipulation"
+                  <a
+                    href={`/product/${product.id}`}
+                    className="relative aspect-square overflow-hidden w-full touch-manipulation block"
                   >
                     <Image
                       src={product.image}
@@ -185,7 +249,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                         SALE
                       </span>
                     )}
-                  </button>
+                  </a>
                   <div className="p-2 sm:p-3">
                     <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-1 sm:mb-2 line-clamp-2 leading-tight">
                       {product.name}
@@ -204,7 +268,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                     <button
                       onClick={(e) => {
                         e.preventDefault();
-                        handleAddToCart(product.id);
+                        handleAddToCart(product);
                       }}
                       className="w-full py-1.5 sm:py-2 min-h-[36px] bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
                     >
@@ -220,7 +284,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
             <div className="text-center py-12 bg-white rounded-xl">
               <div className="text-5xl mb-4">📝</div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">No posts yet</h3>
-              <p className="text-gray-600">This vendor hasn't shared any posts</p>
+              <p className="text-gray-600">This vendor has not shared any posts yet</p>
             </div>
           )}
 

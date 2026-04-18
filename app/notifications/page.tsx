@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
@@ -8,13 +8,13 @@ import Footer from '@/components/common/Footer';
 
 interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention' | 'order' | 'product';
-  user?: {
-    username: string;
+  type: 'like' | 'comment' | 'follow' | 'mention' | 'order' | 'product' | 'system';
+  actor?: {
+    name: string;
     avatar: string;
   };
   text: string;
-  timestamp: string;
+  createdAt: string;
   isRead: boolean;
   link?: string;
   image?: string;
@@ -22,118 +22,49 @@ interface Notification {
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'like',
-      user: {
-        username: 'fashion_lover',
-        avatar: 'https://i.pravatar.cc/150?u=lover',
-      },
-      text: 'liked your post',
-      timestamp: '5 minutes ago',
-      isRead: false,
-      link: '/post/123',
-      image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200',
-    },
-    {
-      id: '2',
-      type: 'comment',
-      user: {
-        username: 'trendsetter_jane',
-        avatar: 'https://i.pravatar.cc/150?u=jane',
-      },
-      text: 'commented on your post: "Love this outfit! 😍"',
-      timestamp: '1 hour ago',
-      isRead: false,
-      link: '/post/123',
-      image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200',
-    },
-    {
-      id: '3',
-      type: 'follow',
-      user: {
-        username: 'style_maven',
-        avatar: 'https://i.pravatar.cc/150?u=maven',
-      },
-      text: 'started following you',
-      timestamp: '2 hours ago',
-      isRead: false,
-      link: '/profile/style_maven',
-    },
-    {
-      id: '4',
-      type: 'order',
-      text: 'Your order #ORD-12345 has been shipped! Track your package now.',
-      timestamp: '3 hours ago',
-      isRead: true,
-      link: '/order/ORD-12345',
-    },
-    {
-      id: '5',
-      type: 'mention',
-      user: {
-        username: 'fashion_guru',
-        avatar: 'https://i.pravatar.cc/150?u=guru',
-      },
-      text: 'mentioned you in a comment',
-      timestamp: '5 hours ago',
-      isRead: true,
-      link: '/post/456',
-      image: 'https://images.unsplash.com/photo-1551028720-00167b16eac5?w=200',
-    },
-    {
-      id: '6',
-      type: 'product',
-      text: '🔥 Flash Sale Alert! Get 50% off on selected items. Sale ends in 6 hours!',
-      timestamp: '6 hours ago',
-      isRead: true,
-      link: '/shop?sale=true',
-    },
-    {
-      id: '7',
-      type: 'like',
-      user: {
-        username: 'chic_boutique',
-        avatar: 'https://i.pravatar.cc/150?u=chic',
-      },
-      text: 'and 47 others liked your post',
-      timestamp: '1 day ago',
-      isRead: true,
-      link: '/post/789',
-      image: 'https://images.unsplash.com/photo-1551028721-00167b16eac5?w=200',
-    },
-    {
-      id: '8',
-      type: 'order',
-      text: 'Your order #ORD-12344 has been delivered! Rate your experience.',
-      timestamp: '2 days ago',
-      isRead: true,
-      link: '/order/ORD-12344',
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [_isLoading, setIsLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { setIsLoading(false); return; }
+    const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
+    const json = await res.json();
+    if (json.success) {
+      setNotifications(json.data.notifications ?? []);
+      setUnreadCount(json.data.unreadCount ?? 0);
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredNotifications = filter === 'unread' 
     ? notifications.filter(n => !n.isRead)
     : notifications;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
-    console.log('Marked notification as read:', id);
+  const markAsRead = async (id: string) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) await fetch(`/api/notifications/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-    console.log('Marked all notifications as read');
+  const markAllAsRead = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) await fetch('/api/notifications', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-    console.log('Deleted notification:', id);
+  const deleteNotification = async (id: string) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) await fetch(`/api/notifications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const getNotificationIcon = (type: Notification['type']) => {
@@ -233,12 +164,12 @@ export default function NotificationsPage() {
                   <div className="flex gap-4">
                     {/* Icon or Avatar */}
                     <div className="flex-shrink-0">
-                      {notification.user ? (
-                        <Link href={`/profile/${notification.user.username}`}>
+                      {notification.actor ? (
+                        <Link href={`/profile/${notification.actor?.name ?? ""}`}>
                           <div className="relative">
                             <Image
-                              src={notification.user.avatar}
-                              alt={notification.user.username}
+                              src={notification.actor?.avatar ?? ""}
+                              alt={notification.actor?.name ?? ""}
                               width={48}
                               height={48}
                               className="rounded-full"
@@ -266,21 +197,21 @@ export default function NotificationsPage() {
                               className="hover:text-gold-600"
                             >
                               <p className="text-charcoal-900 dark:text-cool-gray-100">
-                                {notification.user && (
-                                  <span className="font-semibold">{notification.user.username} </span>
+                                {notification.actor && (
+                                  <span className="font-semibold">{notification.actor?.name ?? ""} </span>
                                 )}
                                 {notification.text}
                               </p>
                             </Link>
                           ) : (
                             <p className="text-charcoal-900 dark:text-cool-gray-100">
-                              {notification.user && (
-                                <span className="font-semibold">{notification.user.username} </span>
+                              {notification.actor && (
+                                <span className="font-semibold">{notification.actor?.name ?? ""} </span>
                               )}
                               {notification.text}
                             </p>
                           )}
-                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mt-1">{notification.timestamp}</p>
+                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mt-1">{notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : ""}</p>
                         </div>
 
                         {/* Post Thumbnail */}

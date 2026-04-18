@@ -63,10 +63,28 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const [showShareModal, setShowShareModal] = useState(false);
 
   const [product,        setProduct]        = useState<ProductData | null>(null);
-  const reviews: Review[]                    = []; // reviews endpoint not yet wired
+  const [reviews,         setReviews]         = useState<Review[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
   const [isLoading,       setIsLoading]       = useState(true);
   const [notFound,        setNotFound]        = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/products/${params.id}/reviews`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success) return;
+        setReviews((json.data.reviews ?? []).map((r: {
+          _id: string; userName: string; userAvatar?: string;
+          rating: number; createdAt: string; comment: string;
+          verified?: boolean; helpful?: number;
+        }) => ({
+          id: String(r._id), author: r.userName,
+          avatar: r.userAvatar ?? `https://i.pravatar.cc/40?u=${r._id}`,
+          rating: r.rating, date: new Date(r.createdAt).toLocaleDateString(),
+          comment: r.comment, verified: r.verified ?? false, helpful: r.helpful ?? 0,
+        })));
+      });
+  }, [params.id]);
 
   useEffect(() => {
     fetch(`/api/products/${params.id}`)

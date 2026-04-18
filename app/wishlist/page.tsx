@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { useCart } from '@/contexts/CartContext';
 
 interface WishlistItem {
-  id: string;
+  wishlistId: string;
+  productId: string;
   name: string;
   price: number;
   oldPrice?: number;
@@ -16,76 +17,65 @@ interface WishlistItem {
   vendor: string;
   rating: number;
   inStock: boolean;
-  addedDate: string;
+  addedAt: string;
 }
 
 export default function WishlistPage() {
-  const router = useRouter();
-  
-  // Mock wishlist data - replace with actual context/API
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([
-    {
-      id: '1',
-      name: 'Designer Leather Jacket',
-      price: 299.99,
-      oldPrice: 399.99,
-      image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400',
-      vendor: 'Luxury Fashion Co.',
-      rating: 4.8,
-      inStock: true,
-      addedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Premium Sneakers',
-      price: 149.99,
-      image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400',
-      vendor: 'Urban Footwear',
-      rating: 4.9,
-      inStock: true,
-      addedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '3',
-      name: 'Luxury Watch',
-      price: 899.99,
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400',
-      vendor: 'Timepiece Masters',
-      rating: 4.7,
-      inStock: false,
-      addedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '4',
-      name: 'Designer Sunglasses',
-      price: 249.99,
-      oldPrice: 299.99,
-      image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400',
-      vendor: 'Luxury Eyewear',
-      rating: 4.6,
-      inStock: true,
-      addedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ]);
+  const { addItem: addToCart } = useCart();
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRemoveItem = (itemId: string) => {
-    setWishlistItems(wishlistItems.filter(item => item.id !== itemId));
-    console.log('Removed from wishlist:', itemId);
+  const fetchWishlist = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { setIsLoading(false); return; }
+    try {
+      const res = await fetch('/api/wishlist', { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (json.success) setWishlistItems(json.data.wishlist ?? []);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
+
+  const handleRemoveItem = async (productId: string) => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    await fetch(`/api/wishlist?productId=${productId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setWishlistItems(prev => prev.filter(item => item.productId !== productId));
   };
 
-  const handleAddToCart = (itemId: string) => {
-    console.log('Added to cart:', itemId);
-    alert('Product added to cart!');
+  const handleAddToCart = (item: WishlistItem) => {
+    addToCart({
+      productId: item.productId,
+      name:      item.name,
+      price:     item.price,
+      image:     item.image,
+      vendor:    item.vendor,
+      size:      '',
+      color:     '',
+      quantity:  1,
+    });
   };
 
   const handleMoveAllToCart = () => {
-    const inStockItems = wishlistItems.filter(item => item.inStock);
-    console.log('Move all to cart:', inStockItems);
-    alert(`Added ${inStockItems.length} items to cart!`);
+    wishlistItems.filter(i => i.inStock).forEach(item => handleAddToCart(item));
   };
 
   const totalValue = wishlistItems.reduce((sum, item) => sum + item.price, 0);
   const inStockCount = wishlistItems.filter(item => item.inStock).length;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <p className="text-charcoal-600 dark:text-cool-gray-400">Loading wishlist...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -107,6 +97,7 @@ export default function WishlistPage() {
             <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Your wishlist is empty</h3>
             <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
               Start adding items you love to keep track of them!
+
             </p>
             <Link
               href="/shop"
@@ -139,7 +130,7 @@ export default function WishlistPage() {
                   <div className="p-4 sm:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}
-                      <Link href={`/product/${item.id}`} className="flex-shrink-0">
+                      <Link href={`/product/${item.productId}`} className="flex-shrink-0">
                         <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden">
                           <Image
                             src={item.image}
@@ -157,13 +148,13 @@ export default function WishlistPage() {
 
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
-                        <Link href={`/product/${item.id}`}>
+                        <Link href={`/product/${item.productId}`}>
                           <h3 className="font-semibold text-charcoal-900 dark:text-white hover:text-gold-600 transition-colors mb-1">
                             {item.name}
                           </h3>
                         </Link>
                         <Link
-                          href={`/vendor/${item.id}`}
+                          href={`/product/${item.productId}`}
                           className="text-sm text-charcoal-600 dark:text-cool-gray-400 hover:text-gold-600 transition-colors mb-2 block"
                         >
                           {item.vendor}
@@ -198,14 +189,14 @@ export default function WishlistPage() {
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={() => handleAddToCart(item.id)}
+                            onClick={() => handleAddToCart(item)}
                             disabled={!item.inStock}
                             className="px-4 py-2 bg-gold-600 text-white rounded-lg text-sm font-semibold hover:bg-gold-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
                             Add to Cart
                           </button>
                           <button
-                            onClick={() => handleRemoveItem(item.id)}
+                            onClick={() => handleRemoveItem(item.productId)}
                             className="px-4 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                           >
                             Remove
@@ -217,7 +208,7 @@ export default function WishlistPage() {
 
                   {/* Added Date */}
                   <div className="px-4 sm:px-6 pb-4 text-xs text-charcoal-600 dark:text-cool-gray-400">
-                    Added {new Date(item.addedDate).toLocaleDateString('en-US', {
+                    Added {new Date(item.addedAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
@@ -274,8 +265,10 @@ export default function WishlistPage() {
                       Continue Shopping
                     </Link>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm('Are you sure you want to clear your wishlist?')) {
+                          const token = localStorage.getItem('auth_token');
+                          if (token) await fetch('/api/wishlist?all=true', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
                           setWishlistItems([]);
                         }
                       }}

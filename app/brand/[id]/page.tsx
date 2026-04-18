@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
@@ -18,41 +18,67 @@ interface Product {
   vendorName?: string;
 }
 
+interface BrandData {
+  id: string;
+  name: string;
+  logo: string;
+  banner: string;
+  category: string;
+  description: string;
+  founded: string;
+  headquarters: string;
+  verified: boolean;
+  hasDirectStore: boolean;
+  stats: { products: number; affiliateVendors: number; followers: number; rating: number };
+}
+
 export default function BrandDetailPage() {
   const params = useParams();
   const brandId = params.id as string;
   const [activeTab, setActiveTab] = useState<'all' | 'direct' | 'affiliate'>('all');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [brand, setBrand] = useState<BrandData | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock brand data
-  const brand = {
-    id: brandId,
-    name: 'Gucci',
-    logo: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300',
-    banner: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200',
-    category: 'Luxury Fashion',
-    description: 'Founded in Florence in 1921, Gucci is one of the world\'s leading luxury fashion brands. Known for innovative design, modern Italian craftsmanship and eco-conscious practices.',
-    founded: '1921',
-    headquarters: 'Florence, Italy',
-    verified: true,
-    hasDirectStore: true,
-    stats: {
-      products: 342,
-      affiliateVendors: 12,
-      followers: 2.4,
-      rating: 4.9,
-    },
-  };
-
-  // Mock products
-  const allProducts: Product[] = [
-    { id: '1', name: 'Gucci Marmont Bag', price: 2200, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400', rating: 4.9, soldBy: 'brand' },
-    { id: '2', name: 'Gucci Ace Sneakers', price: 650, oldPrice: 750, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400', rating: 4.8, soldBy: 'brand' },
-    { id: '3', name: 'Gucci Belt', price: 420, image: 'https://images.unsplash.com/photo-1624222247344-550fb60583fd?w=400', rating: 4.7, soldBy: 'vendor', vendorName: 'Luxury Fashion Co.' },
-    { id: '4', name: 'Gucci Sunglasses', price: 380, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400', rating: 4.8, soldBy: 'vendor', vendorName: 'Elite Wear' },
-    { id: '5', name: 'Gucci Dionysus Bag', price: 2800, oldPrice: 3200, image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400', rating: 5.0, soldBy: 'brand' },
-    { id: '6', name: 'Gucci Loafers', price: 730, image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=400', rating: 4.6, soldBy: 'vendor', vendorName: 'Footwear Elite' },
-  ];
+  useEffect(() => {
+    if (!brandId) return;
+    fetch(`/api/brands/${brandId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.brand) return;
+        const b = json.data.brand;
+        setBrand({
+          id:             String(b.id),
+          name:           b.name,
+          logo:           b.avatar || 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300',
+          banner:         'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200',
+          category:       'Brand',
+          description:    b.bio || `Welcome to ${b.name}.`,
+          founded:        new Date(b.joinedAt).getFullYear().toString(),
+          headquarters:   '',
+          verified:       true,
+          hasDirectStore: true,
+          stats: {
+            products:         b.productCount,
+            affiliateVendors: 0,
+            followers:        0,
+            rating:           4.5,
+          },
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setAllProducts((json.data.products ?? []).map((p: any) => ({
+          id:         String(p.id),
+          name:       p.name,
+          price:      p.price,
+          oldPrice:   p.oldPrice,
+          image:      p.image,
+          rating:     p.rating ?? 0,
+          soldBy:     'brand' as const,
+        })));
+      })
+      .finally(() => setIsLoading(false));
+  }, [brandId]);
 
   const filteredProducts = allProducts.filter(product => {
     if (activeTab === 'direct') return product.soldBy === 'brand';
@@ -60,10 +86,35 @@ export default function BrandDetailPage() {
     return true;
   });
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) { alert('Please log in to follow brands'); return; }
+    const method = isFollowing ? 'DELETE' : 'POST';
+    const url = isFollowing ? `/api/follow?followingId=${brandId}` : '/api/follow';
+    const opts: RequestInit = {
+      method,
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    };
+    if (!isFollowing) opts.body = JSON.stringify({ followingId: brandId });
+    await fetch(url, opts);
     setIsFollowing(!isFollowing);
-    console.log(isFollowing ? 'Unfollowed' : 'Followed', brand.name);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="text-center"><div className="text-6xl mb-4">⏳</div><p className="text-charcoal-600 dark:text-cool-gray-400">Loading brand...</p></div>
+      </div>
+    );
+  }
+
+  if (!brand) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="text-center"><div className="text-6xl mb-4">❌</div><p className="text-charcoal-600 dark:text-cool-gray-400">Brand not found</p></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">

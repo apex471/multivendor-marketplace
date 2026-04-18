@@ -3,21 +3,29 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
 interface Comment {
   id: string;
-  user: {
-    username: string;
-    avatar: string;
-    verified: boolean;
-  };
+  user: { username: string; name: string; avatar: string; verified: boolean };
   text: string;
   likes: number;
   timestamp: string;
   replies?: Comment[];
+}
+
+interface PostData {
+  id: string;
+  image: string;
+  caption: string;
+  user: { username: string; fullName: string; avatar: string; verified: boolean };
+  location: string;
+  timestamp: string;
+  likes: number;
+  commentsCount: number;
+  tags: string[];
 }
 
 export default function PostDetailPage() {
@@ -25,106 +33,85 @@ export default function PostDetailPage() {
   const postId = params.id as string;
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [likesCount, setLikesCount] = useState(1247);
+  const [likesCount, setLikesCount] = useState(0);
   const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: '1',
-      user: {
-        username: 'fashionista_jane',
-        avatar: 'https://i.pravatar.cc/150?u=jane',
-        verified: true,
-      },
-      text: 'This outfit is absolutely stunning! 😍 Where did you get that jacket?',
-      likes: 45,
-      timestamp: '2 hours ago',
-      replies: [
-        {
-          id: '1-1',
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [post, setPost] = useState<PostData | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/posts/${postId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.post) return;
+        const p = json.data.post;
+        setPost({
+          id:            p.id,
+          image:         p.images?.[0] ?? 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800',
+          caption:       p.content,
           user: {
-            username: 'style_maven',
-            avatar: 'https://i.pravatar.cc/150?u=maven',
-            verified: false,
+            username:  p.author.username,
+            fullName:  p.author.name,
+            avatar:    p.author.avatar ?? `https://i.pravatar.cc/150?u=${p.author.id}`,
+            verified:  p.author.verified,
           },
-          text: '@fashionista_jane I think it\'s from Zara!',
-          likes: 12,
-          timestamp: '1 hour ago',
-        },
-      ],
-    },
-    {
-      id: '2',
-      user: {
-        username: 'trendsetter_mike',
-        avatar: 'https://i.pravatar.cc/150?u=mike',
-        verified: false,
-      },
-      text: 'Love the color coordination! 👌',
-      likes: 28,
-      timestamp: '3 hours ago',
-    },
-    {
-      id: '3',
-      user: {
-        username: 'style_guru',
-        avatar: 'https://i.pravatar.cc/150?u=guru',
-        verified: true,
-      },
-      text: 'Perfect for the fall season! The boots really complete the look.',
-      likes: 67,
-      timestamp: '5 hours ago',
-    },
-  ]);
+          location:      '',
+          timestamp:     new Date(p.createdAt).toLocaleDateString(),
+          likes:         p.likes,
+          commentsCount: p.comments,
+          tags:          p.hashtags ?? [],
+        });
+        setLikesCount(p.likes);
+      });
+  }, [postId]);
 
-  // Mock post data
-  const post = {
-    id: postId,
-    image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800',
-    caption: 'Fall vibes 🍂 Loving this cozy autumn look! What\'s your favorite season for fashion? #FallFashion #OOTD #StyleInspo',
-    user: {
-      username: 'fashionlover_sarah',
-      fullName: 'Sarah Johnson',
-      avatar: 'https://i.pravatar.cc/150?u=sarah',
-      verified: true,
-    },
-    location: 'Brooklyn, NY',
-    timestamp: '6 hours ago',
-    likes: likesCount,
-    commentsCount: comments.length,
-    tags: ['FallFashion', 'OOTD', 'StyleInspo', 'FashionBlogger'],
-  };
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
-    console.log(isLiked ? 'Unliked' : 'Liked', 'post:', postId);
+  const handleLike = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { alert('Please log in to like posts'); return; }
+    const action = isLiked ? 'unlike' : 'like';
+    const res = await fetch(`/api/posts/${postId}/like`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const json = await res.json();
+    if (json.success) { setIsLiked(!isLiked); setLikesCount(json.data.likes); }
   };
 
   const handleSave = () => {
     setIsSaved(!isSaved);
-    console.log(isSaved ? 'Unsaved' : 'Saved', 'post:', postId);
   };
 
-  const handleComment = (e: React.FormEvent) => {
+  const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-
-    const newComment: Comment = {
-      id: String(comments.length + 1),
-      user: {
-        username: 'current_user',
-        avatar: 'https://i.pravatar.cc/150?u=current',
-        verified: false,
-      },
-      text: commentText,
-      likes: 0,
-      timestamp: 'Just now',
-    };
-
-    setComments([newComment, ...comments]);
-    setCommentText('');
-    console.log('Posted comment:', commentText);
+    const token = localStorage.getItem('auth_token');
+    if (!token) { alert('Please log in to comment'); return; }
+    const res = await fetch(`/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: commentText }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      const c = json.data;
+      setComments(prev => [{
+        id:        c.id,
+        user:      { username: c.user.username, name: c.user.name, avatar: c.user.avatar ?? '', verified: c.user.verified },
+        text:      c.text,
+        likes:     0,
+        timestamp: 'Just now',
+      }, ...prev]);
+      setCommentText('');
+    }
   };
+
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
+        <p className="text-charcoal-600 dark:text-cool-gray-400">Loading post...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">

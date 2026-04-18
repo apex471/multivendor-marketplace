@@ -64,50 +64,54 @@ export default function VendorStorePage() {
 
   const [vendor, setVendor] = useState<VendorData | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
-
-  // Mock vendor data
-  const mockVendor: VendorData = {
-    id: vendorId,
-    name: 'Chic Boutique',
-    description: 'Modern fashion for the contemporary woman. We specialize in curated collections from emerging and established designers, bringing you the latest trends with a focus on quality and sustainability.',
-    logo: '👗',
-    banner: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200',
-    category: 'Fashion',
-    rating: 4.8,
-    reviewCount: 234,
-    verified: true,
-    coordinates: { lat: 37.7749, lng: -122.4194 },
-    address: '123 Market Street',
-    city: 'San Francisco',
-    state: 'CA',
-    zipCode: '94103',
-    phone: '(415) 555-0101',
-    email: 'info@chicboutique.com',
-    website: 'www.chicboutique.com',
-    hours: {
-      monday: '10:00 AM - 8:00 PM',
-      tuesday: '10:00 AM - 8:00 PM',
-      wednesday: '10:00 AM - 8:00 PM',
-      thursday: '10:00 AM - 8:00 PM',
-      friday: '10:00 AM - 9:00 PM',
-      saturday: '10:00 AM - 9:00 PM',
-      sunday: '11:00 AM - 6:00 PM'
-    },
-    deliveryRadius: 5,
-    minOrder: 25,
-    deliveryFee: 5.99,
-    products: [
-      { id: '1', name: 'Summer Dress', price: 89.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=300', category: 'Dresses' },
-      { id: '2', name: 'Denim Jacket', price: 129.99, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300', category: 'Outerwear' },
-      { id: '3', name: 'Silk Blouse', price: 79.99, image: 'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=300', category: 'Tops' },
-      { id: '4', name: 'Wide Leg Pants', price: 99.99, image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=300', category: 'Bottoms' },
-      { id: '5', name: 'Leather Handbag', price: 199.99, image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=300', category: 'Accessories' },
-      { id: '6', name: 'Ankle Boots', price: 159.99, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300', category: 'Shoes' }
-    ]
-  };
+  const [_notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    setVendor(mockVendor);
+    if (!vendorId) return;
+    fetch(`/api/vendors/${vendorId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success || !json.data?.vendor) { setNotFound(true); return; }
+        const v = json.data.vendor;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const products = (json.data.products ?? []).map((p: any) => ({
+          id:       String(p.id),
+          name:     p.name as string,
+          price:    p.price as number,
+          image:    p.image as string,
+          category: p.category as string,
+        }));
+        setVendor({
+          id:           String(v.id),
+          name:         v.name,
+          description:  v.bio || `Welcome to ${v.name}'s store.`,
+          logo:         v.avatar ? '' : '🏪',
+          banner:       '',
+          category:     'Vendor',
+          rating:       0,
+          reviewCount:  0,
+          verified:     true,
+          coordinates:  { lat: 37.7749, lng: -122.4194 },
+          address:      '',
+          city:         '',
+          state:        '',
+          zipCode:      '',
+          phone:        v.phoneNumber || '',
+          email:        v.email || '',
+          website:      '',
+          hours: {
+            monday: 'Contact vendor', tuesday: 'Contact vendor',
+            wednesday: 'Contact vendor', thursday: 'Contact vendor',
+            friday: 'Contact vendor', saturday: 'Contact vendor',
+            sunday: 'Contact vendor',
+          },
+          deliveryRadius: 10,
+          minOrder:       0,
+          deliveryFee:    0,
+          products,
+        });
+      })
+      .catch(() => setNotFound(true));
   }, [vendorId]);
 
   if (!vendor) {
