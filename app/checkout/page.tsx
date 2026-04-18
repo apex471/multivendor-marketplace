@@ -5,18 +5,12 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { COURIERS, BADGE_STYLES, TRACKING_LABEL } from '../../lib/couriers';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  vendor: string;
-}
+import { useCart } from '@/contexts/CartContext';
+import { getAuthToken } from '@/lib/api/auth';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { items: cartItems, clearCart } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -28,12 +22,6 @@ export default function CheckoutPage() {
   const [paymentInfo, setPaymentInfo] = useState({
     cardNumber: '', cardName: '', expiryDate: '', cvv: '', saveCard: false,
   });
-
-  // Mock cart items — replace with real cart context
-  const cartItems: CartItem[] = [
-    { id: '1', name: 'Designer Leather Jacket', price: 299.99, quantity: 1, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400', vendor: 'Luxury Fashion Co.' },
-    { id: '2', name: 'Premium Sneakers', price: 149.99, quantity: 2, image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400', vendor: 'Urban Footwear' },
-  ];
 
   const selectedCourier = COURIERS.find(c => c.id === selectedCourierId) ?? COURIERS[2];
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -62,10 +50,14 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
+    const token = getAuthToken();
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           shippingInfo,
           paymentInfo: {
@@ -89,10 +81,12 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       const orderId = data?.data?.orderId ?? `ORD-${Math.floor(Math.random() * 1_000_000)}`;
-      router.push(`/order/confirmation?orderId=${orderId}`);
+          clearCart();
+          router.push(`/order/confirmation?orderId=${orderId}`);
     } catch {
       // Fallback — still navigate to confirmation on client-side error
       const orderId = `ORD-${Math.floor(Math.random() * 1_000_000)}`;
+      clearCart();
       router.push(`/order/confirmation?orderId=${orderId}`);
     } finally {
       setIsProcessing(false);

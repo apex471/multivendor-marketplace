@@ -1,23 +1,40 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { getAuthToken, getStoredUser, storeUser } from '@/lib/api/auth';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, _setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const setSaveMessage = _setSaveMessage;
 
-  // Profile Settings
+  // Profile Settings — seeded from stored auth user
   const [profileData, setProfileData] = useState({
-    fullName: 'John Doe',
-    username: 'johndoe',
-    email: 'john@example.com',
-    phone: '+1 (555) 123-4567',
-    bio: 'Fashion enthusiast and style curator',
-    location: 'New York, NY',
+    fullName: '',
+    email: '',
+    phone: '',
+    bio: '',
   });
+
+  useEffect(() => {
+    const u = getStoredUser();
+    if (u) {
+      setProfileData({
+        fullName: u.fullName || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        email: u.email || '',
+        phone: u.phoneNumber || '',
+        bio: u.bio || '',
+      });
+    }
+  }, []);
+
+  const showMsg = (type: 'success' | 'error', text: string) => {
+    setSaveMessage({ type, text });
+    setTimeout(() => setSaveMessage(null), 3500);
+  };
 
   // Notification Settings
   const [notifications, setNotifications] = useState({
@@ -46,39 +63,67 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Profile saved:', profileData);
-    alert('Profile updated successfully!');
-    setIsSaving(false);
+    try {
+      const token = getAuthToken();
+      if (!token) { showMsg('error', 'You must be logged in to save profile.'); setIsSaving(false); return; }
+      const nameParts = profileData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ firstName, lastName, phoneNumber: profileData.phone || undefined, bio: profileData.bio || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update profile');
+      // Update cached user
+      const existing = getStoredUser();
+      if (existing) storeUser({ ...existing, firstName, lastName, fullName: profileData.fullName, phoneNumber: profileData.phone, bio: profileData.bio });
+      showMsg('success', 'Profile updated successfully!');
+    } catch (err: unknown) {
+      showMsg('error', (err as Error).message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveNotifications = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Notifications saved:', notifications);
-    alert('Notification settings updated!');
+    await new Promise(resolve => setTimeout(resolve, 400));
+    showMsg('success', 'Notification preferences saved!');
     setIsSaving(false);
   };
 
   const handleSavePrivacy = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Privacy saved:', privacy);
-    alert('Privacy settings updated!');
+    await new Promise(resolve => setTimeout(resolve, 400));
+    showMsg('success', 'Privacy settings saved!');
     setIsSaving(false);
   };
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Passwords do not match!');
+      showMsg('error', 'Passwords do not match!');
       return;
     }
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Password changed');
-    alert('Password changed successfully!');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setIsSaving(false);
+    try {
+      const token = getAuthToken();
+      if (!token) { showMsg('error', 'You must be logged in.'); setIsSaving(false); return; }
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(passwordData),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to change password');
+      showMsg('success', 'Password changed successfully!');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: unknown) {
+      showMsg('error', (err as Error).message || 'Failed to change password');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [
@@ -129,48 +174,35 @@ export default function SettingsPage() {
             {activeTab === 'profile' && (
               <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
                 <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Profile Information</h2>
+                {saveMessage && (
+                  <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
+                    saveMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                  }`}>{saveMessage.text}</div>
+                )}
                 <div className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        value={profileData.fullName}
-                        onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={profileData.username}
-                        onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      value={profileData.fullName}
+                      onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                    />
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                        Email
-                      </label>
+                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Email</label>
                       <input
                         type="email"
                         value={profileData.email}
-                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                        disabled
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-500 dark:text-cool-gray-500 cursor-not-allowed"
                       />
+                      <p className="text-xs text-charcoal-400 mt-1">Email cannot be changed here.</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                        Phone
-                      </label>
+                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Phone</label>
                       <input
                         type="tel"
                         value={profileData.phone}
@@ -181,26 +213,12 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                      Bio
-                    </label>
+                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Bio</label>
                     <textarea
                       value={profileData.bio}
                       onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent resize-none bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      value={profileData.location}
-                      onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
                     />
                   </div>
 

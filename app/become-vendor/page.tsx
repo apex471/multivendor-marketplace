@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { storeAuthToken, storeUser } from '@/lib/api/auth';
 
 export default function BecomeVendorPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     businessName: '',
     ownerName: '',
@@ -19,12 +22,57 @@ export default function BecomeVendorPage() {
     zip: '',
     website: '',
     taxId: '',
+    password: '',
+    confirmPassword: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Vendor application:', formData);
-    alert('Application submitted! We will review and contact you soon.');
+    setError('');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const nameParts = formData.ownerName.trim().split(/\s+/);
+      const firstName = nameParts[0] || 'Vendor';
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0];
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          phoneNumber: formData.phone || undefined,
+          role: 'vendor',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        const msg = data.errors ? (Object.values(data.errors)[0] as string) : data.message || 'Signup failed';
+        setError(msg);
+        setIsLoading(false);
+        return;
+      }
+      // Store auth token and user
+      if (data.data?.token) storeAuthToken(data.data.token);
+      if (data.data?.user) storeUser(data.data.user);
+      router.push('/dashboard/vendor');
+    } catch {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const benefits = [
@@ -271,11 +319,41 @@ export default function BecomeVendorPage() {
                 </p>
               </div>
 
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-charcoal-700 dark:text-cool-gray-300 font-semibold mb-2">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600"
+                    placeholder="Min. 6 characters"
+                  />
+                </div>
+                <div>
+                  <label className="block text-charcoal-700 dark:text-cool-gray-300 font-semibold mb-2">Confirm Password *</label>
+                  <input
+                    type="password"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-600"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">{error}</div>
+              )}
+
               <button
                 type="submit"
-                className="w-full px-6 py-4 bg-gold-600 text-white rounded-lg font-bold text-lg hover:bg-gold-700 transition-colors"
+                disabled={isLoading}
+                className="w-full px-6 py-4 bg-gold-600 text-white rounded-lg font-bold text-lg hover:bg-gold-700 transition-colors disabled:bg-cool-gray-400 disabled:cursor-not-allowed"
               >
-                Submit Application
+                {isLoading ? 'Submitting...' : 'Submit Application'}
               </button>
             </form>
           </div>
