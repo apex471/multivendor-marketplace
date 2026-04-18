@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
       {/* Branded background image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/brand/banner-3.jpg"
+          src="/images/brand/clw-banner.jpg"
           alt="CLW Admin"
           fill
           className="object-cover object-center opacity-20"
@@ -74,18 +74,27 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg shadow-gold-600/30 overflow-hidden border-2 border-gold-500/40">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg shadow-gold-600/20 border-2 border-gold-500/40">
+              <Image
+                src="/images/brand/clw-icon.jpg"
+                alt="CLW"
+                width={64}
+                height={64}
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+          </div>
+          <div className="flex justify-center mb-2">
             <Image
-              src="/images/brand/clw-logo.jpg"
-              alt="CLW"
-              width={64}
-              height={64}
-              className="w-full h-full object-cover object-top"
-              style={{ mixBlendMode: 'luminosity', filter: 'brightness(1.2) contrast(1.1)' }}
+              src="/images/brand/clw-logotext.jpg"
+              alt="Certified Luxury World"
+              width={160}
+              height={48}
+              className="h-8 w-auto object-contain brightness-0 invert sepia"
             />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
-          <p className="text-cool-gray-400 text-sm">CLW Marketplace — Secure Access</p>
+          <p className="text-cool-gray-400 text-sm">Admin Portal — Secure Access</p>
         </div>
 
         {/* Login Form */}

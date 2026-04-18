@@ -160,7 +160,7 @@ export default function Home() {
         {/* Branded hero background */}
         <div className="absolute inset-0">
           <Image
-            src="/images/brand/banner-hero.jpg"
+            src="/images/brand/clw-banner1.jpg"
             alt="Certified Luxury World"
             fill
             className="object-cover object-center"

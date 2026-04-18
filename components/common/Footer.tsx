@@ -10,25 +10,23 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-7 md:gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg overflow-hidden shrink-0 border border-gold-500/40 shadow-sm">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden shrink-0 border border-gold-500/40 shadow-sm">
                 <Image
-                  src="/images/brand/clw-logo.jpg"
-                  alt="CLW - Certified Luxury World"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover object-top"
-                  style={{ mixBlendMode: 'luminosity', filter: 'brightness(1.1) contrast(1.05)' }}
+                  src="/images/brand/clw-icon.jpg"
+                  alt="CLW"
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-cover object-center"
                 />
               </div>
-              <div className="flex flex-col">
-                <span className="text-base sm:text-lg font-display font-bold text-white">
-                  CLW
-                </span>
-                <span className="text-[9px] sm:text-[10px] text-gold-400">
-                  Certified Luxury World
-                </span>
-              </div>
+              <Image
+                src="/images/brand/clw-logotext.jpg"
+                alt="Certified Luxury World"
+                width={110}
+                height={44}
+                className="h-6 w-auto object-contain brightness-0 invert sepia"
+              />
             </div>
             <p className="text-xs sm:text-sm text-gray-300 pr-4 md:pr-0">
               Your premier destination for certified luxury products and refined style.

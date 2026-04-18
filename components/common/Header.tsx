@@ -82,25 +82,23 @@ export default function Header() {
       <nav className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5 sm:gap-2">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-gold-500/30 dark:border-gold-500/40 shadow-sm">
               <NextImage
-                src="/images/brand/clw-logo.jpg"
+                src="/images/brand/clw-icon.jpg"
                 alt="CLW"
                 width={32}
                 height={32}
-                className="w-full h-full object-cover object-top"
-                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1) brightness(1.05)' }}
+                className="w-full h-full object-cover object-center"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs sm:text-sm font-display font-bold text-charcoal-900 dark:text-white leading-tight">
-                CLW
-              </span>
-              <span className="text-[9px] sm:text-[10px] text-cool-gray-500 dark:text-cool-gray-400 leading-tight hidden xs:block">
-                Certified Luxury
-              </span>
-            </div>
+            <NextImage
+              src="/images/brand/clw-logotext.jpg"
+              alt="Certified Luxury World"
+              width={90}
+              height={36}
+              className="h-5 sm:h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+            />
           </Link>
 
           {/* Desktop Navigation */}

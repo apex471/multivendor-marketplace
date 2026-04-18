@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: 'Certified Luxury World',
     images: [
       {
-        url: '/images/brand/og-image.jpg',
+        url: '/images/brand/clw-banner1.jpg',
         width: 1280,
         height: 708,
         alt: 'Certified Luxury World - Premium Luxury Marketplace',
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CLW - Certified Luxury World',
     description: 'Your premier destination for authentic luxury products.',
-    images: ['/images/brand/og-image.jpg'],
+    images: ['/images/brand/clw-banner1.jpg'],
   },
   manifest: '/site.webmanifest',
 };

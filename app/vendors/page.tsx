@@ -150,7 +150,7 @@ export default function VendorsPage() {
       {/* Branded Hero Banner */}
       <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
         <Image
-          src="/images/brand/banner-vendor.jpg"
+          src="/images/brand/clw-banner.jpg"
           alt="Discover Luxury Vendors"
           fill
           className="object-cover object-center"

@@ -151,7 +151,7 @@ export default function ShopPage() {
       {/* Branded Hero Banner */}
       <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
         <Image
-          src="/images/brand/banner-2.jpg"
+          src="/images/brand/clw-asset.jpg"
           alt="Shop Luxury Fashion"
           fill
           className="object-cover object-center"

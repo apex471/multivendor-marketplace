@@ -200,16 +200,22 @@ function SignupContent() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
+              <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
                 <Image
-                  src="/images/brand/clw-logo.jpg"
+                  src="/images/brand/clw-icon.jpg"
                   alt="CLW"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover object-top"
-                  style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-cover object-center"
                 />
               </div>
+              <Image
+                src="/images/brand/clw-logotext.jpg"
+                alt="Certified Luxury World"
+                width={130}
+                height={36}
+                className="h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+              />
             </Link>
             <h1 className="text-4xl sm:text-5xl font-display font-bold text-charcoal-900 dark:text-white mb-3">
               Join CLW
@@ -264,16 +270,22 @@ function SignupContent() {
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
+            <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
               <Image
-                src="/images/brand/clw-logo.jpg"
+                src="/images/brand/clw-icon.jpg"
                 alt="CLW"
-                width={40}
-                height={40}
-                className="w-full h-full object-cover object-top"
-                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover object-center"
               />
             </div>
+            <Image
+              src="/images/brand/clw-logotext.jpg"
+              alt="Certified Luxury World"
+              width={130}
+              height={36}
+              className="h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+            />
           </Link>
           <div className="text-4xl mb-2">{selectedRole.icon}</div>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1">

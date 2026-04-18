@@ -69,23 +69,29 @@ function LoginForm() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
+          <Link href="/" className="inline-flex flex-col items-center gap-2 mb-4">
+            <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
               <Image
-                src="/images/brand/clw-logo.jpg"
+                src="/images/brand/clw-icon.jpg"
                 alt="CLW"
-                width={40}
-                height={40}
-                className="w-full h-full object-cover object-top"
-                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover object-center"
               />
             </div>
+            <Image
+              src="/images/brand/clw-logotext.jpg"
+              alt="Certified Luxury World"
+              width={130}
+              height={36}
+              className="h-6 w-auto object-contain brightness-0 dark:brightness-0 dark:invert dark:sepia"
+            />
           </Link>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-2">
             Welcome Back
           </h1>
           <p className="text-cool-gray-500 dark:text-cool-gray-400 text-sm">
-            Sign in to your CLW account
+            Sign in to your account
           </p>
         </div>
 

@@ -71,7 +71,7 @@ export default function AboutPage() {
       <div className="relative bg-charcoal-900 text-white py-20 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/images/brand/banner-about.jpg"
+            src="/images/brand/clw-asset1.jpg"
             alt="About Certified Luxury World"
             fill
             className="object-cover object-center"
