@@ -2,121 +2,72 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 
-// Mock data for demonstration
-const mockStories = [
-  { id: '1', username: 'fashionista_jane', avatar: 'https://i.pravatar.cc/150?img=1', hasNew: true },
-  { id: '2', username: 'style_maven', avatar: 'https://i.pravatar.cc/150?img=2', hasNew: true },
-  { id: '3', username: 'trendy_boutique', avatar: 'https://i.pravatar.cc/150?img=3', hasNew: false },
-  { id: '4', username: 'fashion_hub', avatar: 'https://i.pravatar.cc/150?img=4', hasNew: true },
-  { id: '5', username: 'chic_styles', avatar: 'https://i.pravatar.cc/150?img=5', hasNew: false },
-];
+interface Post {
+  _id: string;
+  authorName?: string;
+  authorAvatar?: string;
+  images?: string[];
+  caption?: string;
+  likesCount?: number;
+  commentsCount?: number;
+}
 
-const mockPosts = [
-  { id: '1', username: 'fashionista_jane', avatar: 'https://i.pravatar.cc/150?img=1', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=500', caption: 'New summer collection! 🌸', likes: 234, comments: 45 },
-  { id: '2', username: 'style_maven', avatar: 'https://i.pravatar.cc/150?img=2', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=500', caption: 'Minimal chic vibes ✨', likes: 567, comments: 89 },
-  { id: '3', username: 'trendy_boutique', avatar: 'https://i.pravatar.cc/150?img=3', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500', caption: 'Sustainable fashion 🌿', likes: 892, comments: 123 },
-];
+interface Vendor {
+  id: string;
+  name: string;
+  avatar: string | null;
+  bio: string;
+  products: number;
+}
 
-const mockVendors = [
-  { id: '1', name: 'Chic Boutique', logo: 'https://i.pravatar.cc/100?img=10', rating: 4.8, products: 156, distance: 2.3, verified: true },
-  { id: '2', name: 'Urban Threads', logo: 'https://i.pravatar.cc/100?img=11', rating: 4.9, products: 243, distance: 1.8, verified: true },
-  { id: '3', name: 'Style Haven', logo: 'https://i.pravatar.cc/100?img=12', rating: 4.7, products: 198, distance: 3.5, verified: false },
-  { id: '4', name: 'Fashion First', logo: 'https://i.pravatar.cc/100?img=13', rating: 4.6, products: 167, distance: 4.2, verified: true },
-];
+interface Brand {
+  id: string;
+  name: string;
+  avatar: string | null;
+  bio: string;
+  products: number;
+}
 
-const mockBrands = [
-  { 
-    id: '1', 
-    name: 'Gucci', 
-    logo: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=200',
-    banner: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800',
-    category: 'Luxury Fashion',
-    description: 'Italian luxury fashion house',
-    products: 342,
-    verified: true,
-    hasDirectStore: true,
-    affiliateVendors: 12
-  },
-  { 
-    id: '2', 
-    name: 'Nike', 
-    logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
-    banner: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=800',
-    category: 'Sportswear',
-    description: 'Just Do It - Athletic excellence',
-    products: 567,
-    verified: true,
-    hasDirectStore: true,
-    affiliateVendors: 28
-  },
-  { 
-    id: '3', 
-    name: 'Prada', 
-    logo: 'https://images.unsplash.com/photo-1591348278863-e0b6f9c5e6f8?w=200',
-    banner: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800',
-    category: 'Designer',
-    description: 'Italian luxury fashion',
-    products: 289,
-    verified: true,
-    hasDirectStore: false,
-    affiliateVendors: 15
-  },
-  { 
-    id: '4', 
-    name: 'Adidas', 
-    logo: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=200',
-    banner: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800',
-    category: 'Athletic',
-    description: 'Impossible is Nothing',
-    products: 498,
-    verified: true,
-    hasDirectStore: true,
-    affiliateVendors: 22
-  },
-  { 
-    id: '5', 
-    name: 'Zara', 
-    logo: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=200',
-    banner: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800',
-    category: 'Fast Fashion',
-    description: 'Contemporary fashion trends',
-    products: 623,
-    verified: true,
-    hasDirectStore: false,
-    affiliateVendors: 34
-  },
-  { 
-    id: '6', 
-    name: 'Rolex', 
-    logo: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=200',
-    banner: 'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800',
-    category: 'Luxury Watches',
-    description: 'Swiss luxury timepieces',
-    products: 156,
-    verified: true,
-    hasDirectStore: true,
-    affiliateVendors: 8
-  },
-];
-
-const mockProducts = [
-  { id: '1', name: 'Summer Floral Dress', price: 89.99, oldPrice: 129.99, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400', rating: 4.8, sales: 234, vendor: 'Chic Boutique' },
-  { id: '2', name: 'Denim Jacket', price: 124.99, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400', rating: 4.9, sales: 456, vendor: 'Urban Threads' },
-  { id: '3', name: 'Casual Sneakers', price: 79.99, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400', rating: 4.7, sales: 789, vendor: 'Style Haven' },
-  { id: '4', name: 'Leather Handbag', price: 199.99, oldPrice: 299.99, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400', rating: 4.9, sales: 345, vendor: 'Fashion First' },
-  { id: '5', name: 'Sunglasses', price: 49.99, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400', rating: 4.6, sales: 567, vendor: 'Chic Boutique' },
-  { id: '6', name: 'Summer Hat', price: 34.99, image: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=400', rating: 4.5, sales: 234, vendor: 'Style Haven' },
-];
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  salePrice?: number;
+  images: string[];
+  rating?: number;
+  salesCount?: number;
+  vendorName?: string;
+}
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [_selectedCategory, setSelectedCategory] = useState('');
   const router = useRouter();
+
+  const [posts,    setPosts]    = useState<Post[]>([]);
+  const [vendors,  setVendors]  = useState<Vendor[]>([]);
+  const [brands,   setBrands]   = useState<Brand[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    // Fetch all homepage data in parallel
+    Promise.all([
+      fetch('/api/posts?limit=6').then(r => r.json()).catch(() => ({})),
+      fetch('/api/vendors?limit=4').then(r => r.json()).catch(() => ({})),
+      fetch('/api/brands?limit=6').then(r => r.json()).catch(() => ({})),
+      fetch('/api/products?limit=6&sort=popular').then(r => r.json()).catch(() => ({})),
+    ]).then(([postsRes, vendorsRes, brandsRes, productsRes]) => {
+      if (postsRes?.data?.posts)    setPosts(postsRes.data.posts);
+      if (vendorsRes?.data?.vendors) setVendors(vendorsRes.data.vendors);
+      if (brandsRes?.data?.brands)  setBrands(brandsRes.data.brands);
+      if (productsRes?.data?.products) setProducts(productsRes.data.products);
+    });
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,11 +83,6 @@ export default function Home() {
 
   const handleProductClick = (productId: string) => {
     router.push(`/product/${productId}`);
-  };
-
-  const handleLikePost = (postId: string) => {
-    console.log('Liked post:', postId);
-    // Add to favorites or increase like count
   };
 
   const handleAddToCart = (productId: string) => {
@@ -228,27 +174,27 @@ export default function Home() {
       <section className="bg-white dark:bg-charcoal-900 border-b border-cool-gray-200 dark:border-charcoal-800">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-            {mockStories.map((story) => (
+            {vendors.slice(0, 6).map((vendor, i) => (
               <button
-                key={story.id}
-                onClick={() => router.push(`/stories/${story.id}`)}
+                key={vendor.id}
+                onClick={() => router.push(`/vendors/${vendor.id}`)}
                 className="flex-shrink-0 text-center group touch-manipulation"
               >
                 <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
-                  <div className={`absolute inset-0 rounded-full ${story.hasNew ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
+                  <div className={`absolute inset-0 rounded-full ${i % 2 === 0 ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
                     <div className="w-full h-full rounded-full bg-white p-[2px] sm:p-[3px]">
-                      <Image
-                        src={story.avatar}
-                        alt={story.username}
-                        width={80}
-                        height={80}
-                        className="w-full h-full rounded-full object-cover"
-                      />
+                      {vendor.avatar ? (
+                        <Image src={vendor.avatar} alt={vendor.name} width={80} height={80} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-lg font-bold text-gold-600">
+                          {vendor.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
                 <p className="text-[10px] sm:text-xs text-charcoal-700 dark:text-cool-gray-300 truncate w-16 sm:w-20 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">
-                  {story.username}
+                  {vendor.name.split(' ')[0]}
                 </p>
               </button>
             ))}
@@ -275,53 +221,46 @@ export default function Home() {
             </Link>
           </div>
 
+          {posts.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400">
+              <p className="text-4xl mb-3">📸</p>
+              <p>No posts yet. Be the first to share your style!</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-            {mockPosts.map((post) => (
-              <div key={post.id} className="bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
+            {posts.map((post) => (
+              <div key={post._id} className="bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
                 <button
-                  onClick={() => router.push(`/feed/post/${post.id}`)}
+                  onClick={() => router.push(`/post/${post._id}`)}
                   className="relative aspect-square w-full"
                 >
-                  <Image
-                    src={post.image}
-                    alt={post.caption}
-                    fill
-                    className="object-cover"
-                  />
+                  {post.images?.[0] ? (
+                    <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
+                  )}
                 </button>
                 <div className="p-3 sm:p-4">
-                  <button
-                    onClick={() => router.push(`/profile/${post.username}`)}
-                    className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 hover:opacity-80 transition-opacity touch-manipulation"
-                  >
-                    <Image
-                      src={post.avatar}
-                      alt={post.username}
-                      width={32}
-                      height={32}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
-                    />
-                    <span className="font-semibold text-charcoal-900 dark:text-white text-sm sm:text-base">{post.username}</span>
-                  </button>
-                  <p className="text-charcoal-700 dark:text-cool-gray-300 mb-2 sm:mb-3 text-sm sm:text-base line-clamp-2">{post.caption}</p>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    {post.authorAvatar ? (
+                      <Image src={post.authorAvatar} alt={post.authorName || 'Author'} width={32} height={32} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
+                    ) : (
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xs font-bold text-gold-600">
+                        {(post.authorName || 'U').charAt(0)}
+                      </div>
+                    )}
+                    <span className="font-semibold text-charcoal-900 dark:text-white text-sm sm:text-base">{post.authorName || 'Anonymous'}</span>
+                  </div>
+                  {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-2 sm:mb-3 text-sm sm:text-base line-clamp-2">{post.caption}</p>}
                   <div className="flex items-center gap-3 sm:gap-4 text-charcoal-600 dark:text-cool-gray-400 text-xs sm:text-sm">
-                    <button
-                      onClick={() => handleLikePost(post.id)}
-                      className="flex items-center gap-1 hover:text-red-500 dark:hover:text-red-400 transition-colors touch-manipulation min-h-[36px] -ml-1 pl-1"
-                    >
-                      <span className="text-base sm:text-lg">❤️</span> <span>{post.likes}</span>
-                    </button>
-                    <button
-                      onClick={() => router.push(`/feed/post/${post.id}#comments`)}
-                      className="flex items-center gap-1 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation min-h-[36px]"
-                    >
-                      <span className="text-base sm:text-lg">💬</span> <span>{post.comments}</span>
-                    </button>
+                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">❤️</span> <span>{post.likesCount ?? 0}</span></span>
+                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">💬</span> <span>{post.commentsCount ?? 0}</span></span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          )}
         </section>
 
         {/* Best Selling Vendors */}
@@ -341,43 +280,35 @@ export default function Home() {
             </Link>
           </div>
 
+          {vendors.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400">
+              <p className="text-4xl mb-3">🏪</p>
+              <p>No vendors yet. <Link href="/become-vendor" className="text-gold-600 hover:underline">Be the first!</Link></p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {mockVendors.map((vendor) => (
+            {vendors.map((vendor) => (
               <Link
                 key={vendor.id}
                 href={`/vendors/${vendor.id}`}
                 className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation"
               >
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
-                  <Image
-                    src={vendor.logo}
-                    alt={vendor.name}
-                    width={60}
-                    height={60}
-                    className="w-12 h-12 sm:w-14 sm:h-14 md:w-15 md:h-15 rounded-full flex-shrink-0"
-                  />
-                  {vendor.verified && (
-                    <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded">
-                      ✓ Verified
-                    </span>
+                  {vendor.avatar ? (
+                    <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xl font-bold text-gold-600 flex-shrink-0">
+                      {vendor.name.charAt(0)}
+                    </div>
                   )}
+                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded">✓ Verified</span>
                 </div>
-                <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 sm:mb-2 text-center sm:text-left">{vendor.name}</h3>
-                <div className="space-y-1 sm:space-y-1.5 md:space-y-2 text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">
-                  <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
-                    <span className="text-yellow-500 text-sm sm:text-base">⭐</span>
-                    <span className="font-semibold text-charcoal-900 dark:text-white">{vendor.rating}</span>
-                    <span className="hidden xs:inline">•</span>
-                    <span className="hidden xs:inline">{vendor.products} products</span>
-                  </div>
-                  <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
-                    <span className="text-sm sm:text-base">📍</span>
-                    <span>{vendor.distance} km</span>
-                  </div>
-                </div>
+                <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 sm:mb-2 text-center sm:text-left truncate">{vendor.name}</h3>
+                <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">{vendor.products} products</p>
               </Link>
             ))}
           </div>
+          )}
         </section>
 
         {/* Featured Brands */}
@@ -397,84 +328,44 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {mockBrands.map((brand) => (
+          {brands.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400">
+              <p className="text-4xl mb-3">🏷️</p>
+              <p>No brands registered yet. <Link href="/become-brand" className="text-gold-600 hover:underline">Register yours!</Link></p>
+            </div>
+          ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-6">
+            {brands.map((brand) => (
               <Link
                 key={brand.id}
                 href={`/brand/${brand.id}`}
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-2xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1"
               >
-                {/* Banner Image */}
-                <div className="relative h-32 sm:h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800">
-                  {/* Image + overlay in their own overflow-hidden so hover-scale stays contained */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <Image
-                      src={brand.banner}
-                      alt={brand.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
+                <div className="relative h-24 sm:h-32 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center">
+                  <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                    <span>✓</span><span className="hidden sm:inline">Official</span>
                   </div>
-
-                  {/* Verified Badge */}
-                  {brand.verified && (
-                    <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
-                      <span>✓</span>
-                      <span className="hidden sm:inline">Official</span>
+                  {brand.avatar ? (
+                    <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-700 shadow-lg" />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-lg">
+                      {brand.name.charAt(0)}
                     </div>
                   )}
-
-                  {/* Brand Logo — outside overflow-hidden so translate-y-1/2 correctly hangs over the banner edge */}
-                  <div className="absolute bottom-0 left-4 sm:left-6 translate-y-1/2 z-10">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white dark:bg-charcoal-800 rounded-xl shadow-lg border-4 border-white dark:border-charcoal-900 overflow-hidden">
-                      <Image
-                        src={brand.logo}
-                        alt={brand.name}
-                        width={80}
-                        height={80}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
                 </div>
-
-                {/* Brand Info */}
-                <div className="pt-10 sm:pt-12 px-4 sm:px-6 pb-4 sm:pb-6">
-                  <h3 className="font-display font-bold text-lg sm:text-xl text-charcoal-900 dark:text-white mb-2">{brand.name}</h3>
-                  <p className="text-xs sm:text-sm text-cool-gray-600 dark:text-cool-gray-400 mb-3 sm:mb-4">{brand.description}</p>
-                  
-                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                    <span className="px-2 py-1 bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 text-xs font-semibold rounded">
-                      {brand.category}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <div className="flex items-center gap-4 text-charcoal-600 dark:text-cool-gray-400">
-                      <div className="flex items-center gap-1">
-                        <span>📦</span>
-                        <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
-                        <span className="hidden sm:inline">products</span>
-                      </div>
-                      {brand.affiliateVendors > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span>🏪</span>
-                          <span className="font-semibold text-charcoal-900 dark:text-white">{brand.affiliateVendors}</span>
-                          <span className="hidden sm:inline">sellers</span>
-                        </div>
-                      )}
-                    </div>
-                    {brand.hasDirectStore && (
-                      <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded">
-                        Direct Store
-                      </span>
-                    )}
+                <div className="p-4 sm:p-6">
+                  <h3 className="font-display font-bold text-base sm:text-lg text-charcoal-900 dark:text-white mb-1">{brand.name}</h3>
+                  {brand.bio && <p className="text-xs sm:text-sm text-cool-gray-600 dark:text-cool-gray-400 mb-3 line-clamp-2">{brand.bio}</p>}
+                  <div className="flex items-center gap-1 text-xs text-charcoal-600 dark:text-cool-gray-400">
+                    <span>📦</span>
+                    <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
+                    <span>products</span>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
+          )}
         </section>
 
         {/* Top Selling Products */}
@@ -494,81 +385,66 @@ export default function Home() {
             </Link>
           </div>
 
+          {products.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400">
+              <p className="text-4xl mb-3">🛒</p>
+              <p>No products listed yet.</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
-            {mockProducts.map((product) => (
-              <div key={product.id} className="group relative isolate">
+            {products.map((product) => (
+              <div key={product._id} className="group relative isolate">
                 <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow duration-300">
-                  {/* Image container — named group/img scopes zoom strictly to image-area hover, preventing text-area hover from triggering scale */}
                   <div
-                    onClick={() => handleProductClick(product.id)}
+                    onClick={() => handleProductClick(product._id)}
                     className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation"
                   >
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
-                      className="object-cover object-center group-hover/img:scale-110 transition-transform duration-300"
-                    />
-                    {product.oldPrice && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">
-                        SALE
-                      </span>
+                    {product.images?.[0] ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
+                        className="object-cover object-center group-hover/img:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
                     )}
-                    {/* Quick Action Buttons */}
+                    {product.salePrice && product.salePrice < product.price && (
+                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">SALE</span>
+                    )}
                     <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex flex-col gap-1.5 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToWishlist(product.id);
-                        }}
-                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
+                        onClick={(e) => { e.stopPropagation(); handleAddToWishlist(product._id); }}
+                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
                         aria-label="Add to wishlist"
-                      >
-                        ❤️
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProductClick(product.id);
-                        }}
-                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full hidden sm:flex items-center justify-center shadow-md dark:shadow-charcoal-950/50 hover:bg-primary-50 dark:hover:bg-gold-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
-                        aria-label="Quick view"
-                      >
-                        👁️
-                      </button>
+                      >❤️</button>
                     </div>
                   </div>
                   <div className="p-2 sm:p-3">
-                    <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5 sm:mb-1 truncate">{product.vendor}</p>
-                    <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">
-                      {product.name}
-                    </h3>
+                    <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5 sm:mb-1 truncate">{product.vendorName}</p>
+                    <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">{product.name}</h3>
                     <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                       <span className="text-yellow-500 text-[10px] sm:text-xs">⭐</span>
-                      <span className="text-[10px] sm:text-xs font-medium text-charcoal-700 dark:text-cool-gray-300">{product.rating}</span>
-                      <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400">({product.sales})</span>
+                      <span className="text-[10px] sm:text-xs font-medium text-charcoal-700 dark:text-cool-gray-300">{(product.rating ?? 0).toFixed(1)}</span>
+                      <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400">({product.salesCount ?? 0})</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2 mb-1.5 sm:mb-2">
-                      <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">${product.price}</span>
-                      {product.oldPrice && (
-                        <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-through">${product.oldPrice}</span>
+                      <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">${(product.salePrice ?? product.price).toFixed(2)}</span>
+                      {product.salePrice && product.salePrice < product.price && (
+                        <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-through">${product.price.toFixed(2)}</span>
                       )}
                     </div>
                     <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleAddToCart(product.id);
-                      }}
-                      className="w-full py-1.5 sm:py-2 min-h-[36px] bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
-                    >
-                      Add to Cart
-                    </button>
+                      onClick={(e) => { e.preventDefault(); handleAddToCart(product._id); }}
+                      className="w-full py-1.5 sm:py-2 min-h-9 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
+                    >Add to Cart</button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          )}
         </section>
 
         {/* Statistics / Trust Section */}

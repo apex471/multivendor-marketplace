@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
@@ -9,155 +9,51 @@ import Footer from '@/components/common/Footer';
 interface Brand {
   id: string;
   name: string;
-  logo: string;
-  banner: string;
-  category: string;
-  description: string;
+  avatar: string | null;
+  bio: string;
   products: number;
-  verified: boolean;
-  hasDirectStore: boolean;
-  affiliateVendors: number;
-  rating: number;
-  followers: string;
+  joinedAt: string;
 }
 
 export default function BrandsPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery]       = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [brands, setBrands]                 = useState<Brand[]>([]);
+  const [total, setTotal]                   = useState(0);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState('');
+  const [page, setPage]                     = useState(1);
+  const LIMIT = 24;
 
-  const categories = [
-    { id: 'all', name: 'All Brands', icon: '🏷️' },
-    { id: 'luxury', name: 'Luxury Fashion', icon: '💎' },
-    { id: 'sportswear', name: 'Sportswear', icon: '⚽' },
-    { id: 'designer', name: 'Designer', icon: '👗' },
-    { id: 'athletic', name: 'Athletic', icon: '🏃' },
-    { id: 'fast-fashion', name: 'Contemporary', icon: '✨' },
-    { id: 'watches', name: 'Watches', icon: '⌚' },
-    { id: 'accessories', name: 'Accessories', icon: '👜' },
-  ];
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const allBrands: Brand[] = [
-    { 
-      id: '1', 
-      name: 'Gucci', 
-      logo: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=200',
-      banner: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800',
-      category: 'luxury',
-      description: 'Italian luxury fashion house',
-      products: 342,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 12,
-      rating: 4.9,
-      followers: '2.4M'
-    },
-    { 
-      id: '2', 
-      name: 'Nike', 
-      logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
-      banner: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=800',
-      category: 'sportswear',
-      description: 'Just Do It - Athletic excellence',
-      products: 567,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 28,
-      rating: 4.8,
-      followers: '5.2M'
-    },
-    { 
-      id: '3', 
-      name: 'Prada', 
-      logo: 'https://images.unsplash.com/photo-1591348278863-e0b6f9c5e6f8?w=200',
-      banner: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800',
-      category: 'designer',
-      description: 'Italian luxury fashion',
-      products: 289,
-      verified: true,
-      hasDirectStore: false,
-      affiliateVendors: 15,
-      rating: 4.9,
-      followers: '1.8M'
-    },
-    { 
-      id: '4', 
-      name: 'Adidas', 
-      logo: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=200',
-      banner: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800',
-      category: 'athletic',
-      description: 'Impossible is Nothing',
-      products: 498,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 22,
-      rating: 4.7,
-      followers: '4.8M'
-    },
-    { 
-      id: '5', 
-      name: 'Zara', 
-      logo: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=200',
-      banner: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800',
-      category: 'fast-fashion',
-      description: 'Contemporary fashion trends',
-      products: 623,
-      verified: true,
-      hasDirectStore: false,
-      affiliateVendors: 34,
-      rating: 4.6,
-      followers: '3.1M'
-    },
-    { 
-      id: '6', 
-      name: 'Rolex', 
-      logo: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=200',
-      banner: 'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=800',
-      category: 'watches',
-      description: 'Swiss luxury timepieces',
-      products: 156,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 8,
-      rating: 5.0,
-      followers: '1.5M'
-    },
-    { 
-      id: '7', 
-      name: 'Louis Vuitton', 
-      logo: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200',
-      banner: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800',
-      category: 'luxury',
-      description: 'French luxury fashion house',
-      products: 412,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 18,
-      rating: 4.9,
-      followers: '3.2M'
-    },
-    { 
-      id: '8', 
-      name: 'Chanel', 
-      logo: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=200',
-      banner: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800',
-      category: 'luxury',
-      description: 'Parisian haute couture',
-      products: 378,
-      verified: true,
-      hasDirectStore: true,
-      affiliateVendors: 14,
-      rating: 5.0,
-      followers: '2.9M'
-    },
-  ];
+  const fetchBrands = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({
+        page:  String(page),
+        limit: String(LIMIT),
+        sort:  'name',
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
+      const res  = await fetch(`/api/brands?${params}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to load brands');
+      setBrands(json.data.brands);
+      setTotal(json.data.pagination.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load brands');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch]);
 
-  const filteredBrands = allBrands.filter(brand => {
-    const matchesCategory = selectedCategory === 'all' || brand.category === selectedCategory;
-    const matchesSearch = searchQuery === '' || 
-      brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      brand.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => { fetchBrands(); }, [fetchBrands]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -199,131 +95,99 @@ export default function BrandsPage() {
           </div>
         </div>
 
-        {/* Category Filters */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  selectedCategory === category.id
-                    ? 'bg-gold-600 text-white'
-                    : 'bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 shadow-sm'
-                }`}
-              >
-                {category.icon} {category.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-charcoal-600 dark:text-cool-gray-400">
-            Showing <span className="font-semibold">{filteredBrands.length}</span> {filteredBrands.length === 1 ? 'brand' : 'brands'}
+            {loading ? 'Loading...' : <><span className="font-semibold">{total}</span> {total === 1 ? 'brand' : 'brands'} registered</>}
           </p>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-xl text-red-700 dark:text-red-300">{error}</div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md animate-pulse">
+                <div className="h-32 bg-cool-gray-200 dark:bg-charcoal-700" />
+                <div className="p-6 space-y-3">
+                  <div className="h-5 bg-cool-gray-200 dark:bg-charcoal-700 rounded w-1/2" />
+                  <div className="h-4 bg-cool-gray-200 dark:bg-charcoal-700 rounded w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Brands Grid */}
-        {filteredBrands.length === 0 ? (
+        {!loading && brands.length === 0 && (
           <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-12 text-center">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">No brands found</h3>
-            <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">Try adjusting your search or filters</p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedCategory('all');
-              }}
-              className="px-6 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors"
-            >
-              Clear Filters
-            </button>
+            <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">
+              {debouncedSearch ? 'No brands found' : 'No brands registered yet'}
+            </h3>
+            <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
+              {debouncedSearch ? 'Try a different search term' : 'Be the first to register your brand!'}
+            </p>
+            {debouncedSearch ? (
+              <button onClick={() => setSearchQuery('')} className="px-6 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors">Clear Search</button>
+            ) : (
+              <Link href="/become-brand" className="px-6 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors">Register Brand</Link>
+            )}
           </div>
-        ) : (
+        )}
+
+        {!loading && brands.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBrands.map((brand) => (
+            {brands.map((brand) => (
               <Link
                 key={brand.id}
                 href={`/brand/${brand.id}`}
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all hover:-translate-y-1"
               >
-                {/* Banner Image */}
-                <div className="relative h-40 bg-linear-to-br from-gray-100 to-gray-200 dark:from-charcoal-700 dark:to-charcoal-800">
-                  {/* Inner overflow-hidden wraps only the fill image + gradient so hover-scale stays contained */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <Image
-                      src={brand.banner}
-                      alt={brand.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
+                {/* Avatar / Banner area */}
+                <div className="relative h-40 bg-linear-to-br from-gold-900/30 to-charcoal-800 flex items-center justify-center">
+                  <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                    <span>✓</span><span>Official</span>
                   </div>
-
-                  {/* Verified Badge — outside overflow-hidden */}
-                  {brand.verified && (
-                    <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
-                      <span>✓</span>
-                      <span>Official</span>
+                  {brand.avatar ? (
+                    <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-20 h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-700 shadow-lg" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-lg">
+                      {brand.name.charAt(0)}
                     </div>
                   )}
-
-                  {/* Brand Logo — outside overflow-hidden so translate-y-1/2 correctly hangs over the banner edge */}
-                  <div className="absolute bottom-0 left-6 translate-y-1/2 z-10">
-                    <div className="w-20 h-20 bg-white dark:bg-charcoal-800 rounded-xl shadow-lg border-4 border-white dark:border-charcoal-900 overflow-hidden">
-                      <Image
-                        src={brand.logo}
-                        alt={brand.name}
-                        width={80}
-                        height={80}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Brand Info */}
-                <div className="pt-12 px-6 pb-6">
-                  <h3 className="font-bold text-xl text-charcoal-900 dark:text-white mb-2 group-hover:text-gold-600 transition-colors">
-                    {brand.name}
-                  </h3>
-                  <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-4 line-clamp-2">{brand.description}</p>
-                  
-                  <div className="flex items-center justify-between text-sm mb-4">
-                    <div className="flex items-center gap-4 text-charcoal-600 dark:text-cool-gray-400">
-                      <div className="flex items-center gap-1">
-                        <span className="text-yellow-500">⭐</span>
-                        <span className="font-semibold text-charcoal-900 dark:text-white">{brand.rating}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>👥</span>
-                        <span className="font-semibold text-charcoal-900 dark:text-white">{brand.followers}</span>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="p-6">
+                  <h3 className="font-bold text-xl text-charcoal-900 dark:text-white mb-2 group-hover:text-gold-600 transition-colors">{brand.name}</h3>
+                  {brand.bio && <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-4 line-clamp-2">{brand.bio}</p>}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3 text-charcoal-600 dark:text-cool-gray-400">
                       <div className="flex items-center gap-1">
                         <span>📦</span>
                         <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>🏪</span>
-                        <span className="font-semibold text-charcoal-900 dark:text-white">{brand.affiliateVendors}</span>
+                        <span>products</span>
                       </div>
                     </div>
-                    {brand.hasDirectStore && (
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">
-                        Direct
-                      </span>
-                    )}
+                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded">Direct</span>
                   </div>
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && total > LIMIT && (
+          <div className="flex justify-center gap-2 mt-8">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 rounded-lg bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 disabled:opacity-50 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">← Prev</button>
+            <span className="px-4 py-2 text-charcoal-600 dark:text-cool-gray-400">Page {page} of {Math.ceil(total / LIMIT)}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page * LIMIT >= total} className="px-4 py-2 rounded-lg bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 disabled:opacity-50 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">Next →</button>
           </div>
         )}
 
