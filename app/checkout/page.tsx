@@ -115,9 +115,9 @@ export default function CheckoutPage() {
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={160}
-              height={88}
-              className="h-8 w-auto object-contain"
+              width={231}
+              height={160}
+              className="h-10 w-auto object-contain"
             />
             <span className="text-sm font-medium text-cool-gray-400 dark:text-cool-gray-500">/ Secure Checkout</span>
           </Link>

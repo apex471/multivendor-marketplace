@@ -86,9 +86,9 @@ export default function Header() {
             <NextImage
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={160}
-              height={88}
-              className="h-8 sm:h-9 w-auto object-contain"
+              width={231}
+              height={160}
+              className="h-10 sm:h-12 w-auto object-contain"
               priority
             />
           </Link>

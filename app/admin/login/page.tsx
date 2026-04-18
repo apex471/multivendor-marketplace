@@ -78,9 +78,9 @@ export default function AdminLoginPage() {
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={240}
-              height={132}
-              className="h-14 w-auto object-contain"
+              width={346}
+              height={240}
+              className="h-20 w-auto object-contain"
             />
           </div>
           <p className="text-cool-gray-400 text-sm">Admin Portal — Secure Access</p>

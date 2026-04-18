@@ -73,9 +73,9 @@ function LoginForm() {
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={220}
-              height={122}
-              className="h-12 w-auto object-contain"
+              width={308}
+              height={214}
+              className="h-16 w-auto object-contain"
             />
           </Link>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-2">

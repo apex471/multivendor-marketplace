@@ -14,9 +14,9 @@ export default function Footer() {
               <Image
                 src="/images/brand/clw-logo.png"
                 alt="Certified Luxury World"
-                width={160}
-                height={88}
-                className="h-9 w-auto object-contain"
+                width={231}
+                height={160}
+                className="h-12 w-auto object-contain"
               />
             </div>
             <p className="text-xs sm:text-sm text-gray-300 pr-4 md:pr-0">

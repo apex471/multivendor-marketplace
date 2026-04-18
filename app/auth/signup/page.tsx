@@ -203,9 +203,9 @@ function SignupContent() {
               <Image
                 src="/images/brand/clw-logo.png"
                 alt="Certified Luxury World"
-                width={220}
-                height={122}
-                className="h-12 w-auto object-contain"
+                width={308}
+                height={214}
+                className="h-16 w-auto object-contain"
               />
             </Link>
             <h1 className="text-4xl sm:text-5xl font-display font-bold text-charcoal-900 dark:text-white mb-3">
@@ -264,9 +264,9 @@ function SignupContent() {
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={220}
-              height={122}
-              className="h-12 w-auto object-contain"
+              width={308}
+              height={214}
+              className="h-16 w-auto object-contain"
             />
           </Link>
           <div className="text-4xl mb-2">{selectedRole.icon}</div>

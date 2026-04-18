@@ -114,9 +114,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={200}
-              height={110}
-              className="h-14 w-auto object-contain"
+              width={346}
+              height={240}
+              className="h-20 w-auto object-contain"
             />
           </div>
           <div className="w-8 h-8 border-4 border-gold-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -153,9 +153,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Image
               src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={160}
-              height={88}
-              className="h-7 w-auto object-contain"
+              width={231}
+              height={160}
+              className="h-10 w-auto object-contain"
             />
             <p className="text-cool-gray-500 text-xs">Admin Portal</p>
           </div>
