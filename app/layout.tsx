@@ -23,6 +23,40 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "CLW - Certified Luxury World | Premium Luxury Marketplace",
   description: "Certified Luxury World (CLW) - Your premier destination for authentic luxury products. Shop from certified vendors, share your refined style, and connect with luxury connoisseurs worldwide.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://certifiedluxuryworld.com'),
+  icons: {
+    icon: [
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '32x32' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  openGraph: {
+    title: 'CLW - Certified Luxury World | Premium Luxury Marketplace',
+    description: 'Your premier destination for authentic luxury products. Shop from certified vendors, share your refined style, and connect with luxury connoisseurs worldwide.',
+    url: '/',
+    siteName: 'Certified Luxury World',
+    images: [
+      {
+        url: '/images/brand/og-image.jpg',
+        width: 1280,
+        height: 708,
+        alt: 'Certified Luxury World - Premium Luxury Marketplace',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CLW - Certified Luxury World',
+    description: 'Your premier destination for authentic luxury products.',
+    images: ['/images/brand/og-image.jpg'],
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

@@ -68,10 +68,22 @@ export default function AboutPage() {
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-linear-to-r from-gold-600 to-gold-700 text-white py-20">
-        <div className="container mx-auto px-4 text-center">
+      <div className="relative bg-charcoal-900 text-white py-20 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="/images/brand/banner-about.jpg"
+            alt="About Certified Luxury World"
+            fill
+            className="object-cover object-center"
+            priority
+            quality={85}
+          />
+          <div className="absolute inset-0 bg-charcoal-950/70" />
+          <div className="absolute inset-0 bg-linear-to-b from-gold-900/20 via-transparent to-charcoal-950/40" />
+        </div>
+        <div className="container mx-auto px-4 text-center relative">
           <h1 className="text-5xl font-bold mb-6">About Us</h1>
-          <p className="text-xl max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl max-w-3xl mx-auto leading-relaxed text-white/90">
             We're revolutionizing fashion e-commerce by combining marketplace functionality 
             with social media features, creating a unique platform where style meets community.
           </p>

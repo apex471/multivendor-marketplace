@@ -112,8 +112,15 @@ export default function CheckoutPage() {
       <div className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-linear-to-br from-charcoal-800 to-charcoal-900 rounded-lg flex items-center justify-center">
-              <span className="text-gold-300 font-bold text-sm">CLW</span>
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-gold-500/30 shadow-sm">
+              <Image
+                src="/images/brand/clw-logo.jpg"
+                alt="CLW"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover object-top"
+                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+              />
             </div>
             <span className="text-lg font-display font-bold text-charcoal-900 dark:text-white">Secure Checkout</span>
           </Link>

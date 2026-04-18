@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -55,6 +56,17 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-charcoal-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Branded background image */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/brand/banner-3.jpg"
+          alt="CLW Admin"
+          fill
+          className="object-cover object-center opacity-20"
+          priority
+        />
+        <div className="absolute inset-0 bg-charcoal-950/80" />
+      </div>
       {/* Grid background decoration */}
       <div className="absolute inset-0 opacity-5"
         style={{ backgroundImage: 'linear-gradient(#d4af37 1px, transparent 1px), linear-gradient(90deg, #d4af37 1px, transparent 1px)', backgroundSize: '40px 40px' }}
@@ -62,10 +74,15 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gold-600 rounded-2xl mb-4 shadow-lg shadow-gold-600/30">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg shadow-gold-600/30 overflow-hidden border-2 border-gold-500/40">
+            <Image
+              src="/images/brand/clw-logo.jpg"
+              alt="CLW"
+              width={64}
+              height={64}
+              className="w-full h-full object-cover object-top"
+              style={{ mixBlendMode: 'luminosity', filter: 'brightness(1.2) contrast(1.1)' }}
+            />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
           <p className="text-cool-gray-400 text-sm">CLW Marketplace — Secure Access</p>

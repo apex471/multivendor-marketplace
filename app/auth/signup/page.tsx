@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { setAuthSession } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
@@ -199,8 +200,15 @@ function SignupContent() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-charcoal-900 dark:bg-gold-600 rounded-lg flex items-center justify-center">
-                <span className="text-gold-300 dark:text-charcoal-900 font-bold text-sm">CLW</span>
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
+                <Image
+                  src="/images/brand/clw-logo.jpg"
+                  alt="CLW"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover object-top"
+                  style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+                />
               </div>
             </Link>
             <h1 className="text-4xl sm:text-5xl font-display font-bold text-charcoal-900 dark:text-white mb-3">
@@ -256,8 +264,15 @@ function SignupContent() {
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-charcoal-900 dark:bg-gold-600 rounded-lg flex items-center justify-center">
-              <span className="text-gold-300 dark:text-charcoal-900 font-bold text-sm">CLW</span>
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
+              <Image
+                src="/images/brand/clw-logo.jpg"
+                alt="CLW"
+                width={40}
+                height={40}
+                className="w-full h-full object-cover object-top"
+                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1)' }}
+              />
             </div>
           </Link>
           <div className="text-4xl mb-2">{selectedRole.icon}</div>

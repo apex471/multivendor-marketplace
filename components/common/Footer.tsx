@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,8 +11,15 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-linear-to-br from-gold-500 to-gold-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-xs sm:text-sm">CLW</span>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg overflow-hidden shrink-0 border border-gold-500/40 shadow-sm">
+                <Image
+                  src="/images/brand/clw-logo.jpg"
+                  alt="CLW - Certified Luxury World"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover object-top"
+                  style={{ mixBlendMode: 'luminosity', filter: 'brightness(1.1) contrast(1.05)' }}
+                />
               </div>
               <div className="flex flex-col">
                 <span className="text-base sm:text-lg font-display font-bold text-white">

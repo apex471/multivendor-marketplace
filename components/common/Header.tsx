@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -82,8 +83,15 @@ export default function Header() {
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5 sm:gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-linear-to-br from-charcoal-800 to-charcoal-900 dark:from-gold-600 dark:to-gold-700 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-gold-300 dark:text-charcoal-900 font-bold text-xs sm:text-sm">CLW</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-gold-500/30 dark:border-gold-500/40 shadow-sm">
+              <NextImage
+                src="/images/brand/clw-logo.jpg"
+                alt="CLW"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover object-top"
+                style={{ mixBlendMode: 'luminosity', filter: 'contrast(1.1) brightness(1.05)' }}
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-xs sm:text-sm font-display font-bold text-charcoal-900 dark:text-white leading-tight">

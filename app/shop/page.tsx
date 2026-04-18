@@ -148,12 +148,25 @@ export default function ShopPage() {
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       <Header />
 
-      <div className="container mx-auto px-4 py-6 sm:py-8 md:py-12">
-        {/* Page Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-2">Shop Luxury Fashion</h1>
-          <p className="text-sm sm:text-base text-charcoal-600 dark:text-cool-gray-400">Discover exclusive products from certified luxury vendors</p>
+      {/* Branded Hero Banner */}
+      <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
+        <Image
+          src="/images/brand/banner-2.jpg"
+          alt="Shop Luxury Fashion"
+          fill
+          className="object-cover object-center"
+          priority
+          quality={85}
+        />
+        <div className="absolute inset-0 bg-charcoal-950/65 dark:bg-charcoal-950/75" />
+        <div className="absolute inset-0 bg-linear-to-r from-charcoal-950/50 via-transparent to-gold-950/20" />
+        <div className="relative h-full flex flex-col justify-center px-6 sm:px-8 md:px-12 lg:px-16">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white mb-2">Shop Luxury Fashion</h1>
+          <p className="text-sm sm:text-base text-white/80">Discover exclusive products from certified luxury vendors</p>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6 sm:py-8 md:py-12">
 
         {/* Search Bar */}
         <div className="mb-6 sm:mb-8">

@@ -163,14 +163,27 @@ export default function BrandsPage() {
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       <Header />
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">Shop by Brand</h1>
-          <p className="text-lg text-charcoal-600 dark:text-cool-gray-400">
+      {/* Branded Hero Banner */}
+      <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
+        <Image
+          src="/images/brand/banner-category.jpg"
+          alt="Shop by Brand"
+          fill
+          className="object-cover object-center"
+          priority
+          quality={85}
+        />
+        <div className="absolute inset-0 bg-charcoal-950/65 dark:bg-charcoal-950/75" />
+        <div className="absolute inset-0 bg-linear-to-r from-charcoal-950/50 via-transparent to-gold-950/20" />
+        <div className="relative h-full flex flex-col justify-center px-6 sm:px-8 md:px-12 lg:px-16">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white mb-2">Shop by Brand</h1>
+          <p className="text-sm sm:text-base text-white/80">
             Discover products from official brand stores and authorized retailers
           </p>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
 
         {/* Search Bar */}
         <div className="mb-6">

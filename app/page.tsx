@@ -157,9 +157,18 @@ export default function Home() {
 
       {/* Hero Section with Search */}
       <section className="relative bg-linear-to-br from-charcoal-900 via-charcoal-800 to-charcoal-700 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-10 dark:opacity-20">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gold-400 dark:bg-gold-600 rounded-full filter blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-charcoal-600 dark:bg-charcoal-900 rounded-full filter blur-3xl"></div>
+        {/* Branded hero background */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/brand/banner-hero.jpg"
+            alt="Certified Luxury World"
+            fill
+            className="object-cover object-center"
+            priority
+            quality={85}
+          />
+          <div className="absolute inset-0 bg-charcoal-950/65 dark:bg-charcoal-950/75" />
+          <div className="absolute inset-0 bg-linear-to-br from-charcoal-900/40 via-transparent to-gold-900/20" />
         </div>
         
         <div className="container mx-auto px-4 py-12 sm:py-16 lg:py-20 relative">
