@@ -82,22 +82,14 @@ export default function Header() {
       <nav className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-2.5">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-gold-500/30 dark:border-gold-500/40 shadow-sm">
-              <NextImage
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
+          <Link href="/" className="flex items-center">
             <NextImage
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={90}
-              height={36}
-              className="hidden dark:inline h-5 sm:h-6 w-auto object-contain"
+              width={160}
+              height={88}
+              className="h-8 sm:h-9 w-auto object-contain"
+              priority
             />
           </Link>
 

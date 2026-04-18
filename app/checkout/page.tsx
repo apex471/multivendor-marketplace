@@ -112,21 +112,12 @@ export default function CheckoutPage() {
       <div className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-gold-500/30 shadow-sm">
-              <Image
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
             <Image
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={90}
-              height={28}
-              className="hidden dark:inline h-5 w-auto object-contain"
+              width={160}
+              height={88}
+              className="h-8 w-auto object-contain"
             />
             <span className="text-sm font-medium text-cool-gray-400 dark:text-cool-gray-500">/ Secure Checkout</span>
           </Link>

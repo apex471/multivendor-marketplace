@@ -74,24 +74,13 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg shadow-gold-600/20 border-2 border-gold-500/40">
-              <Image
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={64}
-                height={64}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-          </div>
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-4">
             <Image
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={160}
-              height={48}
-              className="h-8 w-auto object-contain"
+              width={240}
+              height={132}
+              className="h-14 w-auto object-contain"
             />
           </div>
           <p className="text-cool-gray-400 text-sm">Admin Portal — Secure Access</p>

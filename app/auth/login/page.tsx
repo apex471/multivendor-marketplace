@@ -69,22 +69,13 @@ function LoginForm() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex flex-col items-center gap-2 mb-4">
-            <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
-              <Image
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={48}
-                height={48}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
             <Image
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={130}
-              height={36}
-              className="hidden dark:inline h-6 w-auto object-contain"
+              width={220}
+              height={122}
+              className="h-12 w-auto object-contain"
             />
           </Link>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-2">

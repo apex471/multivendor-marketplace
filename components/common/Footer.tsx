@@ -10,22 +10,13 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-7 md:gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden shrink-0 border border-gold-500/40 shadow-sm">
-                <Image
-                  src="/images/brand/clw-icon.jpg"
-                  alt="CLW"
-                  width={36}
-                  height={36}
-                  className="w-full h-full object-cover object-center"
-                />
-              </div>
+            <div className="mb-3 sm:mb-4">
               <Image
-                src="/images/brand/clw-logo.jpg"
+                src="/images/brand/clw-logo.png"
                 alt="Certified Luxury World"
-                width={110}
-                height={44}
-                className="h-6 w-auto object-contain"
+                width={160}
+                height={88}
+                className="h-9 w-auto object-contain"
               />
             </div>
             <p className="text-xs sm:text-sm text-gray-300 pr-4 md:pr-0">

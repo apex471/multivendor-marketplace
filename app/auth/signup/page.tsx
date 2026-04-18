@@ -199,22 +199,13 @@ function SignupContent() {
       <div className="min-h-screen bg-linear-to-br from-cool-gray-50 via-white to-gold-50 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 py-12 px-4 transition-colors duration-200">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
-                <Image
-                  src="/images/brand/clw-icon.jpg"
-                  alt="CLW"
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-cover object-center"
-                />
-              </div>
+            <Link href="/" className="inline-flex items-center justify-center mb-6">
               <Image
-                src="/images/brand/clw-logo.jpg"
+                src="/images/brand/clw-logo.png"
                 alt="Certified Luxury World"
-                width={130}
-                height={36}
-                className="hidden dark:inline h-6 w-auto object-contain"
+                width={220}
+                height={122}
+                className="h-12 w-auto object-contain"
               />
             </Link>
             <h1 className="text-4xl sm:text-5xl font-display font-bold text-charcoal-900 dark:text-white mb-3">
@@ -269,22 +260,13 @@ function SignupContent() {
     <div className="min-h-screen bg-linear-to-br from-cool-gray-50 via-white to-gold-50 dark:from-charcoal-950 dark:via-charcoal-900 dark:to-charcoal-800 py-12 px-4 transition-colors duration-200">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md">
-              <Image
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={48}
-                height={48}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
             <Image
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={130}
-              height={36}
-              className="hidden dark:inline h-6 w-auto object-contain"
+              width={220}
+              height={122}
+              className="h-12 w-auto object-contain"
             />
           </Link>
           <div className="text-4xl mb-2">{selectedRole.icon}</div>

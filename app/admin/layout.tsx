@@ -110,16 +110,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="min-h-screen bg-charcoal-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mx-auto mb-6 animate-pulse">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-gold-500/40 shadow-lg">
-              <Image
-                src="/images/brand/clw-icon.jpg"
-                alt="CLW"
-                width={56}
-                height={56}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
+          <div className="flex items-center justify-center mb-6 animate-pulse">
+            <Image
+              src="/images/brand/clw-logo.png"
+              alt="Certified Luxury World"
+              width={200}
+              height={110}
+              className="h-14 w-auto object-contain"
+            />
           </div>
           <div className="w-8 h-8 border-4 border-gold-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-cool-gray-400 text-sm">Verifying access...</p>
@@ -151,22 +149,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-charcoal-800">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-lg border border-gold-500/30">
-            <Image
-              src="/images/brand/clw-icon.jpg"
-              alt="CLW"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover object-center"
-            />
-          </div>
           <div className="flex flex-col gap-0.5 min-w-0">
             <Image
-              src="/images/brand/clw-logo.jpg"
+              src="/images/brand/clw-logo.png"
               alt="Certified Luxury World"
-              width={100}
-              height={28}
-              className="h-5 w-auto object-contain"
+              width={160}
+              height={88}
+              className="h-7 w-auto object-contain"
             />
             <p className="text-cool-gray-500 text-xs">Admin Portal</p>
           </div>
