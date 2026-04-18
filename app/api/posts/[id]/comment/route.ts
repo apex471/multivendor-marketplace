@@ -62,6 +62,6 @@ export async function POST(
       201
     );
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       unreadCount,
     });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -80,6 +80,6 @@ export async function PATCH(req: NextRequest) {
 
     return sendSuccess({ updated: true }, 'All notifications marked as read');
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

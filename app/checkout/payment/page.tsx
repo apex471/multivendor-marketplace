@@ -6,52 +6,11 @@ import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
 
-interface SavedCard {
-  id: string;
-  cardNumber: string;
-  cardHolder: string;
-  expiryDate: string;
-  cardType: 'visa' | 'mastercard' | 'amex';
-  isDefault: boolean;
-}
-
 export default function PaymentPage() {
   const router = useRouter();
   const { checkoutData, updatePaymentMethod } = useCheckout();
-  const [paymentType, setPaymentType] = useState<'saved' | 'new' | 'paypal'>('saved');
-  const [selectedCardId, setSelectedCardId] = useState<string>('');
+  const [paymentType, setPaymentType] = useState<'new' | 'paypal'>('new');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
-
-  // Mock saved cards
-  const [savedCards] = useState<SavedCard[]>([
-    {
-      id: '1',
-      cardNumber: '**** **** **** 4242',
-      cardHolder: 'John Doe',
-      expiryDate: '12/25',
-      cardType: 'visa',
-      isDefault: true
-    },
-    {
-      id: '2',
-      cardNumber: '**** **** **** 8888',
-      cardHolder: 'John Doe',
-      expiryDate: '06/26',
-      cardType: 'mastercard',
-      isDefault: false
-    }
-  ]);
-
-  const handleCardSelect = (card: SavedCard) => {
-    setSelectedCardId(card.id);
-    updatePaymentMethod({
-      id: card.id,
-      type: 'card',
-      cardNumber: card.cardNumber,
-      cardHolder: card.cardHolder,
-      expiryDate: card.expiryDate
-    });
-  };
 
   const handleNewCardSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,14 +44,6 @@ export default function PaymentPage() {
     }
   };
 
-  const getCardIcon = (type: string) => {
-    switch (type) {
-      case 'visa': return '💳';
-      case 'mastercard': return '💳';
-      case 'amex': return '💳';
-      default: return '💳';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -125,19 +76,7 @@ export default function PaymentPage() {
           <div className="lg:col-span-2">
             {/* Payment Type Selection */}
             <div className="mb-6">
-              <div className="grid sm:grid-cols-3 gap-3">
-                <button
-                  onClick={() => setPaymentType('saved')}
-                  className={`p-4 rounded-lg border-2 text-left transition-all ${
-                    paymentType === 'saved'
-                      ? 'border-gold-600 bg-gold-50 dark:bg-gold-900/10'
-                      : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">💳</div>
-                  <div className="font-semibold text-charcoal-900 dark:text-white">Saved Card</div>
-                  <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">Use existing card</div>
-                </button>
+              <div className="grid sm:grid-cols-2 gap-3">
                 <button
                   onClick={() => setPaymentType('new')}
                   className={`p-4 rounded-lg border-2 text-left transition-all ${
@@ -146,9 +85,9 @@ export default function PaymentPage() {
                       : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400'
                   }`}
                 >
-                  <div className="text-2xl mb-1">➕</div>
-                  <div className="font-semibold text-charcoal-900 dark:text-white">New Card</div>
-                  <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">Add new card</div>
+                  <div className="text-2xl mb-1">💳</div>
+                  <div className="font-semibold text-charcoal-900 dark:text-white">Credit / Debit Card</div>
+                  <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">Pay with card</div>
                 </button>
                 <button
                   onClick={() => setPaymentType('paypal')}
@@ -164,56 +103,6 @@ export default function PaymentPage() {
                 </button>
               </div>
             </div>
-
-            {/* Saved Cards */}
-            {paymentType === 'saved' && (
-              <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">
-                  Select Payment Card
-                </h3>
-                <div className="space-y-3">
-                  {savedCards.map((card) => (
-                    <div
-                      key={card.id}
-                      onClick={() => handleCardSelect(card)}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedCardId === card.id
-                          ? 'border-gold-600 bg-gold-50 dark:bg-gold-900/10'
-                          : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="text-3xl">{getCardIcon(card.cardType)}</div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-charcoal-900 dark:text-white">
-                                {card.cardNumber}
-                              </span>
-                              {card.isDefault && (
-                                <span className="px-2 py-0.5 bg-gold-600 text-white text-xs rounded">Default</span>
-                              )}
-                            </div>
-                            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                              {card.cardHolder} • Expires {card.expiryDate}
-                            </p>
-                          </div>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          selectedCardId === card.id
-                            ? 'border-gold-600 bg-gold-600'
-                            : 'border-cool-gray-300 dark:border-charcoal-700'
-                        }`}>
-                          {selectedCardId === card.id && (
-                            <div className="w-2 h-2 bg-white rounded-full" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* New Card Form */}
             {paymentType === 'new' && (
@@ -344,7 +233,7 @@ export default function PaymentPage() {
                     Pay with PayPal
                   </h3>
                   <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
-                    You'll be redirected to PayPal to complete your purchase securely
+                    You&apos;ll be redirected to PayPal to complete your purchase securely
                   </p>
                   <button
                     onClick={handlePayPal}
@@ -398,7 +287,7 @@ export default function PaymentPage() {
                 <span>Total</span>
                 <span className="text-gold-600">${checkoutData.total.toFixed(2)}</span>
               </div>
-              {paymentType === 'saved' && (
+              {paymentType === 'new' && (
                 <button
                   onClick={handleContinue}
                   className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"

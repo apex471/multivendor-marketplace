@@ -1,27 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
+interface Deal {
+  id: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number;
+  images: string[];
+  rating?: number;
+  ratingCount?: number;
+  discount?: number;
+}
+
 export default function DealsPage() {
   const [activeTab, setActiveTab] = useState<'flash' | 'daily' | 'seasonal'>('flash');
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const deals = {
-    flash: [
-      { id: '1', name: 'Designer Watch', price: 799, oldPrice: 1299, image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400', discount: 38, timeLeft: '2h 30m', rating: 4.9 },
-      { id: '2', name: 'Leather Bag', price: 599, oldPrice: 899, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400', discount: 33, timeLeft: '2h 30m', rating: 4.8 },
-    ],
-    daily: [
-      { id: '3', name: 'Sunglasses', price: 249, oldPrice: 399, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400', discount: 38, rating: 4.7 },
-      { id: '4', name: 'Sneakers', price: 329, oldPrice: 499, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400', discount: 34, rating: 4.9 },
-    ],
-    seasonal: [
-      { id: '5', name: 'Winter Coat', price: 899, oldPrice: 1499, image: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400', discount: 40, rating: 4.8 },
-      { id: '6', name: 'Designer Scarf', price: 199, oldPrice: 349, image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400', discount: 43, rating: 4.6 },
-    ],
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/products?onSale=true&limit=12`)
+      .then(r => r.json())
+      .then(json => { if (!cancelled && json.success) setDeals(json.data.products ?? []); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const getDiscount = (deal: Deal) => {
+    if (deal.discount) return deal.discount;
+    if (deal.compareAtPrice && deal.compareAtPrice > deal.price)
+      return Math.round((1 - deal.price / deal.compareAtPrice) * 100);
+    return 0;
   };
 
   return (
@@ -58,7 +72,7 @@ export default function DealsPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'flash' | 'daily' | 'seasonal')}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'bg-gold-600 text-white'
@@ -72,41 +86,52 @@ export default function DealsPage() {
         </div>
 
         {/* Deals Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {deals[activeTab].map((deal) => (
-            <Link
-              key={deal.id}
-              href={`/product/${deal.id}`}
-              className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all"
-            >
-              <div className="relative h-56 bg-cool-gray-100 dark:bg-charcoal-700">
-                <Image src={deal.image} alt={deal.name} fill className="object-cover group-hover:scale-105 transition-transform" />
-                <div className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full font-bold text-sm">
-                  -{deal.discount}%
-                </div>
-                {activeTab === 'flash' && 'timeLeft' in deal && (
-                  <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                    ⏰ {deal.timeLeft}
+        {isLoading ? (
+          <div className="text-center py-16 text-charcoal-500 dark:text-cool-gray-400">Loading deals...</div>
+        ) : deals.length === 0 ? (
+          <div className="text-center py-16 text-charcoal-500 dark:text-cool-gray-400">No deals available right now. Check back soon!</div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {deals.map((deal) => {
+              const disc = getDiscount(deal);
+              return (
+                <Link
+                  key={deal.id}
+                  href={`/product/${deal.id}`}
+                  className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all"
+                >
+                  <div className="relative h-56 bg-cool-gray-100 dark:bg-charcoal-700">
+                    {deal.images?.[0] && (
+                      <Image src={deal.images[0]} alt={deal.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                    )}
+                    {disc > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full font-bold text-sm">
+                        -{disc}%
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-charcoal-900 dark:text-white mb-2 line-clamp-2">{deal.name}</h3>
-                <div className="flex items-center gap-1 mb-3">
-                  <span className="text-yellow-500">⭐</span>
-                  <span className="text-sm font-semibold text-charcoal-900 dark:text-white">{deal.rating}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold text-gold-600">${deal.price}</span>
-                  <span className="text-sm text-cool-gray-500 dark:text-cool-gray-400 line-through">${deal.oldPrice}</span>
-                </div>
-                <button className="w-full mt-4 px-4 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors">
-                  Shop Now
-                </button>
-              </div>
-            </Link>
-          ))}
-        </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-charcoal-900 dark:text-white mb-2 line-clamp-2">{deal.name}</h3>
+                    {deal.rating && (
+                      <div className="flex items-center gap-1 mb-3">
+                        <span className="text-yellow-500">⭐</span>
+                        <span className="text-sm font-semibold text-charcoal-900 dark:text-white">{deal.rating.toFixed(1)}</span>
+                        {deal.ratingCount && <span className="text-xs text-charcoal-500">({deal.ratingCount})</span>}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold text-gold-600">${deal.price.toFixed(2)}</span>
+                      {deal.compareAtPrice && <span className="text-sm text-cool-gray-500 dark:text-cool-gray-400 line-through">${deal.compareAtPrice.toFixed(2)}</span>}
+                    </div>
+                    <button className="w-full mt-4 px-4 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors">
+                      Shop Now
+                    </button>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         {/* Coupon Section */}
         <div className="mt-12 bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-8">

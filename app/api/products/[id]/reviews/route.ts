@@ -80,7 +80,7 @@ export async function GET(
         : { avgRating: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
     });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -142,6 +142,6 @@ export async function POST(
       createdAt: review.createdAt,
     }, 'Review submitted', 201);
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

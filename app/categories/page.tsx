@@ -1,20 +1,28 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  count: number;
+  subcategories: string[];
+}
+
 export default function CategoriesPage() {
-  const categories = [
-    { id: 'clothing', name: 'Clothing', icon: '👔', count: 1245, subcategories: ['Dresses', 'Shirts', 'Pants', 'Jackets', 'Suits'] },
-    { id: 'shoes', name: 'Shoes', icon: '👟', count: 856, subcategories: ['Sneakers', 'Heels', 'Boots', 'Loafers', 'Sandals'] },
-    { id: 'bags', name: 'Bags', icon: '👜', count: 634, subcategories: ['Handbags', 'Backpacks', 'Clutches', 'Totes', 'Crossbody'] },
-    { id: 'watches', name: 'Watches', icon: '⌚', count: 423, subcategories: ['Luxury', 'Sport', 'Smart', 'Classic', 'Fashion'] },
-    { id: 'jewelry', name: 'Jewelry', icon: '💎', count: 789, subcategories: ['Necklaces', 'Rings', 'Earrings', 'Bracelets', 'Watches'] },
-    { id: 'accessories', name: 'Accessories', icon: '🕶️', count: 567, subcategories: ['Sunglasses', 'Belts', 'Scarves', 'Hats', 'Gloves'] },
-    { id: 'sportswear', name: 'Sportswear', icon: '⚽', count: 445, subcategories: ['Athletic', 'Yoga', 'Running', 'Training', 'Outdoor'] },
-    { id: 'beauty', name: 'Beauty', icon: '💄', count: 892, subcategories: ['Makeup', 'Skincare', 'Fragrance', 'Haircare', 'Tools'] },
-  ];
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/products/categories')
+      .then(r => r.json())
+      .then(json => { if (json.success) setCategories(json.data.categories ?? []); })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -30,6 +38,7 @@ export default function CategoriesPage() {
         </div>
 
         {/* Categories Grid */}
+        {isLoading && <div className="text-center py-12 text-charcoal-500 dark:text-cool-gray-400">Loading categories...</div>}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {categories.map((category) => (
             <Link
@@ -66,7 +75,7 @@ export default function CategoriesPage() {
 
         {/* Featured Collections */}
         <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-2xl p-8 md:p-12 text-white text-center">
-          <h2 className="text-3xl font-bold mb-4">Can't Find What You're Looking For?</h2>
+          <h2 className="text-3xl font-bold mb-4">Can&apos;t Find What You&apos;re Looking For?</h2>
           <p className="text-lg mb-6">Use our advanced search to find specific items</p>
           <Link
             href="/search"

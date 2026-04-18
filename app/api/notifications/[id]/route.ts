@@ -36,7 +36,7 @@ export async function PATCH(
 
     return sendSuccess({ id: notification._id, isRead: true });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -55,6 +55,6 @@ export async function DELETE(
 
     return sendSuccess({ deleted: true });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

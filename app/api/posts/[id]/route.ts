@@ -57,6 +57,6 @@ export async function GET(
       },
     });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

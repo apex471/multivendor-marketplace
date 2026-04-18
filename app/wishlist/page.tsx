@@ -126,7 +126,7 @@ export default function WishlistPage() {
 
               {/* Wishlist Items */}
               {wishlistItems.map((item) => (
-                <div key={item.id} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div key={item.wishlistId} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md hover:shadow-lg transition-shadow">
                   <div className="p-4 sm:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}

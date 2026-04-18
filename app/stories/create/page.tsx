@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { getAuthToken } from '../../../lib/api/auth';
 
 interface TextOverlay {
   id: string;
@@ -101,22 +102,51 @@ export default function CreateStoryPage() {
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      alert('Please log in to publish a story');
+      return;
+    }
+
     setIsPublishing(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Upload the media file
+      const uploadFormData = new FormData();
+      // mediaFile is an object URL — fetch it back as a blob to upload
+      const blob = await fetch(mediaFile).then(r => r.blob());
+      uploadFormData.append('file', blob, `story.${mediaType === 'video' ? 'mp4' : 'jpg'}`);
 
-    const storyData = {
-      mediaFile,
-      mediaType,
-      filter,
-      duration,
-      textOverlays,
-      createdAt: new Date().toISOString(),
-    };
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: uploadFormData,
+      });
+      const uploadJson = await uploadRes.json();
+      if (!uploadJson.success) throw new Error(uploadJson.error ?? 'Upload failed');
 
-    console.log('Publishing story:', storyData);
-    
-    setIsPublishing(false);
-    router.push('/feed');
+      const mediaUrl: string = uploadJson.data.url;
+
+      // Create the story
+      const storyRes = await fetch('/api/stories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaUrls: [mediaUrl],
+          mediaTypes: [mediaType ?? 'image'],
+          filter,
+          duration,
+          textOverlays,
+        }),
+      });
+      const storyJson = await storyRes.json();
+      if (!storyJson.success) throw new Error(storyJson.error ?? 'Story creation failed');
+
+      router.push('/feed');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to publish story');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const getFilterStyle = (filterId: string) => {

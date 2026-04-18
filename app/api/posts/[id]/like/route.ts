@@ -34,6 +34,6 @@ export async function POST(
 
     return sendSuccess({ likes: post.likes, liked: action !== 'unlike' });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

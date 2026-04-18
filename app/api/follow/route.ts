@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     return sendSuccess({ following: true, followerCount }, 'Now following', 201);
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -64,6 +64,6 @@ export async function DELETE(req: NextRequest) {
 
     return sendSuccess({ following: false, followerCount }, 'Unfollowed');
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

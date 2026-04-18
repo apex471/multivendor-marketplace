@@ -134,6 +134,24 @@ const userSchema = new Schema<IUser>(
       type: Date,
       default: null,
     },
+    addresses: [
+      {
+        id: { type: String },
+        fullName: { type: String },
+        phone: { type: String },
+        addressLine1: { type: String },
+        addressLine2: { type: String },
+        city: { type: String },
+        state: { type: String },
+        zipCode: { type: String },
+        country: { type: String },
+        isDefault: { type: Boolean, default: false },
+      }
+    ],
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
   },
   {
     timestamps: true,

@@ -42,114 +42,43 @@ export default function NearbyVendorsPage() {
   const [sortBy, setSortBy] = useState<'distance' | 'rating'>('distance');
   const mapRef = useRef<HTMLDivElement>(null);
 
-  // Mock vendor data with real coordinates (San Francisco Bay Area)
-  const mockVendors: Vendor[] = [
-    {
-      id: '1',
-      name: 'Chic Boutique',
-      description: 'Modern fashion for the contemporary woman',
-      category: 'Fashion',
-      rating: 4.8,
-      reviewCount: 234,
-      coordinates: { lat: 37.7749, lng: -122.4194 },
-      address: '123 Market St, San Francisco, CA 94103',
-      phone: '(415) 555-0101',
-      hours: '10am - 8pm',
-      products: 156,
-      verified: true,
-      deliveryRadius: 5,
-      logo: '👗'
-    },
-    {
-      id: '2',
-      name: 'Urban Threads',
-      description: 'Streetwear and urban fashion',
-      category: 'Streetwear',
-      rating: 4.9,
-      reviewCount: 567,
-      coordinates: { lat: 37.7849, lng: -122.4094 },
-      address: '456 Valencia St, San Francisco, CA 94110',
-      phone: '(415) 555-0102',
-      hours: '11am - 9pm',
-      products: 243,
-      verified: true,
-      deliveryRadius: 8,
-      logo: '👕'
-    },
-    {
-      id: '3',
-      name: 'Style Haven',
-      description: 'Luxury designer collections',
-      category: 'Luxury',
-      rating: 4.7,
-      reviewCount: 189,
-      coordinates: { lat: 37.7649, lng: -122.4294 },
-      address: '789 Union Square, San Francisco, CA 94108',
-      phone: '(415) 555-0103',
-      hours: '10am - 7pm',
-      products: 198,
-      verified: true,
-      deliveryRadius: 10,
-      logo: '💎'
-    },
-    {
-      id: '4',
-      name: 'Fashion First',
-      description: 'Affordable trendy fashion',
-      category: 'Fast Fashion',
-      rating: 4.6,
-      reviewCount: 412,
-      coordinates: { lat: 37.7949, lng: -122.3994 },
-      address: '321 Mission St, San Francisco, CA 94105',
-      phone: '(415) 555-0104',
-      hours: '9am - 10pm',
-      products: 342,
-      verified: false,
-      deliveryRadius: 7,
-      logo: '🛍️'
-    },
-    {
-      id: '5',
-      name: 'Eco Wear',
-      description: 'Sustainable and ethical fashion',
-      category: 'Sustainable',
-      rating: 4.9,
-      reviewCount: 298,
-      coordinates: { lat: 37.7549, lng: -122.4494 },
-      address: '567 Hayes St, San Francisco, CA 94102',
-      phone: '(415) 555-0105',
-      hours: '10am - 6pm',
-      products: 127,
-      verified: true,
-      deliveryRadius: 6,
-      logo: '🌱'
-    }
-  ];
+  // Load real vendors from API and filter by distance client-side
+  const [allApiVendors, setAllApiVendors] = useState<Vendor[]>([]);
 
   useEffect(() => {
-    if (userLocation) {
-      // Calculate distances and filter by radius
-      const vendorsWithDistance = mockVendors.map(vendor => ({
-        ...vendor,
-        distance: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          vendor.coordinates.lat,
-          vendor.coordinates.lng
-        )
-      })).filter(vendor => vendor.distance <= mapRadius);
+    fetch('/api/vendors?limit=100')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) setAllApiVendors(json.data.vendors ?? []);
+      });
+  }, []);
 
-      // Sort vendors
+  useEffect(() => {
+    const source = allApiVendors.length > 0 ? allApiVendors : [];
+    if (userLocation && source.length > 0) {
+      const vendorsWithDistance = source
+        .filter(v => v.coordinates?.lat && v.coordinates?.lng)
+        .map(vendor => ({
+          ...vendor,
+          distance: calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            vendor.coordinates.lat,
+            vendor.coordinates.lng
+          )
+        })).filter(vendor => vendor.distance <= mapRadius);
+
       const sorted = [...vendorsWithDistance].sort((a, b) => {
-        if (sortBy === 'distance') {
-          return a.distance - b.distance;
-        }
+        if (sortBy === 'distance') return (a as Vendor & { distance: number }).distance - (b as Vendor & { distance: number }).distance;
         return b.rating - a.rating;
       });
 
       setVendors(sorted as Vendor[]);
+    } else if (!userLocation && source.length > 0) {
+      // No location: just show all vendors sorted by rating
+      setVendors([...source].sort((a, b) => b.rating - a.rating).slice(0, 20));
     }
-  }, [userLocation, mapRadius, sortBy]);
+  }, [userLocation, allApiVendors, mapRadius, sortBy, calculateDistance]);
 
   const categories = ['all', 'Fashion', 'Streetwear', 'Luxury', 'Fast Fashion', 'Sustainable'];
 

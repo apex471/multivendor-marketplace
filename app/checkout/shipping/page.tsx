@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
 import { COURIERS, BADGE_STYLES, TRACKING_LABEL, getCourierById } from '../../../lib/couriers';
+import { getAuthToken } from '../../../lib/api/auth';
 
 interface SavedAddress {
   id: string;
@@ -27,38 +28,29 @@ export default function ShippingPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId ?? 'quickbox');
   const selectedCourier = getCourierById(selectedCourierId);
-  const [savedAddresses] = useState<SavedAddress[]>([
-    {
-      id: '1',
-      fullName: 'John Doe',
-      phone: '+1 (555) 123-4567',
-      addressLine1: '123 Main Street',
-      addressLine2: 'Apt 4B',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'United States',
-      isDefault: true
-    },
-    {
-      id: '2',
-      fullName: 'John Doe',
-      phone: '+1 (555) 123-4567',
-      addressLine1: '456 Park Avenue',
-      city: 'Brooklyn',
-      state: 'NY',
-      zipCode: '11201',
-      country: 'United States',
-      isDefault: false
-    }
-  ]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    fetch('/api/users/me/addresses', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setSavedAddresses(json.data.addresses ?? []);
+          const def = (json.data.addresses ?? []).find((a: SavedAddress) => a.isDefault);
+          if (def) { setSelectedAddressId(def.id); updateShippingAddress(def); }
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddressSelect = (address: SavedAddress) => {
     setSelectedAddressId(address.id);
     updateShippingAddress(address);
   };
 
-  const handleNewAddressSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleNewAddressSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const newAddress = {
@@ -72,6 +64,16 @@ export default function ShippingPage() {
       country: formData.get('country') as string,
       isDefault: formData.get('isDefault') === 'on'
     };
+    const token = getAuthToken();
+    if (token) {
+      const res = await fetch('/api/users/me/addresses', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAddress),
+      });
+      const json = await res.json();
+      if (json.success) setSavedAddresses(json.data.addresses ?? []);
+    }
     updateShippingAddress(newAddress);
     setShowNewAddressForm(false);
     router.push('/checkout/payment');

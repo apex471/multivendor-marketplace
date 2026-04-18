@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     return sendSuccess({ wishlist });
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     return sendSuccess({ added: true }, 'Added to wishlist', 201);
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -111,6 +111,6 @@ export async function DELETE(req: NextRequest) {
     await Wishlist.findOneAndDelete({ userId: payload.userId, productId });
     return sendSuccess({ removed: true }, 'Removed from wishlist');
   } catch (err) {
-    return sendServerError(err);
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
