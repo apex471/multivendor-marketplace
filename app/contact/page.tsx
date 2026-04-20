@@ -50,7 +50,7 @@ export default function ContactPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-charcoal-900 dark:text-white mb-4">Contact Us</h1>
           <p className="text-lg text-charcoal-600 dark:text-cool-gray-400 max-w-2xl mx-auto">
-            Have a question or need assistance? We're here to help! Fill out the form below and we'll get back to you as soon as possible.
+            Have a question or need assistance? We&apos;re here to help! Fill out the form below and we&apos;ll get back to you as soon as possible.
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export default function ContactPage() {
                     Message Sent Successfully!
                   </h2>
                   <p className="text-charcoal-600 dark:text-cool-gray-400 mb-8">
-                    Thank you for contacting us. We'll respond to your inquiry within 24 hours.
+                    Thank you for contacting us. We&apos;ll respond to your inquiry within 24 hours.
                   </p>
                   <button
                     onClick={() => setSubmitted(false)}

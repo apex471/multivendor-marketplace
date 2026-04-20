@@ -165,7 +165,7 @@ export default function ProductManagementPage() {
             <div className="flex items-center justify-between p-5 border-b border-charcoal-700">
               <div>
                 <h2 className="text-lg font-bold text-white">Edit Product</h2>
-                <p className="text-cool-gray-400 text-xs mt-0.5 truncate max-w-[260px]">{'{'}selected.name{'}'}</p>
+                <p className="text-cool-gray-400 text-xs mt-0.5 truncate max-w-[260px]">{selected.name}</p>
               </div>
               <button onClick={() => setSelected(null)} className="text-cool-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
@@ -188,14 +188,14 @@ export default function ProductManagementPage() {
               <div className="flex items-center justify-between p-3 bg-charcoal-700 rounded-xl">
                 <span className="text-sm text-white">Featured product</span>
                 <button onClick={() => updateProduct(selected._id, { featured: !selected.featured })} disabled={actionLoading === selected._id}
-                  className={`relative w-10 h-5 rounded-full transition-colors disabled:opacity-50 ${'{'}selected.featured ? 'bg-gold-500' : 'bg-charcoal-500'{'}'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${'{'}selected.featured ? 'left-5' : 'left-0.5'{'}'}`} />
+                  className={`relative w-10 h-5 rounded-full transition-colors disabled:opacity-50 ${selected.featured ? 'bg-gold-500' : 'bg-charcoal-500'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${selected.featured ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
               <button onClick={() => updateProduct(selected._id, { status: newStatus, ...(newStatus === 'rejected' && { rejectionReason }) })}
                 disabled={actionLoading === selected._id}
                 className="w-full py-3 bg-gold-600 hover:bg-gold-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
-                {'{'}actionLoading === selected._id ? 'Saving...' : 'Save Changes'{'}'}
+                {actionLoading === selected._id ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

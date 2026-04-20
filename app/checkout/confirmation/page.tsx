@@ -78,7 +78,7 @@ export default function ConfirmationPage() {
             Order Placed Successfully!
           </h1>
           <p className="text-lg text-charcoal-600 dark:text-cool-gray-400 mb-8">
-            Thank you for your purchase. We've received your order and will process it shortly.
+            Thank you for your purchase. We&apos;ve received your order and will process it shortly.
           </p>
 
           {/* Order Details Card */}
@@ -104,7 +104,7 @@ export default function ConfirmationPage() {
                     Confirmation Email Sent
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-400">
-                    We've sent an order confirmation to your email address with all the details.
+                    We&apos;ve sent an order confirmation to your email address with all the details.
                   </p>
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function ConfirmationPage() {
                     Shipping (5-7 business days)
                   </p>
                   <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                    You'll receive tracking information via email
+                    You&apos;ll receive tracking information via email
                   </p>
                 </div>
               </div>

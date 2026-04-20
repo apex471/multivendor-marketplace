@@ -300,7 +300,7 @@ We will respond to your inquiry within 30 days.`,
           <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg p-8 text-white text-center">
             <h2 className="text-2xl font-bold mb-4">Privacy Questions?</h2>
             <p className="mb-6">
-              We're here to help you understand how we protect your information.
+              We&apos;re here to help you understand how we protect your information.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

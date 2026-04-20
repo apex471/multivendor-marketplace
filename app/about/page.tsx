@@ -84,7 +84,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 text-center relative">
           <h1 className="text-5xl font-bold mb-6">About Us</h1>
           <p className="text-xl max-w-3xl mx-auto leading-relaxed text-white/90">
-            We're revolutionizing fashion e-commerce by combining marketplace functionality 
+            We&apos;re revolutionizing fashion e-commerce by combining marketplace functionality 
             with social media features, creating a unique platform where style meets community.
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold text-charcoal-900 dark:text-white mb-4">Our Mission</h2>
             <div className="w-20 h-1 bg-gold-600 mx-auto mb-8"></div>
             <p className="text-lg text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
-              To create the world's most engaging fashion marketplace where buyers discover unique styles, 
+              To create the world&apos;s most engaging fashion marketplace where buyers discover unique styles, 
               vendors grow their businesses, and fashion enthusiasts connect through shared passion for style. 
               We believe shopping should be social, personal, and inspiring.
             </p>
@@ -127,7 +127,7 @@ export default function AboutPage() {
             <p>
               Founded in 2024, our platform was born from a simple observation: online fashion shopping 
               lacked the social connection and inspiration that makes fashion exciting. Traditional 
-              e-commerce sites were transactional, while social media platforms weren't designed for shopping.
+              e-commerce sites were transactional, while social media platforms weren&apos;t designed for shopping.
             </p>
             <p>
               We set out to bridge this gap, creating a platform where you can discover trends through 
@@ -135,9 +135,9 @@ export default function AboutPage() {
               style journey with a community that gets it.
             </p>
             <p>
-              Today, we're proud to host thousands of fashion enthusiasts, hundreds of verified vendors, 
-              and countless inspiring fashion moments. But we're just getting started. Our vision is to 
-              become the go-to destination for anyone who loves fashion, whether you're shopping, selling, 
+              Today, we&apos;re proud to host thousands of fashion enthusiasts, hundreds of verified vendors, 
+              and countless inspiring fashion moments. But we&apos;re just getting started. Our vision is to 
+              become the go-to destination for anyone who loves fashion, whether you&apos;re shopping, selling, 
               or simply seeking inspiration.
             </p>
           </div>
@@ -220,7 +220,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-white mb-6">Join Our Fashion Community</h2>
           <p className="text-xl text-white mb-8 max-w-2xl mx-auto">
-            Whether you're here to shop, sell, or share your style, we're excited to have you!
+            Whether you&apos;re here to shop, sell, or share your style, we&apos;re excited to have you!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

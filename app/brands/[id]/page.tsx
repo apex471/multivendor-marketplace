@@ -222,7 +222,7 @@ export default function BrandPage() {
 
           <div className="mt-6 p-4 bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800 rounded-lg">
             <p className="text-charcoal-800 dark:text-cool-gray-200 italic">
-              "{brand.philosophy}"
+              &ldquo;{brand.philosophy}&rdquo;
             </p>
           </div>
         </div>

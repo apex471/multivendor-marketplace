@@ -31,38 +31,32 @@ interface SuggestedUser {
   category: string;
 }
 
-export default function ExplorePage() {
-  const [activeTab, setActiveTab] = useState<'posts' | 'people' | 'tags'>('posts');
-  const [searchQuery, setSearchQuery] = useState('');
+// Pre-computed outside component — avoids impure Math.random() calls during render
+const TRENDING_POSTS: TrendingPost[] = Array.from({ length: 24 }, (_, i) => ({
+  id: String(i + 1),
+  image: `https://images.unsplash.com/photo-${1551028719 + i}00167b16eac5?w=400`,
+  likes: 500 + (i * 197 % 4500),
+  comments: 50 + (i * 43 % 450),
+  user: {
+    username: `user_${i + 1}`,
+    avatar: `https://i.pravatar.cc/150?u=user${i}`,
+  },
+}));
 
-  // Mock trending posts
-  const trendingPosts: TrendingPost[] = Array.from({ length: 24 }, (_, i) => ({
-    id: String(i + 1),
-    image: `https://images.unsplash.com/photo-${1551028719 + i}00167b16eac5?w=400`,
-    likes: Math.floor(Math.random() * 5000) + 500,
-    comments: Math.floor(Math.random() * 500) + 50,
-    user: {
-      username: `user_${i + 1}`,
-      avatar: `https://i.pravatar.cc/150?u=user${i}`,
-    },
-  }));
+const TRENDING_TAGS: TrendingTag[] = [
+  { name: 'FallFashion', count: 12345 },
+  { name: 'OOTD', count: 9876 },
+  { name: 'StreetStyle', count: 8765 },
+  { name: 'Sneakers', count: 7654 },
+  { name: 'Minimalist', count: 6543 },
+  { name: 'VintageFashion', count: 5432 },
+  { name: 'SustainableFashion', count: 4321 },
+  { name: 'LuxuryFashion', count: 3210 },
+  { name: 'CasualStyle', count: 2109 },
+  { name: 'FormalWear', count: 1987 },
+];
 
-  // Mock trending tags
-  const trendingTags: TrendingTag[] = [
-    { name: 'FallFashion', count: 12345 },
-    { name: 'OOTD', count: 9876 },
-    { name: 'StreetStyle', count: 8765 },
-    { name: 'Sneakers', count: 7654 },
-    { name: 'Minimalist', count: 6543 },
-    { name: 'VintageFashion', count: 5432 },
-    { name: 'SustainableFashion', count: 4321 },
-    { name: 'LuxuryFashion', count: 3210 },
-    { name: 'CasualStyle', count: 2109 },
-    { name: 'FormalWear', count: 1987 },
-  ];
-
-  // Mock suggested users
-  const suggestedUsers: SuggestedUser[] = [
+const SUGGESTED_USERS: SuggestedUser[] = [
     {
       username: 'fashionista_queen',
       fullName: 'Emma Wilson',
@@ -103,11 +97,19 @@ export default function ExplorePage() {
       isVerified: false,
       category: 'Vintage Collector',
     },
-  ];
+];
+
+export default function ExplorePage() {
+  const [activeTab, setActiveTab] = useState<'posts' | 'people' | 'tags'>('posts');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const trendingPosts = TRENDING_POSTS;
+  const trendingTags = TRENDING_TAGS;
+  const suggestedUsers = SUGGESTED_USERS;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Searching for:', searchQuery);
+    // TODO: wire to search page
   };
 
   return (

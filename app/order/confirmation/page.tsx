@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 
 function ConfirmationContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const _router = useRouter();
   const orderId = searchParams.get('orderId') || 'ORD-UNKNOWN';
 
   return (
@@ -54,7 +54,7 @@ function ConfirmationContent() {
                 <span className="text-blue-600 mt-0.5">📧</span>
                 <div>
                   <p className="text-sm font-medium text-charcoal-900">Order Confirmation Email</p>
-                  <p className="text-xs text-charcoal-600">We've sent a confirmation to your email</p>
+                  <p className="text-xs text-charcoal-600">We&apos;ve sent a confirmation to your email</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -68,7 +68,7 @@ function ConfirmationContent() {
                 <span className="text-blue-600 mt-0.5">🚚</span>
                 <div>
                   <p className="text-sm font-medium text-charcoal-900">Shipping Updates</p>
-                  <p className="text-xs text-charcoal-600">You'll receive tracking information once shipped</p>
+                  <p className="text-xs text-charcoal-600">You&apos;ll receive tracking information once shipped</p>
                 </div>
               </li>
             </ul>
