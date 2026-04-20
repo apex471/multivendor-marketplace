@@ -201,7 +201,7 @@ export default function HelpPage() {
                     className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                   >
                     <span className="font-semibold text-charcoal-900 dark:text-white pr-4">{faq.question}</span>
-                    <span className="text-2xl text-gold-600 flex-shrink-0">
+                    <span className="text-2xl text-gold-600 shrink-0">
                       {expandedFaq === `${index}` ? '−' : '+'}
                     </span>
                   </button>

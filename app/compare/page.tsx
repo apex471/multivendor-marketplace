@@ -191,7 +191,7 @@ export default function ComparePage() {
 
                 {/* Add More Products Card */}
                 {products.length < 4 && (
-                  <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md overflow-hidden flex items-center justify-center min-h-[600px]">
+                  <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md overflow-hidden flex items-center justify-center min-h-150">
                     <div className="text-center p-8">
                       <div className="text-6xl mb-4">➕</div>
                       <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Add Product</h3>

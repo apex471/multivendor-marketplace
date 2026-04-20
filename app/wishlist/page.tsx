@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -26,7 +27,7 @@ export default function WishlistPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchWishlist = useCallback(async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) { setIsLoading(false); return; }
     try {
       const res = await fetch('/api/wishlist', { headers: { Authorization: `Bearer ${token}` } });
@@ -40,7 +41,7 @@ export default function WishlistPage() {
   useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
 
   const handleRemoveItem = async (productId: string) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) return;
     await fetch(`/api/wishlist?productId=${productId}`, {
       method: 'DELETE',
@@ -130,7 +131,7 @@ export default function WishlistPage() {
                   <div className="p-4 sm:p-6">
                     <div className="flex gap-4">
                       {/* Product Image */}
-                      <Link href={`/product/${item.productId}`} className="flex-shrink-0">
+                      <Link href={`/product/${item.productId}`} className="shrink-0">
                         <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden">
                           <Image
                             src={item.image}
@@ -267,7 +268,7 @@ export default function WishlistPage() {
                     <button
                       onClick={async () => {
                         if (confirm('Are you sure you want to clear your wishlist?')) {
-                          const token = localStorage.getItem('auth_token');
+                          const token = getAuthToken();
                           if (token) await fetch('/api/wishlist?all=true', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
                           setWishlistItems([]);
                         }

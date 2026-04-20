@@ -196,10 +196,10 @@ export default function AboutPage() {
               { year: '2025', title: 'International Expansion', description: 'Expanding to 10 new countries across Europe and Asia' },
             ].map((milestone, index) => (
               <div key={index} className="flex gap-6">
-                <div className="flex-shrink-0 w-20 text-right">
+                <div className="shrink-0 w-20 text-right">
                   <div className="text-xl font-bold text-gold-600">{milestone.year}</div>
                 </div>
-                <div className="flex-shrink-0 w-4 relative">
+                <div className="shrink-0 w-4 relative">
                   <div className="w-4 h-4 bg-gold-600 rounded-full"></div>
                   {index < 3 && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 w-0.5 h-full bg-gold-300"></div>

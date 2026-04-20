@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
@@ -78,7 +79,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
   };
 
   const handleFollow = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = getAuthToken();
     if (!token) { alert('Please log in to follow vendors'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${params.id}` : '/api/follow';
@@ -127,7 +128,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
           <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 md:p-8">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               {/* Logo */}
-              <div className="flex-shrink-0 mx-auto sm:mx-0">
+              <div className="shrink-0 mx-auto sm:mx-0">
                 <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
                   <Image
                     src={vendor.logo}
@@ -158,7 +159,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                   </div>
                   <button
                     onClick={handleFollow}
-                    className={`px-6 py-3 min-h-[44px] rounded-lg font-semibold transition-all text-sm sm:text-base touch-manipulation ${
+                    className={`px-6 py-3 min-h-11 rounded-lg font-semibold transition-all text-sm sm:text-base touch-manipulation ${
                       isFollowing
                         ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         : 'bg-primary-700 text-white hover:bg-primary-800'
@@ -270,7 +271,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
                         e.preventDefault();
                         handleAddToCart(product);
                       }}
-                      className="w-full py-1.5 sm:py-2 min-h-[36px] bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
+                      className="w-full py-1.5 sm:py-2 min-h-9 bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
                     >
                       Add to Cart
                     </button>

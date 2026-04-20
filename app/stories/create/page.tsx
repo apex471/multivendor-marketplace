@@ -186,7 +186,7 @@ export default function CreateStoryPage() {
               </h2>
 
               {/* Story Preview */}
-              <div className="relative aspect-[9/16] max-h-[600px] bg-charcoal-900 rounded-lg overflow-hidden mx-auto max-w-[340px]">
+              <div className="relative aspect-[9/16] max-h-150 bg-charcoal-900 rounded-lg overflow-hidden mx-auto max-w-85">
                 {mediaFile ? (
                   <>
                     {mediaType === 'image' ? (

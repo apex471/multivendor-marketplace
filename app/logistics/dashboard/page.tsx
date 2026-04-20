@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -146,7 +147,7 @@ export default function LogisticsDashboard() {
 
   // ── Load profile + today stats ──────────────────────────────────────────
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = getAuthToken();
     if (!token) return;
     fetch('/api/dashboard/logistics', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -164,7 +165,7 @@ export default function LogisticsDashboard() {
 
   // ── Load delivery history on mount ────────────────────────────────────────
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = getAuthToken();
     if (!token) return;
     fetch('/api/logistics/orders?type=history', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -210,7 +211,7 @@ export default function LogisticsDashboard() {
         };
         setDriverLoc(loc);
         // Broadcast to server
-        const token = localStorage.getItem('token') ?? '';
+        const token = getAuthToken() ?? '';
         if (token) {
           fetch('/api/logistics/location', {
             method: 'POST',
@@ -256,7 +257,7 @@ export default function LogisticsDashboard() {
     }
     const pollQueue = async () => {
       if (incomingRef.current) return; // already showing a request
-      const token = localStorage.getItem('token') ?? '';
+      const token = getAuthToken() ?? '';
       if (!token) return;
       try {
         const r = await fetch('/api/logistics/orders?type=queue', {
@@ -308,7 +309,7 @@ export default function LogisticsDashboard() {
 
   // ── Accept order ──────────────────────────────────────────────────────────
   const acceptOrder = async (order: DeliveryOrder) => {
-    const token = localStorage.getItem('token') ?? '';
+    const token = getAuthToken() ?? '';
     try {
       await fetch('/api/logistics/orders', {
         method: 'PATCH',
@@ -325,7 +326,7 @@ export default function LogisticsDashboard() {
 
   // ── Decline order ─────────────────────────────────────────────────────────
   const declineOrder = async () => {
-    const token = localStorage.getItem('token') ?? '';
+    const token = getAuthToken() ?? '';
     if (incomingOrder) {
       try {
         await fetch('/api/logistics/orders', {
@@ -356,7 +357,7 @@ export default function LogisticsDashboard() {
       'delivered':  'delivered',
     };
     const apiAction = apiActionMap[nextStatus];
-    const token = localStorage.getItem('token') ?? '';
+    const token = getAuthToken() ?? '';
     if (apiAction) {
       try {
         await fetch('/api/logistics/orders', {

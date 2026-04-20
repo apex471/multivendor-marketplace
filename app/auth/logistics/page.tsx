@@ -474,7 +474,7 @@ function LogisticsSignupContent() {
 
         {/* Referral Banner */}
         <div className="bg-charcoal-800/80 border border-gold-700/50 rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
-          <span className="text-2xl mt-0.5 flex-shrink-0">
+          <span className="text-2xl mt-0.5 shrink-0">
             {referralPayload?.referrerRole === 'brand' ? '👑' : '🏪'}
           </span>
           <div className="min-w-0">
@@ -487,7 +487,7 @@ function LogisticsSignupContent() {
               <span className="text-gold-400 font-semibold">{daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>
             </p>
           </div>
-          <span className="ml-auto flex-shrink-0 px-2.5 py-1 bg-green-900/40 border border-green-700/50 text-green-400 text-xs rounded-full font-semibold">
+          <span className="ml-auto shrink-0 px-2.5 py-1 bg-green-900/40 border border-green-700/50 text-green-400 text-xs rounded-full font-semibold">
             ✓ Valid
           </span>
         </div>
@@ -974,7 +974,7 @@ function LogisticsSignupContent() {
                   type="checkbox"
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-gold-500 flex-shrink-0"
+                  className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0"
                 />
                 <span className="text-sm text-cool-gray-300 group-hover:text-cool-gray-200 transition-colors">
                   I agree to the{' '}
@@ -992,7 +992,7 @@ function LogisticsSignupContent() {
                   type="checkbox"
                   checked={agreedToLogisticsPolicy}
                   onChange={(e) => setAgreedToLogisticsPolicy(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-gold-500 flex-shrink-0"
+                  className="mt-0.5 w-4 h-4 accent-gold-500 shrink-0"
                 />
                 <span className="text-sm text-cool-gray-300 group-hover:text-cool-gray-200 transition-colors">
                   I certify that all business information is accurate and I am authorised to register this logistics company on CLW. I understand that false information will result in permanent account suspension.

@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -21,7 +22,7 @@ export default function ReviewPage() {
     setPlaceError('');
     setIsPlacing(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = getAuthToken();
 
       const body = {
         shippingInfo: shippingAddress,

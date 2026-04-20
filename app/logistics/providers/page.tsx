@@ -177,7 +177,7 @@ function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
         {/* Logo + Name */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-charcoal-100 dark:bg-charcoal-700 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+            <div className="w-12 h-12 bg-charcoal-100 dark:bg-charcoal-700 rounded-xl flex items-center justify-center text-2xl shrink-0">
               {provider.logo}
             </div>
             <div>
@@ -194,11 +194,11 @@ function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
             </div>
           </div>
           {provider.isActive ? (
-            <span className="flex-shrink-0 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
+            <span className="shrink-0 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-full">
               ● Active
             </span>
           ) : (
-            <span className="flex-shrink-0 px-2.5 py-1 bg-cool-gray-100 dark:bg-charcoal-700 text-cool-gray-500 text-xs font-semibold rounded-full">
+            <span className="shrink-0 px-2.5 py-1 bg-cool-gray-100 dark:bg-charcoal-700 text-cool-gray-500 text-xs font-semibold rounded-full">
               ○ Inactive
             </span>
           )}
@@ -397,7 +397,7 @@ export default function LogisticsProvidersPage() {
               </div>
 
               {/* Invite Button */}
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <button
                   onClick={handleOpenReferralModal}
                   className="flex items-center gap-2 px-5 py-3 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-gold-600/30 active:scale-95"
@@ -426,7 +426,7 @@ export default function LogisticsProvidersPage() {
           {/* Currently Selected */}
           {selectedLogistics && (
             <div className="mb-6 p-4 bg-gold-50 dark:bg-gold-900/20 border-2 border-gold-200 dark:border-gold-700/50 rounded-xl flex items-center gap-3">
-              <span className="text-2xl flex-shrink-0">🚚</span>
+              <span className="text-2xl shrink-0">🚚</span>
               <div>
                 <p className="text-xs font-semibold text-gold-700 dark:text-gold-400 uppercase tracking-wide mb-0.5">
                   Current Preferred Partner
@@ -522,7 +522,7 @@ export default function LogisticsProvidersPage() {
 
           {/* Invite CTA Banner */}
           <div className="mt-10 bg-linear-to-br from-charcoal-900 to-charcoal-800 dark:from-charcoal-800 dark:to-charcoal-700 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-5">
-            <div className="flex-shrink-0 w-14 h-14 bg-gold-600/20 border border-gold-600/40 rounded-2xl flex items-center justify-center text-3xl">
+            <div className="shrink-0 w-14 h-14 bg-gold-600/20 border border-gold-600/40 rounded-2xl flex items-center justify-center text-3xl">
               🔗
             </div>
             <div className="text-center sm:text-left">
@@ -533,7 +533,7 @@ export default function LogisticsProvidersPage() {
             </div>
             <button
               onClick={handleOpenReferralModal}
-              className="flex-shrink-0 px-6 py-3 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold transition-all active:scale-95"
+              className="shrink-0 px-6 py-3 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold transition-all active:scale-95"
             >
               Generate Invite Link
             </button>

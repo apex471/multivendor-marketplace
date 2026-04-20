@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -87,7 +88,7 @@ export default function BrandDetailPage() {
   });
 
   const handleFollow = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = getAuthToken();
     if (!token) { alert('Please log in to follow brands'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${brandId}` : '/api/follow';
@@ -137,7 +138,7 @@ export default function BrandDetailPage() {
         <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-xl p-6 sm:p-8 mb-8">
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white dark:bg-charcoal-700 rounded-2xl shadow-lg border-4 border-cool-gray-100 dark:border-charcoal-600 overflow-hidden mx-auto sm:mx-0">
                 <Image
                   src={brand.logo}

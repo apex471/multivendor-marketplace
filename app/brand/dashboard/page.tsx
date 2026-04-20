@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
@@ -14,7 +15,7 @@ export default function BrandDashboard() {
   });
 
   useEffect(() => {
-    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const authToken = getAuthToken();
     if (!authToken) return;
     fetch('/api/dashboard/brand', { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.json())

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useLocation } from '../../../contexts/LocationContext';
 
@@ -35,7 +35,6 @@ export default function NearbyVendorsPage() {
     isWithinDeliveryZone 
   } = useLocation();
 
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [mapRadius, setMapRadius] = useState(5); // km
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -53,8 +52,8 @@ export default function NearbyVendorsPage() {
       });
   }, []);
 
-  useEffect(() => {
-    const source = allApiVendors.length > 0 ? allApiVendors : [];
+  const vendors = useMemo(() => {
+    const source = allApiVendors;
     if (userLocation && source.length > 0) {
       const vendorsWithDistance = source
         .filter(v => v.coordinates?.lat && v.coordinates?.lng)
@@ -73,11 +72,11 @@ export default function NearbyVendorsPage() {
         return b.rating - a.rating;
       });
 
-      setVendors(sorted as Vendor[]);
+      return sorted as Vendor[];
     } else if (!userLocation && source.length > 0) {
-      // No location: just show all vendors sorted by rating
-      setVendors([...source].sort((a, b) => b.rating - a.rating).slice(0, 20));
+      return [...source].sort((a, b) => b.rating - a.rating).slice(0, 20);
     }
+    return [];
   }, [userLocation, allApiVendors, mapRadius, sortBy, calculateDistance]);
 
   const categories = ['all', 'Fashion', 'Streetwear', 'Luxury', 'Fast Fashion', 'Sustainable'];
@@ -295,7 +294,7 @@ export default function NearbyVendorsPage() {
                     >
                       <div className="flex gap-4">
                         {/* Logo */}
-                        <div className="w-16 h-16 bg-linear-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                        <div className="w-16 h-16 bg-linear-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-3xl shrink-0">
                           {vendor.logo}
                         </div>
 

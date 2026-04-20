@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -27,7 +28,7 @@ export default function NotificationsPage() {
   const [_isLoading, setIsLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) { setIsLoading(false); return; }
     const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
     const json = await res.json();
@@ -48,21 +49,21 @@ export default function NotificationsPage() {
     : notifications;
 
   const markAsRead = async (id: string) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (token) await fetch(`/api/notifications/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (token) await fetch('/api/notifications', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
 
   const deleteNotification = async (id: string) => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (token) await fetch(`/api/notifications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
@@ -163,7 +164,7 @@ export default function NotificationsPage() {
                 >
                   <div className="flex gap-4">
                     {/* Icon or Avatar */}
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       {notification.actor ? (
                         <Link href={`/profile/${notification.actor?.name ?? ""}`}>
                           <div className="relative">

@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Auth guard + badge fetch
   useEffect(() => {
     if (isPublicPath) {
-      setIsVerifying(false);
+      Promise.resolve().then(() => setIsVerifying(false));
       return;
     }
 

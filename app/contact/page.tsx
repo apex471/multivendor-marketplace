@@ -26,20 +26,19 @@ export default function ContactPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    console.log('Contact form submitted:', formData);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    setIsSubmitting(false);
+    if (res.ok) {
       setSubmitted(true);
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        category: 'general',
-        message: '',
-      });
-    }, 1500);
+      setFormData({ name: '', email: '', subject: '', category: 'general', message: '' });
+    } else {
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   return (

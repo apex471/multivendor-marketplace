@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -34,7 +35,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     // Wrap in Promise.resolve to avoid synchronous setState-in-effect lint warning
-    Promise.resolve(typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+    Promise.resolve(getAuthToken())
       .then(token => {
         if (!token) {
           setFetchError('Please log in to view your orders.');
@@ -342,9 +343,17 @@ export default function OrdersPage() {
                     )}
                     {order.status === 'processing' && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm('Are you sure you want to cancel this order?')) {
-                            console.log('Cancel order:', order.id);
+                            const token = getAuthToken();
+                            const res = await fetch(`/api/orders/${order.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                              body: JSON.stringify({ status: 'cancelled' }),
+                            });
+                            if (res.ok) {
+                              setAllOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+                            }
                           }
                         }}
                         className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 transition-colors"

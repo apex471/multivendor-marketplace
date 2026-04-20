@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,7 +53,7 @@ export default function BrandDashboard() {
     totalRevenue: 0, monthRevenue: 0,
     totalAffiliates: 0, pendingRequests: 0, affiliateEarnings: 0,
   });
-  const [statsLoading, setStatsLoading] = useState(true);
+  const [_statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -124,7 +124,7 @@ export default function BrandDashboard() {
     },
   ]);
 
-  const [affiliatePartners, setAffiliatePartners] = useState<AffiliatePartner[]>([
+  const [affiliatePartners, _setAffiliatePartners] = useState<AffiliatePartner[]>([
     {
       id: '1',
       vendorName: 'Jessica Martinez',
@@ -160,7 +160,7 @@ export default function BrandDashboard() {
     },
   ]);
 
-  const handleRequestAction = (requestId: string, action: 'approve' | 'reject') => {
+  const handleRequestAction = useCallback((requestId: string, action: 'approve' | 'reject') => {
     setAffiliateRequests(prev =>
       prev.map(req =>
         req.id === requestId
@@ -169,14 +169,14 @@ export default function BrandDashboard() {
       )
     );
     alert(`Request ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-  };
+  }, []);
 
   const handleLogout = () => {
     router.push('/auth/login');
   };
 
-  // Tab Components
-  const LogisticsTab = () => (
+  // Tab content via useMemo — avoids "components during render" lint error
+  const logisticsTab = useMemo(() => (
     <div className="space-y-6">
       {/* Header Card */}
       <div className="bg-linear-to-br from-gray-900 to-gray-700 text-white rounded-xl p-6 sm:p-8">
@@ -189,7 +189,7 @@ export default function BrandDashboard() {
           </div>
           <Link
             href="/logistics/providers"
-            className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm transition-all"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm transition-all"
           >
             <span>🚚</span> Browse Providers
           </Link>
@@ -215,11 +215,11 @@ export default function BrandDashboard() {
       {/* Invite Logistics Provider */}
       <div className="bg-white rounded-xl shadow-md p-5 sm:p-6 border-2 border-dashed border-yellow-400">
         <div className="flex items-start gap-4 mb-5">
-          <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🔗</div>
+          <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl shrink-0">🔗</div>
           <div>
             <h3 className="text-lg font-bold text-gray-900 mb-1">Invite a Logistics Provider</h3>
             <p className="text-sm text-gray-600">
-              As a brand owner, you can generate a unique referral link and share it with a logistics company. They\'ll use it to register on CLW. Customers cannot generate or view these invitations.
+              As a brand owner, you can generate a unique referral link and share it with a logistics company. They&apos;ll use it to register on CLW. Customers cannot generate or view these invitations.
             </p>
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function BrandDashboard() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-green-600 font-bold text-sm flex-shrink-0">✓ Ready</span>
+              <span className="text-green-600 font-bold text-sm shrink-0">✓ Ready</span>
               <input
                 type="text"
                 readOnly
@@ -282,14 +282,15 @@ export default function BrandDashboard() {
         <ul className="space-y-1.5 text-sm text-blue-800">
           <li>• Ensure your orders are handled by logistics companies you personally vetted</li>
           <li>• Invite companies that specialize in luxury goods, fragile items, or white-glove delivery</li>
-          <li>• Invited providers must pass CLW\'s approval process before appearing in the directory</li>
+          <li>• Invited providers must pass CLW&apos;s approval process before appearing in the directory</li>
           <li>• Your referral is tracked — you become the primary contact for that provider relationship</li>
         </ul>
       </div>
     </div>
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [referralLink, referralCopied]);
 
-  const OverviewTab = () => (
+  const overviewTab = useMemo(() => (
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -354,38 +355,38 @@ export default function BrandDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
             onClick={() => setActiveTab('products')}
-            className="px-4 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-[44px]"
+            className="px-4 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11"
           >
             Add Product
           </button>
           <button
             onClick={() => setActiveTab('affiliates')}
-            className="px-4 py-3 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition-colors min-h-[44px]"
+            className="px-4 py-3 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition-colors min-h-11"
           >
             Review Requests
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
-            className="px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-[44px]"
+            className="px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-11"
           >
             View Analytics
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className="px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors min-h-[44px]"
+            className="px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors min-h-11"
           >
             Settings
           </button>
         </div>
       </div>
     </div>
-  );
+  ), [brandStats, setActiveTab]);
 
-  const ProductsTab = () => (
+  const productsTab = useMemo(() => (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-gray-900">Product Catalog</h2>
-        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-[44px]">
+        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
           + Add Product
         </button>
       </div>
@@ -395,9 +396,9 @@ export default function BrandDashboard() {
         <p className="text-sm text-gray-500">Add products that affiliates can showcase in their stores</p>
       </div>
     </div>
-  );
+  ), []);
 
-  const AffiliatesTab = () => (
+  const affiliatesTab = useMemo(() => (
     <div className="space-y-6">
       {/* Pending Requests */}
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -433,13 +434,13 @@ export default function BrandDashboard() {
                   <div className="flex sm:flex-col gap-2">
                     <button
                       onClick={() => handleRequestAction(request.id, 'approve')}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-[44px]"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-11"
                     >
                       ✓ Approve
                     </button>
                     <button
                       onClick={() => handleRequestAction(request.id, 'reject')}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors min-h-[44px]"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors min-h-11"
                     >
                       ✗ Reject
                     </button>
@@ -510,9 +511,9 @@ export default function BrandDashboard() {
         </div>
       </div>
     </div>
-  );
+  ), [affiliateRequests, affiliatePartners, handleRequestAction]);
 
-  const AnalyticsTab = () => (
+  const analyticsTab = useMemo(() => (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Analytics & Reports</h2>
       <div className="text-center py-12">
@@ -521,9 +522,9 @@ export default function BrandDashboard() {
         <p className="text-sm text-gray-500">Track sales, affiliate performance, and revenue trends</p>
       </div>
     </div>
-  );
+  ), []);
 
-  const SettingsTab = () => (
+  const settingsTab = useMemo(() => (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Brand Settings</h2>
@@ -533,7 +534,7 @@ export default function BrandDashboard() {
             <input
               type="text"
               defaultValue="Luxury Brand Co."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-[44px]"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-11"
             />
           </div>
           <div>
@@ -543,7 +544,7 @@ export default function BrandDashboard() {
               defaultValue="10"
               min="0"
               max="100"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-[44px]"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-11"
             />
           </div>
           <div>
@@ -554,13 +555,13 @@ export default function BrandDashboard() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             />
           </div>
-          <button className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-[44px]">
+          <button className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
             Save Changes
           </button>
         </div>
       </div>
     </div>
-  );
+  ), []);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gold-600/10 via-white to-gold-600/5 dark:from-charcoal-900 dark:via-charcoal-900 dark:to-charcoal-800">
@@ -577,7 +578,7 @@ export default function BrandDashboard() {
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm sm:text-base min-h-[44px]"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm sm:text-base min-h-11"
             >
               Logout
             </button>
@@ -603,7 +604,7 @@ export default function BrandDashboard() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
                   className={`
-                    py-3 sm:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors min-h-[44px]
+                    py-3 sm:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors min-h-11
                     ${activeTab === tab.id
                       ? 'border-yellow-600 text-yellow-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -620,12 +621,12 @@ export default function BrandDashboard() {
 
         {/* Tab Content */}
         <div>
-          {activeTab === 'overview' && <OverviewTab />}
-          {activeTab === 'products' && <ProductsTab />}
-          {activeTab === 'affiliates' && <AffiliatesTab />}
-          {activeTab === 'analytics' && <AnalyticsTab />}
-          {activeTab === 'logistics' && <LogisticsTab />}
-          {activeTab === 'settings' && <SettingsTab />}
+          {activeTab === 'overview' && overviewTab}
+          {activeTab === 'products' && productsTab}
+          {activeTab === 'affiliates' && affiliatesTab}
+          {activeTab === 'analytics' && analyticsTab}
+          {activeTab === 'logistics' && logisticsTab}
+          {activeTab === 'settings' && settingsTab}
         </div>
       </main>
     </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -65,7 +66,7 @@ export default function PostDetailPage() {
   }, [postId]);
 
   const handleLike = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) { alert('Please log in to like posts'); return; }
     const action = isLiked ? 'unlike' : 'like';
     const res = await fetch(`/api/posts/${postId}/like`, {
@@ -84,7 +85,7 @@ export default function PostDetailPage() {
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) { alert('Please log in to comment'); return; }
     const res = await fetch(`/api/posts/${postId}/comment`, {
       method: 'POST',
@@ -133,7 +134,7 @@ export default function PostDetailPage() {
               </div>
 
               {/* Content Section */}
-              <div className="flex flex-col h-[600px]">
+              <div className="flex flex-col h-150">
                 {/* Post Header */}
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">

@@ -6,21 +6,21 @@ import Link from 'next/link';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 
+// Pre-computed outside component so Math.random() is never called during render
+const CONFETTI = Array.from({ length: 50 }, () => ({
+  left: `${Math.random() * 100}%`,
+  delay: `${Math.random() * 2}s`,
+  duration: `${2 + Math.random() * 2}s`,
+}));
+
 export default function ConfirmationPage() {
-  const router = useRouter();
-  const [orderNumber, setOrderNumber] = useState('');
+  const _router = useRouter();
+  const [orderNumber] = useState(() =>
+    (typeof window !== 'undefined' ? localStorage.getItem('lastOrderNumber') : null) ?? `ORD-${Date.now()}`
+  );
   const [showConfetti, setShowConfetti] = useState(true);
 
   useEffect(() => {
-    const savedOrderNumber = localStorage.getItem('lastOrderNumber');
-    if (savedOrderNumber) {
-      setOrderNumber(savedOrderNumber);
-    } else {
-      // Generate order number if not found
-      const newOrderNumber = `ORD-${Date.now()}`;
-      setOrderNumber(newOrderNumber);
-    }
-
     // Hide confetti after animation
     const timer = setTimeout(() => setShowConfetti(false), 3000);
     return () => clearTimeout(timer);
@@ -36,15 +36,15 @@ export default function ConfirmationPage() {
       {/* Confetti Animation */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50">
-          {Array.from({ length: 50 }).map((_, i) => (
+          {CONFETTI.map((piece, i) => (
             <div
               key={i}
               className="absolute w-2 h-2 bg-gold-500 rounded-full animate-confetti"
               style={{
-                left: `${Math.random() * 100}%`,
+                left: piece.left,
                 top: '-10px',
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
+                animationDelay: piece.delay,
+                animationDuration: piece.duration,
               }}
             />
           ))}
@@ -144,7 +144,7 @@ export default function ConfirmationPage() {
             <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-4">What happens next?</h3>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center shrink-0 font-bold">
                   1
                 </div>
                 <div>
@@ -157,7 +157,7 @@ export default function ConfirmationPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center shrink-0 font-bold">
                   2
                 </div>
                 <div>
@@ -170,7 +170,7 @@ export default function ConfirmationPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                <div className="w-8 h-8 bg-gold-600 text-white rounded-full flex items-center justify-center shrink-0 font-bold">
                   3
                 </div>
                 <div>

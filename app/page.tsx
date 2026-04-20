@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
+import { useCart } from "../contexts/CartContext";
+import { getAuthToken } from "../lib/api/auth";
 
 interface Post {
   _id: string;
@@ -48,6 +50,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [_selectedCategory, setSelectedCategory] = useState('');
   const router = useRouter();
+  const { addItem } = useCart();
 
   const [posts,    setPosts]    = useState<Post[]>([]);
   const [vendors,  setVendors]  = useState<Vendor[]>([]);
@@ -86,15 +89,28 @@ export default function Home() {
   };
 
   const handleAddToCart = (productId: string) => {
-    console.log('Added to cart:', productId);
-    // Implement cart logic with CartContext
-    alert('Product added to cart!');
+    const product = products.find(p => p._id === productId);
+    if (!product) return;
+    addItem({
+      productId,
+      name: product.name,
+      price: product.salePrice ?? product.price,
+      image: product.images?.[0] ?? '',
+      vendor: product.vendorName ?? '',
+      size: '',
+      color: '',
+      quantity: 1,
+    });
   };
 
-  const handleAddToWishlist = (productId: string) => {
-    console.log('Added to wishlist:', productId);
-    // Implement wishlist logic
-    alert('Product added to wishlist!');
+  const handleAddToWishlist = async (productId: string) => {
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    await fetch('/api/wishlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ productId }),
+    });
   };
 
   return (
@@ -146,7 +162,7 @@ export default function Home() {
                 />
                 <button 
                   type="submit"
-                  className="px-5 sm:px-8 py-2.5 sm:py-3 bg-charcoal-900 dark:bg-gold-600 text-white rounded-xl sm:rounded-full font-semibold hover:bg-charcoal-800 dark:hover:bg-gold-700 active:scale-95 transition-all flex items-center justify-center gap-2 min-h-[44px] text-sm sm:text-base"
+                  className="px-5 sm:px-8 py-2.5 sm:py-3 bg-charcoal-900 dark:bg-gold-600 text-white rounded-xl sm:rounded-full font-semibold hover:bg-charcoal-800 dark:hover:bg-gold-700 active:scale-95 transition-all flex items-center justify-center gap-2 min-h-11 text-sm sm:text-base"
                 >
                   <span className="text-base sm:text-lg">🔍</span>
                   <span>Search</span>
@@ -159,7 +175,7 @@ export default function Home() {
                   <button
                     key={cat}
                     onClick={() => handleCategoryClick(cat)}
-                    className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/20 dark:bg-white/10 hover:bg-white/30 dark:hover:bg-white/20 active:bg-white/40 dark:active:bg-white/30 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium transition-all min-h-[32px] sm:min-h-[36px] touch-manipulation"
+                    className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/20 dark:bg-white/10 hover:bg-white/30 dark:hover:bg-white/20 active:bg-white/40 dark:active:bg-white/30 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium transition-all min-h-8 sm:min-h-9 touch-manipulation"
                   >
                     {cat}
                   </button>
@@ -178,7 +194,7 @@ export default function Home() {
               <button
                 key={vendor.id}
                 onClick={() => router.push(`/vendors/${vendor.id}`)}
-                className="flex-shrink-0 text-center group touch-manipulation"
+                className="shrink-0 text-center group touch-manipulation"
               >
                 <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
                   <div className={`absolute inset-0 rounded-full ${i % 2 === 0 ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
@@ -295,9 +311,9 @@ export default function Home() {
               >
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   {vendor.avatar ? (
-                    <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 object-cover" />
+                    <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-14 sm:h-14 rounded-full shrink-0 object-cover" />
                   ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xl font-bold text-gold-600 flex-shrink-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xl font-bold text-gold-600 shrink-0">
                       {vendor.name.charAt(0)}
                     </div>
                   )}
@@ -512,13 +528,13 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
               <Link 
                 href="/auth/signup?role=vendor"
-                className="px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-lg font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-lg font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
               >
                 Become a Vendor
               </Link>
               <Link 
                 href="/auth/signup?role=customer"
-                className="px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-gold-600 dark:bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-gold-600 dark:bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
               >
                 Start Shopping
               </Link>

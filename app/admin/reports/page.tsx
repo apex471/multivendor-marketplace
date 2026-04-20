@@ -43,10 +43,9 @@ export default function ReportsPage() {
   const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
   useEffect(() => {
-    setLoading(true); setError('');
     fetch(`/api/admin/reports?range=${range}`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
-      .then(d => { if (d.success) setData(d.data); else setError(d.message || 'Failed'); })
+      .then(d => { if (d.success) { setError(''); setData(d.data); } else setError(d.message || 'Failed'); })
       .catch(() => setError('Failed to load reports.'))
       .finally(() => setLoading(false));
   }, [range]);

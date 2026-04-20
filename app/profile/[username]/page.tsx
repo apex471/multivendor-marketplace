@@ -1,5 +1,6 @@
 'use client';
 
+import { getAuthToken } from '@/lib/api/auth';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -66,7 +67,7 @@ export default function ProfilePage() {
   }, [username]);
 
   const handleFollow = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token || !user) { alert('Please log in to follow users'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${user.userId}` : '/api/follow';

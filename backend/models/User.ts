@@ -31,6 +31,19 @@ export interface IUser extends Document {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  addresses?: Array<{
+    id: string;
+    fullName: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    isDefault: boolean;
+  }>;
+  coordinates?: { lat: number; lng: number };
   comparePassword(password: string): Promise<boolean>;
 }
 

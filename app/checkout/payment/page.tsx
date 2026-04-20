@@ -35,13 +35,7 @@ export default function PaymentPage() {
   };
 
   const handleContinue = () => {
-    if (paymentType === 'saved' && !selectedCardId) {
-      alert('Please select a payment method');
-      return;
-    }
-    if (paymentType === 'saved' && selectedCardId) {
-      router.push('/checkout/review');
-    }
+    router.push('/checkout/review');
   };
 
 

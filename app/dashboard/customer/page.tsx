@@ -132,7 +132,7 @@ export default function CustomerDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all min-h-[44px] ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all min-h-11 ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white shadow-md'
                       : 'text-gray-700 dark:text-cool-gray-300 hover:bg-gray-100 dark:hover:bg-charcoal-700'
@@ -161,7 +161,7 @@ export default function CustomerDashboard() {
                 <div className="space-y-4">
                   {recentOrders.map((order) => (
                     <div key={order.id} className="flex gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-charcoal-700 rounded-lg hover:bg-gray-100 dark:hover:bg-charcoal-600 transition-colors">
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shrink-0">
                         <Image src={order.image} alt="Order" fill className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -189,7 +189,7 @@ export default function CustomerDashboard() {
                 <div className="space-y-3">
                   <Link 
                     href="/shop"
-                    className="flex items-center gap-4 p-4 bg-linear-to-r from-primary-700 to-primary-600 text-white rounded-lg hover:from-primary-800 hover:to-primary-700 transition-all shadow-md hover:shadow-lg min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-linear-to-r from-primary-700 to-primary-600 text-white rounded-lg hover:from-primary-800 hover:to-primary-700 transition-all shadow-md hover:shadow-lg min-h-15"
                   >
                     <span className="text-2xl">🛍️</span>
                     <div>
@@ -200,7 +200,7 @@ export default function CustomerDashboard() {
                   
                   <Link 
                     href="/feed"
-                    className="flex items-center gap-4 p-4 bg-linear-to-r from-secondary-600 to-secondary-500 text-primary-900 rounded-lg hover:from-secondary-700 hover:to-secondary-600 transition-all shadow-md hover:shadow-lg min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-linear-to-r from-secondary-600 to-secondary-500 text-primary-900 rounded-lg hover:from-secondary-700 hover:to-secondary-600 transition-all shadow-md hover:shadow-lg min-h-15"
                   >
                     <span className="text-2xl">📸</span>
                     <div>
@@ -211,7 +211,7 @@ export default function CustomerDashboard() {
 
                   <Link 
                     href="/vendors"
-                    className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-charcoal-600 transition-colors min-h-[60px]"
+                    className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-charcoal-600 transition-colors min-h-15"
                   >
                     <span className="text-2xl">📍</span>
                     <div>
@@ -241,7 +241,7 @@ export default function CustomerDashboard() {
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{item.vendor}</p>
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">${item.price.toFixed(2)}</span>
-                        <button className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-[36px]">
+                        <button className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-9">
                           Add to Cart
                         </button>
                       </div>
@@ -267,7 +267,7 @@ export default function CustomerDashboard() {
                 {orders.map((order) => (
                   <div key={order.id} className="border border-gray-200 dark:border-charcoal-700 rounded-xl p-4 hover:shadow-md transition-shadow">
                     <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="relative w-full sm:w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="relative w-full sm:w-32 h-32 rounded-lg overflow-hidden shrink-0">
                         <Image src={order.image} alt="Order" fill className="object-cover" />
                       </div>
                       <div className="flex-1">
@@ -288,11 +288,11 @@ export default function CustomerDashboard() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <span className="text-xl font-bold text-primary-700 dark:text-gold-400">${order.total.toFixed(2)}</span>
                           <div className="flex gap-2">
-                            <button className="flex-1 sm:flex-none px-4 py-2 border border-primary-700 text-primary-700 rounded-lg hover:bg-primary-50 transition-colors font-semibold min-h-[40px]">
+                            <button className="flex-1 sm:flex-none px-4 py-2 border border-primary-700 text-primary-700 rounded-lg hover:bg-primary-50 transition-colors font-semibold min-h-10">
                               View Details
                             </button>
                             {order.status === 'Delivered' && (
-                              <button className="flex-1 sm:flex-none px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-[40px]">
+                              <button className="flex-1 sm:flex-none px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-10">
                                 Buy Again
                               </button>
                             )}
@@ -349,10 +349,10 @@ export default function CustomerDashboard() {
                   <textarea rows={3} defaultValue="123 Luxury Avenue, Suite 456, New York, NY 10001" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"></textarea>
                 </div>
                 <div className="flex gap-3">
-                  <button className="px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-[48px]">
+                  <button className="px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-12">
                     Save Changes
                   </button>
-                  <button className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-[48px]">
+                  <button className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12">
                     Cancel
                   </button>
                 </div>

@@ -36,10 +36,11 @@ export default function ReviewsPage() {
     },
   ];
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submit review:', { rating, reviewText });
-    alert('Review submitted! Thank you for your feedback.');
+    if (!rating) { alert('Please select a rating.'); return; }
+    // Reviews page is a general showcase; redirect user to product for full review
+    alert('Thank you for your feedback! Please visit the product page to submit a verified review.');
     setRating(0);
     setReviewText('');
   };
@@ -138,7 +139,7 @@ export default function ReviewsPage() {
             {productReviews.map((review) => (
               <div key={review.id} className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-6">
                 <div className="flex gap-4">
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0">
                     <Image src={review.avatar} alt={review.author} fill className="object-cover" />
                   </div>
                   <div className="flex-1">

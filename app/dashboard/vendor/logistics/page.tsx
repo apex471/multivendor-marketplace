@@ -24,7 +24,7 @@ export default function VendorLogisticsPage() {
         <div className="bg-linear-to-r from-charcoal-800 to-charcoal-900 dark:from-charcoal-900 dark:to-charcoal-950 text-white">
           <div className="container mx-auto px-4 py-8 sm:py-12">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gold-500 flex items-center justify-center text-3xl sm:text-4xl flex-shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gold-500 flex items-center justify-center text-3xl sm:text-4xl shrink-0">
                 🚚
               </div>
               <div className="text-center sm:text-left flex-1">
@@ -64,7 +64,7 @@ export default function VendorLogisticsPage() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-shrink-0 px-6 py-4 text-sm font-semibold capitalize transition-colors whitespace-nowrap ${
+                  className={`shrink-0 px-6 py-4 text-sm font-semibold capitalize transition-colors whitespace-nowrap ${
                     activeTab === tab
                       ? 'text-gold-600 dark:text-gold-400 border-b-2 border-gold-600 dark:border-gold-400'
                       : 'text-charcoal-600 dark:text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-cool-gray-300'
