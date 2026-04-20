@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(50, parseInt(searchParams.get('limit') || '20'));
 
-    const filter: Record<string, any> = {};
+    const filter: Record<string, unknown> = {};
     if (status !== 'all') filter.status = status;
     if (priority && priority !== 'all') filter.priority = priority;
     if (search) {

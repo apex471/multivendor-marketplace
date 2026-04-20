@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { setAuthSession } from '@/lib/api/auth';
 
-function normalizeUser(u: any) {
+function normalizeUser(u: Record<string, unknown>) {
   return {
     id: u.id,
     email: u.email,

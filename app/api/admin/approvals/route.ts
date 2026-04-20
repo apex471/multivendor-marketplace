@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { FilterQuery } from 'mongoose';
 import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(50, parseInt(searchParams.get('limit') || '20'));
 
-    const filter: Record<string, any> = {
+    const filter: FilterQuery<typeof User> = {
       role: { $in: ['vendor', 'brand', 'logistics'] },
     };
     if (status !== 'all') filter.applicationStatus = status;

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       return sendError('Invalid verification code.', 400);
     }
 
-    if ((user as any).emailVerificationToken !== code) {
+    if ((user as { emailVerificationToken?: string }).emailVerificationToken !== code) {
       return sendError('Incorrect code. Please check and try again.', 400);
     }
 

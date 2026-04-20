@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const brand = await User.findById(decoded.userId).lean();
-    if (!brand || (brand as any).role !== 'brand') return sendError('Access denied', 403);
+    if (!brand || (brand as { role?: string }).role !== 'brand') return sendError('Access denied', 403);
 
     const brandId = decoded.userId;
 
@@ -41,14 +41,18 @@ export async function GET(request: NextRequest) {
         ]),
       ]);
 
+    const b = brand as {
+      firstName?: string; lastName?: string; email?: string;
+      applicationStatus?: string; isActive?: boolean; createdAt?: Date;
+    };
     return sendSuccess({
       profile: {
-        firstName: (brand as any).firstName,
-        lastName: (brand as any).lastName,
-        email: (brand as any).email,
-        applicationStatus: (brand as any).applicationStatus,
-        isActive: (brand as any).isActive,
-        createdAt: (brand as any).createdAt,
+        firstName: b.firstName,
+        lastName: b.lastName,
+        email: b.email,
+        applicationStatus: b.applicationStatus,
+        isActive: b.isActive,
+        createdAt: b.createdAt,
       },
       stats: {
         totalProducts,

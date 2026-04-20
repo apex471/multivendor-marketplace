@@ -29,7 +29,7 @@ export async function GET(
     if (!product) return sendNotFound('Product not found or unavailable');
 
     const related = await Product.find({
-      category: (product as any).category,
+      category: (product as Record<string, unknown>).category,
       status: 'active',
       _id: { $ne: id },
     })

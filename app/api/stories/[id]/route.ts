@@ -16,12 +16,12 @@ export async function GET(
 ) {
   try {
     await connectDB();
-    const story = await Story.findById(params.id).lean() as any;
+    const story = await Story.findById(params.id).lean() as Record<string, unknown> | null;
     if (!story) return sendNotFound('Story not found or has expired');
 
     const author = await User.findById(story.authorId)
       .select('firstName lastName avatar username')
-      .lean() as any;
+      .lean() as Record<string, unknown> | null;
 
     // Mark as viewed if authenticated
     const authHeader = request.headers.get('Authorization');

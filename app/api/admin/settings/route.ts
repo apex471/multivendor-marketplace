@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
     const body = await request.json().catch(() => ({}));
 
-    const update: Record<string, any> = {};
+    const update: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (key in body) update[key] = body[key];
     }

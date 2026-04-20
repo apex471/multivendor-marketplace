@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
@@ -289,7 +288,7 @@ function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
 export default function LogisticsProvidersPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { logisticProviders, getAvailableProviders, selectLogistics, selectedLogistics } =
+  const { logisticProviders, getAvailableProviders: _getAvailableProviders, selectLogistics, selectedLogistics } =
     useLogistics();
 
   const [searchQuery, setSearchQuery] = useState('');

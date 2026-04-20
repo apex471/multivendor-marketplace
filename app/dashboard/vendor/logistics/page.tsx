@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
 import { useLogistics, LogisticProvider } from '../../../../contexts/LogisticsContext';

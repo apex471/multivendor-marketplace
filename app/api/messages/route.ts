@@ -8,6 +8,11 @@ import {
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
 
+type ConvoWithParticipants = {
+  _id: unknown; lastMessage?: string; lastMessageAt?: Date; unreadCounts?: Record<string, number>;
+  participants: Array<{ _id: unknown; firstName?: string; lastName?: string; avatar?: string; username?: string; role?: string }>;
+};
+
 // GET /api/messages — list all conversations for authenticated user
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -22,11 +27,11 @@ export async function GET(request: NextRequest) {
       .sort({ lastMessageAt: -1 })
       .limit(50)
       .populate('participants', 'firstName lastName avatar username role')
-      .lean() as any[];
+      .lean() as ConvoWithParticipants[];
 
     return sendSuccess({
       conversations: conversations.map(c => {
-        const other = c.participants.find((p: any) => String(p._id) !== payload.userId);
+        const other = c.participants.find((p) => String(p._id) !== payload.userId);
         const unread = c.unreadCounts instanceof Map
           ? (c.unreadCounts.get(payload.userId) ?? 0)
           : (c.unreadCounts?.[payload.userId] ?? 0);
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
     // Find existing conversation between the two users
     let convo = await Conversation.findOne({
       participants: { $all: [payload.userId, recipientId], $size: 2 },
-    }).lean() as any;
+    }).lean() as ConvoWithParticipants | null;
 
     if (!convo) {
       convo = await Conversation.create({

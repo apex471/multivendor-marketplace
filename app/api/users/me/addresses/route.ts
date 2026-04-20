@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   try {
     await connectDB();
-    const user = await User.findById(payload.userId).select('addresses').lean() as any;
+    const user = await User.findById(payload.userId).select('addresses').lean() as { addresses?: unknown[] } | null;
     return sendSuccess({ addresses: user?.addresses ?? [] });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
@@ -51,14 +51,14 @@ export async function POST(request: NextRequest) {
     }
 
     await connectDB();
-    const user = await User.findById(payload.userId) as any;
+    const user = await User.findById(payload.userId) as (import('mongoose').Document & { addresses?: Array<Record<string,unknown>>; save(): Promise<unknown> }) | null;
     if (!user) return sendError('User not found', 404);
 
     if (!user.addresses) user.addresses = [];
 
     // If isDefault, demote others
     if (body.isDefault) {
-      user.addresses.forEach((a: any) => { a.isDefault = false; });
+      user.addresses!.forEach((a: Record<string, unknown>) => { a.isDefault = false; });
     }
 
     const newAddress = {
@@ -97,7 +97,7 @@ export async function DELETE(request: NextRequest) {
     await connectDB();
     await User.updateOne(
       { _id: payload.userId },
-      { $pull: { addresses: { id: addressId } } } as any
+      { $pull: { addresses: { id: addressId } } as Record<string, unknown> }
     );
     return sendSuccess({}, 'Address removed');
   } catch (err) {

@@ -251,7 +251,7 @@ function toggleItem(arr: string[], item: string): string[] {
 
 function LogisticsSignupContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const _router = useRouter();
 
   const [tokenState, setTokenState] = useState<TokenState>('validating');
   const [tokenError, setTokenError] = useState('');

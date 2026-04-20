@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'all';
     const dateRange = searchParams.get('dateRange') || '30d'; // 7d | 30d | 90d | all
 
-    const filter: Record<string, any> = {};
+    const filter: Record<string, unknown> = {};
     if (type !== 'all') filter.type = type;
     if (status !== 'all') filter.status = status;
 

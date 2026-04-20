@@ -15,6 +15,7 @@ export default function CartReviewPage() {
 
   useEffect(() => {
     calculateTotals();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {

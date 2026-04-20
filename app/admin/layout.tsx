@@ -95,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .catch(() => {
         router.replace('/admin/login');
       });
-  }, [pathname, isPublicPath]);
+  }, [pathname, isPublicPath, router]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');

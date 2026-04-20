@@ -127,7 +127,7 @@ export default function SavedPostsPage() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'drafts' | 'published' | 'scheduled')}
                 className={`pb-4 font-semibold transition-colors relative ${
                   activeTab === tab.id
                     ? 'text-gold-600 border-b-2 border-gold-600'

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate('authorId', 'firstName lastName avatar username')
-      .lean() as any[];
+      .lean() as Record<string, unknown>[];
 
     return sendSuccess({
       stories: stories.map(s => ({
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         filter:     s.filter,
         duration:   s.duration,
         viewCount:  s.viewedBy?.length ?? 0,
-        viewed:     payload ? s.viewedBy?.some((v: any) => String(v) === payload.userId) : false,
+        viewed:     payload ? (s.viewedBy as unknown[])?.some((v) => String(v) === payload.userId) : false,
         expiresAt:  s.expiresAt,
         createdAt:  s.createdAt,
         author: {

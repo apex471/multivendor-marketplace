@@ -27,7 +27,7 @@ export async function PATCH(
     if (!user) return sendError('User not found', 404);
 
     // Prevent admins from modifying other admins (safety)
-    if (user.role === 'admin' && (adminUser as any)._id.toString() !== id) {
+    if (user.role === 'admin' && (adminUser as { _id: { toString(): string } })._id.toString() !== id) {
       return sendError('Cannot modify another admin account', 403);
     }
 

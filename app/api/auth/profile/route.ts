@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar'];
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {

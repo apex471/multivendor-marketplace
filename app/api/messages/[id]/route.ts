@@ -10,6 +10,9 @@ import {
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
 
+type ConvoDoc = { _id: unknown; participants: unknown[]; unreadCounts?: Record<string, number> };
+type MsgDoc  = { _id: unknown; text: string; senderId: unknown; read: boolean; createdAt: Date };
+
 // GET /api/messages/[id] — fetch messages in a conversation
 export async function GET(
   request: NextRequest,
@@ -22,10 +25,10 @@ export async function GET(
 
   try {
     await connectDB();
-    const convo = await Conversation.findById(params.id).lean() as any;
+    const convo = await Conversation.findById(params.id).lean() as ConvoDoc | null;
     if (!convo) return sendNotFound('Conversation not found');
 
-    const isParticipant = convo.participants.some((p: any) => String(p) === payload.userId);
+    const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
     if (!isParticipant) return sendError('Access denied', 403);
 
     const sp     = new URL(request.url).searchParams;
@@ -37,7 +40,7 @@ export async function GET(
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .lean() as any[];
+      .lean() as MsgDoc[];
 
     // Mark messages as read
     await Message.updateMany(
@@ -81,10 +84,10 @@ export async function POST(
     if (!text?.trim()) return sendError('Message text is required', 400);
 
     await connectDB();
-    const convo = await Conversation.findById(params.id).lean() as any;
+    const convo = await Conversation.findById(params.id).lean() as ConvoDoc | null;
     if (!convo) return sendNotFound('Conversation not found');
 
-    const isParticipant = convo.participants.some((p: any) => String(p) === payload.userId);
+    const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
     if (!isParticipant) return sendError('Access denied', 403);
 
     const message = await Message.create({
@@ -93,14 +96,7 @@ export async function POST(
       text:           text.trim(),
     });
 
-    // Update conversation's last message + increment unread counts for others
-    const unreadUpdates: Record<string, any> = {};
-    convo.participants.forEach((p: any) => {
-      if (String(p) !== payload.userId) {
-        unreadUpdates[`unreadCounts.${String(p)}`] = { $add: [{ $ifNull: [`$unreadCounts.${String(p)}`, 0] }, 1] };
-      }
-    });
-
+    // Increment unread counts for other participants
     await Conversation.updateOne(
       { _id: params.id },
       {
@@ -109,8 +105,8 @@ export async function POST(
         lastSenderId:  payload.userId,
         $inc: Object.fromEntries(
           convo.participants
-            .filter((p: any) => String(p) !== payload.userId)
-            .map((p: any) => [`unreadCounts.${String(p)}`, 1])
+            .filter((p) => String(p) !== payload.userId)
+            .map((p) => [`unreadCounts.${String(p)}`, 1])
         ),
       }
     );
