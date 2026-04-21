@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const payload = verifyToken(authHeader.slice(7));
   if (!payload) return sendError('Invalid or expired token', 401);
-  if (payload.role !== 'vendor') return sendError('Vendor access only', 403);
+  if (!['vendor', 'brand'].includes(payload.role)) return sendError('Vendor access only', 403);
 
   try {
     await connectDB();

@@ -59,11 +59,11 @@ export default function VendorDashboard() {
     ]).then(([ordersJson, productsJson]) => {
       if (ordersJson.success) {
         const rows: VendorOrder[] = (ordersJson.data.orders ?? []).map((o: {
-          id: string; customer: string; date: string; items: number; total: number; status: string;
+          id: string; customer: string | { name?: string; email?: string }; date?: string; createdAt?: string; items: number; total: number; status: string;
         }) => ({
           id:       o.id,
-          customer: o.customer,
-          date:     new Date(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          customer: typeof o.customer === 'object' ? (o.customer?.name ?? '') : (o.customer ?? ''),
+          date:     new Date(o.createdAt ?? o.date ?? Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           items:    o.items,
           total:    o.total,
           status:   o.status.charAt(0).toUpperCase() + o.status.slice(1),

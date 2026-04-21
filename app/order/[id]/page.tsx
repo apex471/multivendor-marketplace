@@ -19,7 +19,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   date: string;
   items: OrderItem[];
   subtotal: number;
@@ -66,7 +66,7 @@ export default function OrderDetailPage() {
         if (!d.success || !d.data?.order) { setNotFound(true); return; }
         const raw = d.data.order;
         const statusMap: Record<string, Order['status']> = {
-          pending:    'processing',
+          pending:    'pending',
           processing: 'processing',
           shipped:    'shipped',
           delivered:  'delivered',

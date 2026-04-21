@@ -37,9 +37,12 @@ export async function GET(request: NextRequest) {
     }
 
     const skip = (page - 1) * limit;
-    const [products, total] = await Promise.all([
+    const [products, total, activeCount, draftCount, outOfStockCount] = await Promise.all([
       Product.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Product.countDocuments(filter),
+      Product.countDocuments({ vendorId: userId, status: 'active' }),
+      Product.countDocuments({ vendorId: userId, status: 'draft' }),
+      Product.countDocuments({ vendorId: userId, status: 'out-of-stock' }),
     ]);
 
     return sendSuccess({
@@ -51,6 +54,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
         hasNext: page * limit < total,
         hasPrev: page > 1,
+      },
+      statusCounts: {
+        active:     activeCount,
+        draft:      draftCount,
+        outOfStock: outOfStockCount,
       },
     });
   } catch (err) {

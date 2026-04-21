@@ -43,7 +43,7 @@ export default function ReviewPage() {
         total,
         couponCode: couponCode || undefined,
         paymentMethod: paymentMethod
-          ? { type: paymentMethod.type, cardNumber: paymentMethod.cardNumber, cardHolder: paymentMethod.cardHolder }
+          ? { type: paymentMethod.type, cardLast4: paymentMethod.cardNumber?.slice(-4), cardHolder: paymentMethod.cardHolder }
           : null,
       };
 

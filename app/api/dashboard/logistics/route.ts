@@ -20,7 +20,11 @@ export async function GET(request: NextRequest) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [revenueAgg, monthRevenueAgg, todayRevenueAgg] = await Promise.all([
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    const [revenueAgg, monthRevenueAgg, todayRevenueAgg, weekRevenueAgg] = await Promise.all([
       Transaction.aggregate([
         { $match: { toUser: provider._id, status: 'completed' } },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
@@ -45,6 +49,16 @@ export async function GET(request: NextRequest) {
         },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
       ]),
+      Transaction.aggregate([
+        {
+          $match: {
+            toUser: provider._id,
+            status: 'completed',
+            createdAt: { $gte: weekStart },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      ]),
     ]);
 
     return sendSuccess({
@@ -63,10 +77,7 @@ export async function GET(request: NextRequest) {
         monthDeliveries: monthRevenueAgg[0]?.count   ?? 0,
         todayRevenue:    todayRevenueAgg[0]?.total   ?? 0,
         todayDeliveries: todayRevenueAgg[0]?.count   ?? 0,
-        // Shipment data placeholder — to be wired when Shipment model exists
-        activeShipments: 0,
-        avgDeliveryTime: 0,
-        onTimeRate:      0,
+        weekRevenue:     weekRevenueAgg[0]?.total    ?? 0,
       },
     });
   } catch (err) {

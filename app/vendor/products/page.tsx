@@ -94,9 +94,9 @@ export default function VendorProductsPage() {
         setTotalCount(json.data.pagination.total);
         setStats({
           total:      json.data.pagination.total,
-          active:     normalized.filter(p => p.status === 'active').length,
-          outOfStock: normalized.filter(p => p.status === 'out-of-stock').length,
-          draft:      normalized.filter(p => p.status === 'draft').length,
+          active:     json.data.statusCounts?.active     ?? normalized.filter(p => p.status === 'active').length,
+          outOfStock: json.data.statusCounts?.outOfStock ?? normalized.filter(p => p.status === 'out-of-stock').length,
+          draft:      json.data.statusCounts?.draft      ?? normalized.filter(p => p.status === 'draft').length,
         });
       }
     } catch {

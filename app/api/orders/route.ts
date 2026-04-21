@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const orderId = `ORD-${Math.floor(Math.random() * 10_000_000)}`;
+    const { randomBytes } = await import('crypto');
+    const orderId = `ORD-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 
     await connectDB();
 

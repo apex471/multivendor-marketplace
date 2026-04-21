@@ -253,8 +253,8 @@ export default function BrandDashboard() {
             <h3 className="text-sm font-medium text-gray-600">Active Affiliates</h3>
             <span className="text-2xl">🤝</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{brandStats.totalAffiliates}</p>
-          <p className="text-xs text-gray-500 mt-2">{brandStats.pendingRequests} pending requests</p>
+          <p className="text-3xl font-bold text-gray-400">—</p>
+          <p className="text-xs text-gray-400 mt-2">Affiliate system coming soon</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -488,7 +488,7 @@ export default function BrandDashboard() {
             e.preventDefault();
             const form = e.currentTarget;
             const fd   = new FormData(form);
-            const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            const authToken = getAuthToken();
             if (!authToken) return;
             const nameParts = String(fd.get('brandName') ?? '').trim().split(' ');
             await fetch('/api/auth/profile', {

@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       ...(businessCity ? { businessCity } : {}),
       ...(businessState ? { businessState } : {}),
       applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
-      isEmailVerified: true,
+      isEmailVerified: false,
     });
 
     await newUser.save();
@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
           email: newUser.email,
           role: newUser.role,
           avatar: newUser.avatar || null,
-          isEmailVerified: true,
+          isEmailVerified: false,
         },
         token,
-        requiresEmailVerification: false,
+        requiresEmailVerification: true,
       },
       'Account created successfully',
       201
