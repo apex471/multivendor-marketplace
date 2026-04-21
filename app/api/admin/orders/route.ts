@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       total:           o.total,
       status:          o.status,
       paymentStatus:   o.paymentStatus,
-      orderDate:       o.orderDate,
+      orderDate:       o.createdAt,
       trackingNumber:  o.trackingNumber,
       shippingAddress: [
         (o.shippingAddress as { addressLine1?: string } | undefined)?.addressLine1,

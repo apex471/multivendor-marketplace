@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       customerName:  shippingInfo.fullName,
       customerEmail: customerEmail || 'guest@example.com',
       customerPhone: shippingInfo.phone ?? '',
-      items: cartItems.map((i: { id?: string; name: string; price: number; quantity: number; image?: string; vendor?: string; size?: string; color?: string }) => ({
-        productId: i.id ?? '',
+      items: cartItems.map((i: { id?: string; productId?: string; name: string; price: number; quantity: number; image?: string; vendor?: string; size?: string; color?: string }) => ({
+        productId: i.productId ?? i.id ?? '',
         name:      i.name,
         price:     i.price,
         quantity:  i.quantity,

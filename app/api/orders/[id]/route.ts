@@ -30,7 +30,9 @@ export async function GET(
       const dbOrder = await Order.findOne({ orderId: id }).lean() as IOrder | null;
       if (dbOrder) {
         // Ownership check: only the customer who placed the order or an admin may view it
-        const isOwner = dbOrder.customerId?.toString() === payload.userId;
+        const isOwner =
+          (dbOrder.customerId && dbOrder.customerId.toString() === payload.userId) ||
+          dbOrder.customerEmail === payload.email;
         const isAdmin = payload.role === 'admin';
         if (!isOwner && !isAdmin) return sendError('Access denied', 403);
         return sendSuccess({
@@ -87,7 +89,6 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    if (!OrderStore.getById(id)) return sendNotFound('Order not found');
 
     const body = await request.json().catch(() => ({}));
     const { status, trackingNumber, paymentStatus } = body as {
@@ -96,13 +97,35 @@ export async function PATCH(
       paymentStatus?: string;
     };
 
-    const updates: Partial<OrderStore.StoredOrder> = {};
-    if (status) updates.status = status;
-    if (trackingNumber !== undefined) updates.trackingNumber = trackingNumber;
-    if (paymentStatus) updates.paymentStatus = paymentStatus;
+    const mongoUpdates: Record<string, unknown> = {};
+    if (status)                        mongoUpdates.status        = status;
+    if (trackingNumber !== undefined)  mongoUpdates.trackingNumber = trackingNumber;
+    if (paymentStatus)                 mongoUpdates.paymentStatus  = paymentStatus;
 
-    const updated = OrderStore.update(id, updates);
-    return sendSuccess({ order: updated }, 'Order updated successfully');
+    // Persist to MongoDB first (source of truth)
+    if (Object.keys(mongoUpdates).length > 0) {
+      try {
+        await connectDB();
+        await Order.findOneAndUpdate(
+          { orderId: id },
+          { $set: mongoUpdates },
+          { new: true }
+        );
+      } catch (dbErr) {
+        console.warn('[Orders] PATCH MongoDB update failed, falling back to memory:', dbErr);
+      }
+    }
+
+    // Mirror to in-memory store (for logistics driver dashboard fallback)
+    const inMemUpdates: Partial<OrderStore.StoredOrder> = {};
+    if (status)                        inMemUpdates.status        = status;
+    if (trackingNumber !== undefined)  inMemUpdates.trackingNumber = trackingNumber;
+    if (paymentStatus)                 inMemUpdates.paymentStatus  = paymentStatus;
+
+    const inMemOrder = OrderStore.getById(id);
+    const updated = inMemOrder ? OrderStore.update(id, inMemUpdates) : null;
+
+    return sendSuccess({ order: updated ?? { id, ...mongoUpdates } }, 'Order updated successfully');
   } catch (err) {
     console.error('[Orders] PATCH/:id error:', err);
     return sendServerError('Failed to update order');
