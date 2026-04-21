@@ -9,18 +9,37 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
 
 type OrderRow = { id: string; date: string; items: number; total: number; status: string; image: string };
+type WishlistItem = { wishlistId: string; productId: string; name: string; price: number; image: string; vendor: string };
 
 export default function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
   const { user } = useAuth();
 
-  // ── Real order data ───────────────────────────────────────────────────────
   const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0 });
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({ fullName: '', email: '', phone: '', address: '' });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+
+  // Sync profile form with user context
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phone: (user as unknown as Record<string, string>).phoneNumber || '',
+        address: (user as unknown as Record<string, string>).address || '',
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
+    // Fetch orders
     fetch('/api/customer/orders', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(json => {
@@ -34,45 +53,68 @@ export default function CustomerDashboard() {
             items: o.itemCount,
             total: o.total,
             status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
-            image: o.items?.[0]?.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+            image: o.items?.[0]?.image || '/images/placeholder.jpg',
           }));
           setOrders(rows);
-          setStats({
+          setStats(prev => ({
+            ...prev,
             totalOrders: json.data.total,
             totalSpent: rows.reduce((s, o) => s + o.total, 0),
-            wishlistItems: 0,
-            savedPosts: 0,
-          });
+          }));
+        }
+      })
+      .catch(() => {});
+
+    // Fetch wishlist
+    fetch('/api/wishlist', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setWishlistItems(json.data.wishlist ?? []);
+          setStats(prev => ({ ...prev, wishlistItems: (json.data.wishlist ?? []).length }));
         }
       })
       .catch(() => {});
   }, []);
 
-  const recentOrders = orders.slice(0, 3);
+  const handleSaveProfile = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setProfileSaving(true);
+    setProfileMsg('');
+    const nameParts = profileForm.fullName.trim().split(' ');
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          firstName: nameParts[0] || '',
+          lastName:  nameParts.slice(1).join(' ') || '',
+          phoneNumber: profileForm.phone,
+        }),
+      });
+      const data = await res.json();
+      setProfileMsg(data.success ? '✓ Profile saved' : data.message || 'Save failed');
+    } catch {
+      setProfileMsg('Save failed — please try again');
+    } finally {
+      setProfileSaving(false);
+      setTimeout(() => setProfileMsg(''), 3000);
+    }
+  };
 
-  const wishlistItems = [
-    {
-      id: 1,
-      name: 'Designer Leather Handbag',
-      price: 1200.00,
-      image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400',
-      vendor: 'Luxury Goods Co.',
-    },
-    {
-      id: 2,
-      name: 'Classic Watch Collection',
-      price: 2500.00,
-      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-      vendor: 'Time Masters',
-    },
-    {
-      id: 3,
-      name: 'Premium Sunglasses',
-      price: 450.00,
-      image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400',
-      vendor: 'Vision Elite',
-    },
-  ];
+  const handleRemoveWishlist = async (wishlistId: string, productId: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+    setWishlistItems(prev => prev.filter(i => i.wishlistId !== wishlistId));
+    setStats(prev => ({ ...prev, wishlistItems: Math.max(0, prev.wishlistItems - 1) }));
+    await fetch(`/api/wishlist?productId=${productId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  };
+
+  const recentOrders = orders.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900 flex flex-col">
@@ -227,28 +269,44 @@ export default function CustomerDashboard() {
           {activeTab === 'wishlist' && (
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">My Wishlist</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {wishlistItems.map((item) => (
-                  <div key={item.id} className="group border border-gray-200 dark:border-charcoal-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="relative aspect-square">
-                      <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                      <button className="absolute top-3 right-3 w-10 h-10 bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
-                        ❤️
-                      </button>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">{item.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{item.vendor}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">${item.price.toFixed(2)}</span>
-                        <button className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-9">
-                          Add to Cart
+              {wishlistItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-5xl mb-4">❤️</div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Your wishlist is empty</h3>
+                  <p className="text-gray-600 dark:text-cool-gray-400 mb-4">Browse products and save your favourites</p>
+                  <Link href="/shop" className="inline-block px-6 py-3 bg-primary-700 text-white rounded-lg font-semibold hover:bg-primary-800 transition-colors">Browse Products</Link>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {wishlistItems.map((item) => (
+                    <div key={item.wishlistId} className="group border border-gray-200 dark:border-charcoal-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="relative aspect-square">
+                        <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <button
+                          onClick={() => handleRemoveWishlist(item.wishlistId, item.productId)}
+                          className="absolute top-3 right-3 w-10 h-10 bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="Remove from wishlist"
+                        >
+                          ❤️
                         </button>
                       </div>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">{item.name}</h3>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{item.vendor}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">${item.price.toFixed(2)}</span>
+                          <Link
+                            href={`/product/${item.productId}`}
+                            className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-9"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -331,28 +389,53 @@ export default function CustomerDashboard() {
           {activeTab === 'profile' && (
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Profile Settings</h2>
+              {profileMsg && (
+                <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${profileMsg.startsWith('✓') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {profileMsg}
+                </div>
+              )}
               <div className="max-w-2xl space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Full Name</label>
-                  <input type="text" defaultValue="Sarah Johnson" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
+                  <input
+                    type="text"
+                    value={profileForm.fullName}
+                    onChange={e => setProfileForm(f => ({ ...f, fullName: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Email Address</label>
-                  <input type="email" defaultValue="sarah.johnson@example.com" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    readOnly
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-charcoal-700 rounded-lg bg-gray-50 dark:bg-charcoal-800 text-gray-500 dark:text-cool-gray-500 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Email cannot be changed here.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Phone Number</label>
-                  <input type="tel" defaultValue="+1 (555) 123-4567" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Shipping Address</label>
-                  <textarea rows={3} defaultValue="123 Luxury Avenue, Suite 456, New York, NY 10001" className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"></textarea>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="e.g. +1 (555) 000-0000"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"
+                  />
                 </div>
                 <div className="flex gap-3">
-                  <button className="px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-12">
-                    Save Changes
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={profileSaving}
+                    className="px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-12 disabled:opacity-60"
+                  >
+                    {profileSaving ? 'Saving…' : 'Save Changes'}
                   </button>
-                  <button className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12">
+                  <button
+                    onClick={() => setProfileForm({ fullName: user?.fullName || '', email: user?.email || '', phone: (user as unknown as Record<string,string>)?.phoneNumber || '', address: '' })}
+                    className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12"
+                  >
                     Cancel
                   </button>
                 </div>

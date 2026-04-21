@@ -54,7 +54,7 @@ export default function VendorDashboard() {
     const token = getAuthToken();
     if (!token) return;
     Promise.all([
-      fetch('/api/vendor/orders',         { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/vendor/orders',          { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch('/api/vendor/products?limit=1', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([ordersJson, productsJson]) => {
       if (ordersJson.success) {
@@ -79,20 +79,30 @@ export default function VendorDashboard() {
         setStats(prev => ({ ...prev, totalProducts: productsJson.data.total ?? 0 }));
       }
     }).catch(() => {});
-  }, [isLoading, isAuthenticated, user]);
 
-  // Show nothing while auth is being checked
-  if (isLoading || !isAuthenticated || !user || !user.isEmailVerified || user.role !== 'vendor') {
-    return (
-      <div className="min-h-screen bg-linear-to-br from-purple-600/10 via-white to-purple-600/5 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-5xl mb-4 animate-pulse">🏪</div>
-          <p className="text-gray-500">Loading your dashboard…</p>
-        </div>
-      </div>
-    );
-  }
-  // ─────────────────────────────────────────────────────────────────────────────
+    // Fetch full products list for the products tab
+    setProductsLoading(true);
+    fetch('/api/vendor/products', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          setProducts((d.data.products ?? []).map((p: {
+            _id?: string; id?: string; name: string; price: number; stock?: number;
+            totalSold?: number; images?: string[]; status?: string;
+          }) => ({
+            id:     p._id ?? p.id ?? '',
+            name:   p.name,
+            price:  p.price,
+            stock:  p.stock ?? 0,
+            sales:  p.totalSold ?? 0,
+            image:  p.images?.[0] ?? '/images/placeholder.jpg',
+            status: (p.stock ?? 0) > 0 ? 'Active' : 'Out of Stock',
+          })));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setProductsLoading(false));
+  }, [isLoading, isAuthenticated, user]);
 
   const handleGenerateReferral = () => {
     const url = buildLogisticsReferralUrl(
@@ -120,44 +130,40 @@ export default function VendorDashboard() {
     setTimeout(() => setReferralCopied(false), 2500);
   };
 
-  const products = [
-    {
-      id: 1,
-      name: 'Designer Leather Handbag',
-      price: 1200.00,
-      stock: 8,
-      sales: 24,
-      image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'Classic Watch Collection',
-      price: 2500.00,
-      stock: 3,
-      sales: 12,
-      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Premium Sunglasses',
-      price: 450.00,
-      stock: 0,
-      sales: 31,
-      image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400',
-      status: 'Out of Stock',
-    },
-  ];
+  // ── Products state (fetched from API) ──────────────────────────────────────
+  type VendorProduct = { id: string; name: string; price: number; stock: number; sales: number; image: string; status: string };
+  const [products, setProducts] = useState<VendorProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
 
-  const salesData = [
-    { month: 'Jul', sales: 1200 },
-    { month: 'Aug', sales: 1800 },
-    { month: 'Sep', sales: 2400 },
-    { month: 'Oct', sales: 3200 },
-    { month: 'Nov', sales: 2800 },
-    { month: 'Dec', sales: 3600 },
-  ];
+  // Settings form state
+  const [settingsForm, setSettingsForm] = useState({ storeName: '', bio: '', email: '', phone: '' });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState('');
+
+  // Sync settings with user
+  useEffect(() => {
+    if (user) {
+      setSettingsForm({
+        storeName: user.fullName || '',
+        bio: (user as unknown as Record<string,string>).bio || '',
+        email: user.email || '',
+        phone: (user as unknown as Record<string,string>).phoneNumber || '',
+      });
+    }
+  }, [user]);
+
+  // Show nothing while auth is being checked
+  if (isLoading || !isAuthenticated || !user || !user.isEmailVerified || user.role !== 'vendor') {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-purple-600/10 via-white to-purple-600/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-pulse">🏪</div>
+          <p className="text-gray-500">Loading your dashboard…</p>
+        </div>
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const orderStatusClass = (status: string) =>
     status === 'Pending'
@@ -354,6 +360,15 @@ export default function VendorDashboard() {
                   + Add Product
                 </button>
               </div>
+              {productsLoading ? (
+                <div className="text-center py-12"><div className="text-4xl mb-3 animate-pulse">📦</div><p className="text-gray-500">Loading products…</p></div>
+              ) : products.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-5xl mb-4">📦</div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No products yet</h3>
+                  <p className="text-gray-600 dark:text-cool-gray-400">Add products to start selling</p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {products.map((product) => (
                   <div key={product.id} className="border border-gray-200 dark:border-charcoal-600 rounded-xl p-4 hover:shadow-md transition-shadow">
@@ -385,7 +400,6 @@ export default function VendorDashboard() {
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2">
                           <button className="flex-1 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-semibold min-h-10">Edit</button>
-                          <button className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 dark:text-cool-gray-300 dark:border-charcoal-500 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-10">Duplicate</button>
                           <button className="flex-1 px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-semibold min-h-10">Delete</button>
                         </div>
                       </div>
@@ -393,6 +407,7 @@ export default function VendorDashboard() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
 
@@ -447,22 +462,22 @@ export default function VendorDashboard() {
                   <div className="p-5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-3xl mb-2">📦</div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-1">Active Shipments</h3>
-                    <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">12</p>
+                    <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{stats.totalOrders > 0 ? '—' : '0'}</p>
                   </div>
                   <div className="p-5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                     <div className="text-3xl mb-2">✅</div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-1">Delivery Rate</h3>
-                    <p className="text-3xl font-bold text-green-700 dark:text-green-400">97.8%</p>
+                    <p className="text-3xl font-bold text-green-700 dark:text-green-400">—</p>
                   </div>
                   <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                     <div className="text-3xl mb-2">⏱️</div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-1">Avg Delivery</h3>
-                    <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">2.3 days</p>
+                    <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">—</p>
                   </div>
                   <div className="p-5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <div className="text-3xl mb-2">⭐</div>
                     <h3 className="font-bold text-gray-900 dark:text-white mb-1">Provider Rating</h3>
-                    <p className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">4.7/5</p>
+                    <p className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">—</p>
                   </div>
                 </div>
               </div>
@@ -533,75 +548,29 @@ export default function VendorDashboard() {
           {activeTab === 'analytics' && (
             <div className="space-y-6">
               <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
-                <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Sales Analytics</h2>
-                <div className="space-y-4">
-                  {salesData.map((data) => (
-                    <div key={data.month} className="flex items-center gap-4">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-cool-gray-300 w-12">{data.month}</span>
-                      <div className="flex-1 bg-gray-200 dark:bg-charcoal-700 rounded-full h-8 relative overflow-hidden">
-                        <div
-                          className="absolute inset-y-0 left-0 bg-linear-to-r from-purple-600 to-purple-400 rounded-full flex items-center justify-end pr-3"
-                          style={{ width: `${(data.sales / 4000) * 100}%` }}
-                        >
-                          <span className="text-white text-xs font-semibold">${data.sales}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
-                  <h3 className="font-display font-bold text-gray-900 dark:text-white mb-4">Top Products</h3>
-                  <div className="space-y-3">
-                    {products.map((product, index) => (
-                      <div key={product.id} className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-gray-300 dark:text-charcoal-600">#{index + 1}</span>
-                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
-                          <Image src={product.image} alt={product.name} fill className="object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate text-gray-900 dark:text-white">{product.name}</p>
-                          <p className="text-xs text-gray-600 dark:text-cool-gray-400">{product.sales} sales</p>
-                        </div>
-                      </div>
-                    ))}
+                <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-4">Sales Analytics</h2>
+                {stats.totalOrders === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">📊</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No sales data yet</h3>
+                    <p className="text-gray-600 dark:text-cool-gray-400">Analytics will appear once you start receiving orders</p>
                   </div>
-                </div>
-
-                <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
-                  <h3 className="font-display font-bold text-gray-900 dark:text-white mb-4">Performance</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600 dark:text-cool-gray-400">Conversion Rate</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">3.2%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-charcoal-700 rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '32%' }} />
-                      </div>
+                ) : (
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 text-center">
+                      <p className="text-xs text-gray-600 dark:text-cool-gray-400 mb-1">Total Orders</p>
+                      <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{stats.totalOrders}</p>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600 dark:text-cool-gray-400">Customer Satisfaction</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">96%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-charcoal-700 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: '96%' }} />
-                      </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-center">
+                      <p className="text-xs text-gray-600 dark:text-cool-gray-400 mb-1">Monthly Revenue</p>
+                      <p className="text-3xl font-bold text-green-700 dark:text-green-400">${stats.revenue.toLocaleString()}</p>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600 dark:text-cool-gray-400">Response Time</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">2.5h avg</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-charcoal-700 rounded-full h-2">
-                        <div className="bg-purple-600 h-2 rounded-full" style={{ width: '75%' }} />
-                      </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
+                      <p className="text-xs text-gray-600 dark:text-cool-gray-400 mb-1">Active Products</p>
+                      <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{stats.totalProducts}</p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -610,12 +579,18 @@ export default function VendorDashboard() {
           {activeTab === 'settings' && (
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Store Settings</h2>
+              {settingsMsg && (
+                <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${
+                  settingsMsg.startsWith('✓') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>{settingsMsg}</div>
+              )}
               <div className="max-w-2xl space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Name</label>
                   <input
                     type="text"
-                    defaultValue={user?.fullName || 'My Store'}
+                    value={settingsForm.storeName}
+                    onChange={e => setSettingsForm(f => ({ ...f, storeName: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
@@ -623,7 +598,9 @@ export default function VendorDashboard() {
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Description</label>
                   <textarea
                     rows={4}
-                    defaultValue="We offer premium luxury goods with certified authenticity. Expert curators handpick each item for quality and style."
+                    value={settingsForm.bio}
+                    onChange={e => setSettingsForm(f => ({ ...f, bio: e.target.value }))}
+                    placeholder="Describe your store…"
                     className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
@@ -631,31 +608,58 @@ export default function VendorDashboard() {
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Business Email</label>
                   <input
                     type="email"
-                    defaultValue={user?.email || ''}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    value={settingsForm.email}
+                    readOnly
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-charcoal-600 bg-gray-50 dark:bg-charcoal-800 text-gray-500 dark:text-cool-gray-500 rounded-lg cursor-not-allowed"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Business Phone</label>
                   <input
                     type="tel"
-                    defaultValue="+1 (555) 987-6543"
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Address</label>
-                  <textarea
-                    rows={3}
-                    defaultValue="789 Fashion District, Suite 200, Los Angeles, CA 90015"
+                    value={settingsForm.phone}
+                    onChange={e => setSettingsForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="e.g. +1 (555) 000-0000"
                     className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <button className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold min-h-12">
-                    Save Changes
+                  <button
+                    disabled={settingsSaving}
+                    onClick={async () => {
+                      const token = getAuthToken();
+                      if (!token) return;
+                      setSettingsSaving(true);
+                      setSettingsMsg('');
+                      const parts = settingsForm.storeName.trim().split(' ');
+                      try {
+                        const res = await fetch('/api/auth/profile', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({
+                            firstName: parts[0] || '',
+                            lastName:  parts.slice(1).join(' ') || '',
+                            bio: settingsForm.bio,
+                            phoneNumber: settingsForm.phone,
+                          }),
+                        });
+                        const d = await res.json();
+                        setSettingsMsg(d.success ? '✓ Settings saved' : d.message || 'Save failed');
+                      } catch {
+                        setSettingsMsg('Save failed — please try again');
+                      } finally {
+                        setSettingsSaving(false);
+                        setTimeout(() => setSettingsMsg(''), 3000);
+                      }
+                    }}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold min-h-12 disabled:opacity-60"
+                  >
+                    {settingsSaving ? 'Saving…' : 'Save Changes'}
                   </button>
-                  <button className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12">
+                  <button
+                    onClick={() => setSettingsForm({ storeName: user?.fullName || '', bio: (user as unknown as Record<string,string>)?.bio || '', email: user?.email || '', phone: (user as unknown as Record<string,string>)?.phoneNumber || '' })}
+                    className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12"
+                  >
                     Cancel
                   </button>
                 </div>

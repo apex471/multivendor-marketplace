@@ -28,6 +28,7 @@ interface StatsData {
   };
   charts: {
     weeklySignups: { date: string; count: number }[];
+    courierBreakdown: { id: string; name: string; icon: string; price: number; count: number }[];
   };
 }
 
@@ -314,43 +315,43 @@ export default function AdminDashboard() {
           <Link href="/admin/orders" className="text-xs text-gold-500 hover:text-gold-400 font-medium">All Orders →</Link>
         </div>
         <div className="space-y-3">
-          {[
-            { id: 'ecopost',     icon: '🌿', name: 'EcoPost',         price: 0,     orders: 18, color: 'bg-green-500' },
-            { id: 'swiftship',   icon: '📦', name: 'SwiftShip',       price: 4.99,  orders: 34, color: 'bg-blue-500' },
-            { id: 'quickbox',    icon: '🚀', name: 'QuickBox Express',price: 12.99, orders: 27, color: 'bg-gold-500' },
-            { id: 'flashrunner', icon: '⚡', name: 'FlashRunner',     price: 24.99, orders: 12, color: 'bg-orange-500' },
-            { id: 'zerowait',    icon: '🔥', name: 'ZeroWait',        price: 49.99, orders: 6,  color: 'bg-red-500' },
-          ].map(courier => {
-            const maxOrders = 34;
-            const pct = Math.round((courier.orders / maxOrders) * 100);
-            return (
-              <div key={courier.id} className="flex items-center gap-3">
-                <span className="text-xl w-7 text-center select-none shrink-0">{courier.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-white truncate">{courier.name}</span>
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <span className="text-xs text-cool-gray-400">{courier.orders} orders</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        courier.price === 0 ? 'bg-green-900/50 text-green-400' : 'bg-charcoal-700 text-gold-400'
-                      }`}>
-                        {courier.price === 0 ? 'FREE' : `$${courier.price}`}
-                      </span>
+          {(stats?.charts.courierBreakdown ?? []).length === 0 ? (
+            <p className="text-sm text-cool-gray-500 py-4 text-center">No orders placed yet.</p>
+          ) : (() => {
+            const maxOrders = Math.max(...(stats?.charts.courierBreakdown ?? []).map(c => c.count), 1);
+            return (stats?.charts.courierBreakdown ?? []).map(courier => {
+              const pct = Math.round((courier.count / maxOrders) * 100);
+              const colors = ['bg-blue-500','bg-green-500','bg-gold-500','bg-orange-500','bg-red-500','bg-purple-500'];
+              const idx    = (stats?.charts.courierBreakdown ?? []).indexOf(courier) % colors.length;
+              return (
+                <div key={courier.id} className="flex items-center gap-3">
+                  <span className="text-xl w-7 text-center select-none shrink-0">{courier.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-white truncate">{courier.name}</span>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <span className="text-xs text-cool-gray-400">{courier.count} orders</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                          courier.price === 0 ? 'bg-green-900/50 text-green-400' : 'bg-charcoal-700 text-gold-400'
+                        }`}>
+                          {courier.price === 0 ? 'FREE' : `$${courier.price}`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-charcoal-700 rounded-full overflow-hidden">
+                      <div className={`h-full ${colors[idx]} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <div className="h-1.5 bg-charcoal-700 rounded-full overflow-hidden">
-                    <div className={`h-full ${courier.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                  </div>
+                  <Link
+                    href={`/admin/orders?courier=${courier.id}`}
+                    className="shrink-0 text-[10px] text-cool-gray-500 hover:text-gold-400 transition-colors"
+                  >
+                    →
+                  </Link>
                 </div>
-                <Link
-                  href={`/admin/orders?courier=${courier.id}`}
-                  className="shrink-0 text-[10px] text-cool-gray-500 hover:text-gold-400 transition-colors"
-                >
-                  →
-                </Link>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 

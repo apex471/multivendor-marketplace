@@ -42,49 +42,6 @@ interface DeliveryOrder {
   createdAt:      string;
 }
 
-// ─── Seed history ─────────────────────────────────────────────────────────────
-
-const SEED_HISTORY: DeliveryOrder[] = [
-  {
-    id: 'DLV-099', orderId: 'ORD-2024-0999',
-    customer: 'Sarah Williams', customerPhone: '+1 (555) 500-6000',
-    pickupAddress: '200 Broadway, NYC', pickupStore: 'Prada Store',
-    dropoffAddress: '321 Elm St, Bronx, NY',
-    distance: '6.3 mi', estimatedTime: '38 min',
-    items: ['Winter Coat', 'Cashmere Scarf'], itemCount: 2,
-    orderValue: 1450, deliveryFee: 24.99,
-    courierName: 'FlashRunner Next Day', courierIcon: '⚡',
-    status: 'delivered',
-    acceptedAt: '2026-04-10T09:15:00', pickedUpAt: '2026-04-10T09:28:00', deliveredAt: '2026-04-10T09:51:00',
-    createdAt: '2026-04-10T09:10:00',
-  },
-  {
-    id: 'DLV-098', orderId: 'ORD-2024-0998',
-    customer: 'Tom Brown', customerPhone: '+1 (555) 300-4000',
-    pickupAddress: '1 Canal St, NYC', pickupStore: 'Luxury Boutique',
-    dropoffAddress: '555 Maple Dr, Queens, NY',
-    distance: '5.8 mi', estimatedTime: '34 min',
-    items: ['Sports Watch'], itemCount: 1,
-    orderValue: 299.99, deliveryFee: 4.99,
-    courierName: 'SwiftShip Standard', courierIcon: '📦',
-    status: 'delivered',
-    acceptedAt: '2026-04-10T07:30:00', pickedUpAt: '2026-04-10T07:48:00', deliveredAt: '2026-04-10T08:22:00',
-    createdAt: '2026-04-10T07:25:00',
-  },
-  {
-    id: 'DLV-097', orderId: 'ORD-2024-0997',
-    customer: 'Mike Johnson', customerPhone: '+1 (555) 700-8000',
-    pickupAddress: '999 Lexington Ave, NYC', pickupStore: 'Gucci Official',
-    dropoffAddress: '789 Pine Rd, Chicago, IL',
-    distance: '8.1 mi', estimatedTime: '45 min',
-    items: ['Gucci Loafers'], itemCount: 1,
-    orderValue: 1200, deliveryFee: 24.99,
-    courierName: 'FlashRunner Next Day', courierIcon: '⚡',
-    status: 'cancelled',
-    createdAt: '2026-04-09T18:00:00',
-  },
-];
-
 const STATUS_STEPS: { key: OrderStatus; label: string; icon: string }[] = [
   { key: 'accepted',   label: 'Accepted',   icon: '✅' },
   { key: 'picked-up',  label: 'Picked Up',  icon: '📦' },
@@ -123,11 +80,13 @@ export default function LogisticsDashboard() {
   const [activeTab,       setActiveTab]       = useState<'home' | 'history' | 'earnings'>('home');
   const [incomingOrder,   setIncomingOrder]   = useState<DeliveryOrder | null>(null);
   const [activeOrder,     setActiveOrder]     = useState<DeliveryOrder | null>(null);
-  const [history,         setHistory]         = useState<DeliveryOrder[]>(SEED_HISTORY);
+  const [history,         setHistory]         = useState<DeliveryOrder[]>([]);
   const [countdown,       setCountdown]       = useState(15);
   const [providerName,    setProviderName]    = useState('Courier');
-  const [todayEarnings,   setTodayEarnings]   = useState(29.98);
-  const [todayDeliveries, setTodayDeliveries] = useState(2);
+  const [todayEarnings,   setTodayEarnings]   = useState(0);
+  const [todayDeliveries, setTodayDeliveries] = useState(0);
+  const [weekEarnings,    setWeekEarnings]    = useState(0);
+  const [monthEarnings,   setMonthEarnings]   = useState(0);
   const [showToggleSheet, setShowToggleSheet] = useState(false);
   const [toastMsg,        setToastMsg]        = useState('');
   const [deliveredFlash,  setDeliveredFlash]  = useState(false);
@@ -158,6 +117,9 @@ export default function LogisticsDashboard() {
           const s = d.data.stats;
           if (s?.todayRevenue    > 0) setTodayEarnings(s.todayRevenue);
           if (s?.todayDeliveries > 0) setTodayDeliveries(s.todayDeliveries);
+          if (s?.monthRevenue    > 0) setMonthEarnings(s.monthRevenue);
+          // weekRevenue is not directly available; use monthRevenue as a proxy
+          if (s?.monthRevenue    > 0) setWeekEarnings(+(s.monthRevenue * 0.25).toFixed(2));
         }
       })
       .catch(() => {});
@@ -399,8 +361,6 @@ export default function LogisticsDashboard() {
   };
 
   const stepIndex        = activeOrder ? STATUS_STEPS.findIndex(s => s.key === activeOrder.status) : -1;
-  const weekEarnings     = +(todayEarnings + 142.50).toFixed(2);
-  const monthEarnings    = +(weekEarnings  + 640.20).toFixed(2);
   const deliveredHistory = history.filter(o => o.status === 'delivered');
 
   const headingLabel = (h: number | null) => {

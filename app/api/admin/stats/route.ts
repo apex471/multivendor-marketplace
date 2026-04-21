@@ -3,6 +3,7 @@ import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Transaction } from '@/backend/models/Transaction';
 import { SupportTicket } from '@/backend/models/SupportTicket';
+import { Order as OrderModel } from '@/backend/models/Order';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
@@ -36,6 +37,8 @@ export async function GET(request: NextRequest) {
       monthlyTransactions,
       pendingEscrow,
       openTickets,
+      // Courier breakdown: group orders by courier.id to get order counts per courier
+      courierBreakdown,
     ] = await Promise.all([
       User.countDocuments({ role: 'customer', isActive: true }),
       User.countDocuments({ role: 'vendor', applicationStatus: 'approved', isActive: true }),
@@ -65,6 +68,19 @@ export async function GET(request: NextRequest) {
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
       ]),
       SupportTicket.countDocuments({ status: { $in: ['open', 'in-progress'] } }),
+      OrderModel.aggregate([
+        { $match: { 'courier.id': { $exists: true } } },
+        {
+          $group: {
+            _id:   '$courier.id',
+            name:  { $first: '$courier.name' },
+            icon:  { $first: '$courier.icon' },
+            price: { $first: '$courier.price' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]),
     ]);
 
     // 7-day user signup trend
@@ -144,6 +160,13 @@ export async function GET(request: NextRequest) {
       },
       charts: {
         weeklySignups,
+        courierBreakdown: courierBreakdown.map((c: { _id: string; name: string; icon?: string; price: number; count: number }) => ({
+          id:    c._id,
+          name:  c.name  || c._id,
+          icon:  c.icon  || '📦',
+          price: c.price ?? 0,
+          count: c.count,
+        })),
       },
     });
   } catch (error) {

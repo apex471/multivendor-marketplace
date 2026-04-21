@@ -91,76 +91,21 @@ export default function BrandDashboard() {
     setTimeout(() => setReferralCopied(false), 2500);
   };
 
-  const [affiliateRequests, setAffiliateRequests] = useState<AffiliateRequest[]>([
-    {
-      id: '1',
-      vendorName: 'Sarah Johnson',
-      storeName: 'Elegant Boutique',
-      email: 'sarah@elegantboutique.com',
-      phone: '+1 (555) 123-4567',
-      requestDate: '2024-01-15',
-      status: 'pending',
-      message: 'I would love to feature your luxury brand in my boutique. My store specializes in high-end fashion and has been in business for 5 years.',
-    },
-    {
-      id: '2',
-      vendorName: 'Michael Chen',
-      storeName: 'Style Hub',
-      email: 'michael@stylehub.com',
-      phone: '+1 (555) 234-5678',
-      requestDate: '2024-01-14',
-      status: 'pending',
-      message: 'Your brand aligns perfectly with our customer base. We have 3 physical locations and a strong online presence.',
-    },
-    {
-      id: '3',
-      vendorName: 'Emily Davis',
-      storeName: 'Fashion Forward',
-      email: 'emily@fashionforward.com',
-      phone: '+1 (555) 345-6789',
-      requestDate: '2024-01-13',
-      status: 'pending',
-      message: 'Interested in carrying your luxury line. We have established relationships with high-end clientele.',
-    },
-  ]);
+  const [affiliateRequests, setAffiliateRequests] = useState<AffiliateRequest[]>([]);
+  const [affiliatePartners, _setAffiliatePartners] = useState<AffiliatePartner[]>([]);
 
-  const [affiliatePartners, _setAffiliatePartners] = useState<AffiliatePartner[]>([
-    {
-      id: '1',
-      vendorName: 'Jessica Martinez',
-      storeName: 'Luxury Lane',
-      email: 'jessica@luxurylane.com',
-      joinedDate: '2023-11-20',
-      commissionRate: 15,
-      totalSales: 45600,
-      productsListed: 32,
-      status: 'active',
-    },
-    {
-      id: '2',
-      vendorName: 'David Kim',
-      storeName: 'Premium Style Co',
-      email: 'david@premiumstyle.com',
-      joinedDate: '2023-10-15',
-      commissionRate: 12,
-      totalSales: 67800,
-      productsListed: 45,
-      status: 'active',
-    },
-    {
-      id: '3',
-      vendorName: 'Amanda White',
-      storeName: 'Chic Collection',
-      email: 'amanda@chiccollection.com',
-      joinedDate: '2023-12-01',
-      commissionRate: 10,
-      totalSales: 28900,
-      productsListed: 23,
-      status: 'active',
-    },
-  ]);
+  // Fetch affiliate data — no dedicated API yet; stub for future wiring
+  useEffect(() => {
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!authToken) return;
+    // TODO: replace with real endpoint once affiliate model is implemented
+    // fetch('/api/brand/affiliates', { headers: { Authorization: `Bearer ${authToken}` } })
+    //   .then(r => r.json())
+    //   .then(d => { if (d.success) { setAffiliateRequests(d.data.requests); _setAffiliatePartners(d.data.partners); } });
+  }, []);
 
   const handleRequestAction = useCallback((requestId: string, action: 'approve' | 'reject') => {
+    // TODO: call /api/brand/affiliates PATCH when endpoint is available
     setAffiliateRequests(prev =>
       prev.map(req =>
         req.id === requestId
@@ -168,7 +113,6 @@ export default function BrandDashboard() {
           : req
       )
     );
-    alert(`Request ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
   }, []);
 
   const handleLogout = () => {
@@ -199,10 +143,10 @@ export default function BrandDashboard() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { icon: '📦', label: 'Active Shipments', value: '8', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-          { icon: '✅', label: 'Delivery Rate', value: '98.5%', color: 'bg-green-50 border-green-200 text-green-700' },
-          { icon: '⏱️', label: 'Avg Delivery', value: '1.9 days', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-          { icon: '⭐', label: 'Provider Rating', value: '4.9/5', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+          { icon: '📦', label: 'Active Shipments', value: brandStats.totalProducts > 0 ? '—' : '0',      color: 'bg-blue-50 border-blue-200 text-blue-700' },
+          { icon: '✅', label: 'Delivery Rate',    value: '—',                                            color: 'bg-green-50 border-green-200 text-green-700' },
+          { icon: '⏱️', label: 'Avg Delivery',     value: '—',                                            color: 'bg-purple-50 border-purple-200 text-purple-700' },
+          { icon: '⭐', label: 'Provider Rating',  value: '—',                                            color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
         ].map((s) => (
           <div key={s.label} className={`rounded-xl border p-4 ${s.color.split(' ').slice(0, 2).join(' ')}`}>
             <div className="text-2xl mb-1">{s.icon}</div>
@@ -318,7 +262,7 @@ export default function BrandDashboard() {
             <span className="text-2xl">💰</span>
           </div>
           <p className="text-3xl font-bold text-gray-900">${brandStats.totalRevenue.toLocaleString()}</p>
-          <p className="text-xs text-green-600 mt-2">+12% from last month</p>
+          <p className="text-xs text-gray-500 mt-2">Total revenue earned</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -528,12 +472,32 @@ export default function BrandDashboard() {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Brand Settings</h2>
-        <div className="space-y-4">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd   = new FormData(form);
+            const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            if (!authToken) return;
+            const nameParts = String(fd.get('brandName') ?? '').trim().split(' ');
+            await fetch('/api/auth/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({
+                firstName: nameParts[0] || '',
+                lastName:  nameParts.slice(1).join(' ') || '',
+                bio: fd.get('description'),
+              }),
+            });
+          }}
+          className="space-y-4"
+        >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Brand Name</label>
             <input
+              name="brandName"
               type="text"
-              defaultValue="Luxury Brand Co."
+              defaultValue={user?.fullName || ''}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-11"
             />
           </div>
@@ -550,18 +514,20 @@ export default function BrandDashboard() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Brand Description</label>
             <textarea
+              name="description"
               rows={4}
-              defaultValue="A premium luxury brand offering certified high-end fashion products."
+              defaultValue={(user as unknown as Record<string,string>)?.bio || ''}
+              placeholder="Describe your brand…"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             />
           </div>
-          <button className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
+          <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
             Save Changes
           </button>
-        </div>
+        </form>
       </div>
     </div>
-  ), []);
+  ), [user]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gold-600/10 via-white to-gold-600/5 dark:from-charcoal-900 dark:via-charcoal-900 dark:to-charcoal-800">
@@ -573,7 +539,7 @@ export default function BrandDashboard() {
               <span className="text-3xl">👑</span>
               <div>
                 <h1 className="text-xl sm:text-2xl font-display font-bold text-gray-900">Brand Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600">Luxury Brand Co.</p>
+                <p className="text-xs sm:text-sm text-gray-600">{user?.fullName || user?.email || 'My Brand'}</p>
               </div>
             </div>
             <button
