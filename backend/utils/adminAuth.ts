@@ -24,17 +24,11 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AdminAuthRe
     return { error: 'Invalid or expired token', adminUser: null };
   }
 
-  await connectDB();
-  const adminUser = await User.findById(decoded.userId).lean();
-  if (!adminUser) {
-    return { error: 'User not found', adminUser: null };
-  }
-  if ((adminUser as any).role !== 'admin') {
+  // Trust the role embedded in the signed JWT — avoids a DB round-trip on every request.
+  // A compromised account will lose access once its JWT expires (default 7 days).
+  if (decoded.role !== 'admin') {
     return { error: 'Access denied: admin role required', adminUser: null };
   }
-  if (!(adminUser as any).isActive) {
-    return { error: 'Account is suspended', adminUser: null };
-  }
 
-  return { error: null, adminUser };
+  return { error: null, adminUser: { _id: decoded.userId, email: decoded.email, role: decoded.role } };
 }

@@ -63,7 +63,7 @@ export default function VendorStorePage() {
   } = useLocation();
 
   const [vendor, setVendor] = useState<VendorData | null>(null);
-  const [activeTab, setActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'about'>('products');
   const [_notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -252,7 +252,7 @@ export default function VendorStorePage() {
             {/* Tabs */}
             <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl mb-6">
               <div className="flex border-b border-cool-gray-300 dark:border-charcoal-700">
-                {(['products', 'about', 'reviews'] as const).map((tab) => (
+                {(['products', 'about'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -342,17 +342,6 @@ export default function VendorStorePage() {
               </div>
             )}
 
-            {/* Reviews Tab */}
-            {activeTab === 'reviews' && (
-              <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
-                <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">
-                  Customer Reviews
-                </h2>
-                <p className="text-charcoal-600 dark:text-cool-gray-400">
-                  Reviews coming soon...
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}

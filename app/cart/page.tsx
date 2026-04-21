@@ -56,9 +56,6 @@ export default function CartPage() {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal > 500 ? 0 : 25;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
@@ -182,32 +179,25 @@ export default function CartPage() {
 
                 <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                   <div className="flex justify-between text-sm sm:text-base">
-                    <span className="text-charcoal-600 dark:text-cool-gray-400">Subtotal</span>
+                    <span className="text-charcoal-600 dark:text-cool-gray-400">Subtotal ({cartItems.reduce((n, i) => n + i.quantity, 0)} items)</span>
                     <span className="font-semibold text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-charcoal-600 dark:text-cool-gray-400">Shipping</span>
-                    <span className="font-semibold text-charcoal-900 dark:text-white">
-                      {shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}
-                    </span>
+                    <span className="font-semibold text-charcoal-500 dark:text-cool-gray-400 italic">Calculated at checkout</span>
                   </div>
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-charcoal-600 dark:text-cool-gray-400">Tax</span>
-                    <span className="font-semibold text-charcoal-900 dark:text-white">${tax.toFixed(2)}</span>
+                    <span className="font-semibold text-charcoal-500 dark:text-cool-gray-400 italic">Calculated at checkout</span>
                   </div>
                   <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-3 sm:pt-4">
                     <div className="flex justify-between text-base sm:text-lg">
-                      <span className="font-bold text-charcoal-900 dark:text-white">Total</span>
-                      <span className="font-bold text-charcoal-900 dark:text-white">${total.toFixed(2)}</span>
+                      <span className="font-bold text-charcoal-900 dark:text-white">Estimated Total</span>
+                      <span className="font-bold text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
                     </div>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-500 mt-1">Final total including shipping &amp; taxes shown at checkout</p>
                   </div>
                 </div>
-
-                {shipping > 0 && (
-                  <div className="mb-4 sm:mb-6 p-3 bg-gold-600/10 dark:bg-gold-600/20 border border-gold-600/30 dark:border-gold-600/40 rounded-lg text-xs sm:text-sm text-charcoal-900 dark:text-white">
-                    💡 Add ${(500 - subtotal).toFixed(2)} more to get FREE shipping!
-                  </div>
-                )}
 
                 <button
                   onClick={handleCheckout}
