@@ -19,6 +19,7 @@ export default function AddProductPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'basic' | 'images' | 'variants' | 'pricing' | 'inventory'>('basic');
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -73,7 +74,7 @@ export default function AddProductPage() {
       const urls = await Promise.all(uploads);
       setImages(prev => [...prev, ...urls]);
     } catch (err) {
-      alert(`Image upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setFormError(`Image upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -100,13 +101,13 @@ export default function AddProductPage() {
 
   const handleSubmit = async (isDraft: boolean) => {
     if (!formData.name || !formData.category || !formData.regularPrice) {
-      alert('Please fill in required fields: Name, Category, and Price');
+      setFormError('Please fill in required fields: Name, Category, and Price.');
       return;
     }
 
     const token = getAuthToken();
     if (!token) {
-      alert('You must be logged in to add products.');
+      router.push('/auth/vendor/login');
       return;
     }
 
@@ -137,13 +138,13 @@ export default function AddProductPage() {
 
       const json = await res.json();
       if (!json.success) {
-        alert(json.error ?? 'Failed to save product');
+        setFormError(json.error ?? 'Failed to save product. Please try again.');
         return;
       }
 
       router.push('/vendor/products');
     } catch (err) {
-      alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setFormError(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -568,6 +569,11 @@ export default function AddProductPage() {
                 Cancel
               </button>
               <div className="flex gap-3">
+                {formError && (
+                  <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm self-center">
+                    {formError}
+                  </div>
+                )}
                 <button
                   onClick={() => handleSubmit(true)}
                   disabled={isSaving}

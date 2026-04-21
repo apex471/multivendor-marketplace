@@ -19,8 +19,10 @@ function SearchContent() {
   // ── Real search results ───────────────────────────────────────────────
   type ProductResult = { id: string; name: string; price: number; image: string; rating: number };
   type VendorResult = { id: string; name: string; logo: string; products: number; rating: number };
+  type PostResult = { id: string; author: string; content: string; image: string };
   const [searchProducts, setSearchProducts] = useState<ProductResult[]>([]);
   const [searchVendors, setSearchVendors] = useState<VendorResult[]>([]);
+  const [searchPosts, setSearchPosts] = useState<PostResult[]>([]);
   const [currentQuery, setCurrentQuery] = useState(initialQuery);
 
   useEffect(() => {
@@ -83,10 +85,30 @@ function SearchContent() {
     return () => controller.abort();
   }, [currentQuery, sortBy]);
 
+  // Fetch posts separately (no abort needed, low-frequency)
+  useEffect(() => {
+    if (!currentQuery.trim()) { setSearchPosts([]); return; }
+    fetch(`/api/posts?search=${encodeURIComponent(currentQuery)}&limit=12`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setSearchPosts(
+            (json.data.posts ?? []).map((p: { _id: string; author?: { fullName?: string }; content?: string; images?: string[] }) => ({
+              id:      String(p._id),
+              author:  p.author?.fullName ?? 'Unknown',
+              content: p.content ?? '',
+              image:   p.images?.[0] ?? '',
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [currentQuery]);
+
   const results = {
     products: currentQuery.trim() ? searchProducts : [],
     vendors:  currentQuery.trim() ? searchVendors  : [],
-    posts:    [] as { id: string; author: string; content: string; image: string }[],
+    posts:    searchPosts,
   };
 
   const totalResults = results.products.length + results.vendors.length;

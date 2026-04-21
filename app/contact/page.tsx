@@ -14,6 +14,7 @@ export default function ContactPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -34,10 +35,11 @@ export default function ContactPage() {
 
     setIsSubmitting(false);
     if (res.ok) {
+      setSubmitError('');
       setSubmitted(true);
       setFormData({ name: '', email: '', subject: '', category: 'general', message: '' });
     } else {
-      alert('Failed to send message. Please try again.');
+      setSubmitError('Failed to send message. Please try again.');
     }
   };
 
@@ -170,6 +172,11 @@ export default function ContactPage() {
                     </div>
 
                     {/* Submit Button */}
+                    {submitError && (
+                      <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+                        {submitError}
+                      </div>
+                    )}
                     <button
                       type="submit"
                       disabled={isSubmitting}

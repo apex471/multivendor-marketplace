@@ -76,7 +76,7 @@ export default function OrderDetailPage() {
         setOrder({
           ...o,
           shipping: o.shippingCost ?? 0,
-          statusHistory: [],
+          statusHistory: o.statusHistory ?? [],
         });
         setTrackingNumber(o.trackingNumber ?? '');
       })

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,8 +13,14 @@ type OrderRow = { id: string; date: string; items: number; total: number; status
 type WishlistItem = { wishlistId: string; productId: string; name: string; price: number; image: string; vendor: string };
 
 export default function CustomerDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
   const { user } = useAuth();
+
+  // Auth guard
+  useEffect(() => {
+    if (!getAuthToken()) router.replace('/auth/login?redirect=/dashboard/customer');
+  }, [router]);
 
   const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0 });
   const [orders, setOrders] = useState<OrderRow[]>([]);

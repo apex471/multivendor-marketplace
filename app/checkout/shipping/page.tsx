@@ -79,11 +79,14 @@ export default function ShippingPage() {
     router.push('/checkout/payment');
   };
 
+  const [addressError, setAddressError] = useState('');
+
   const handleContinue = () => {
     if (!selectedAddressId && !checkoutData.shippingAddress) {
-      alert('Please select a shipping address');
+      setAddressError('Please select a shipping address to continue.');
       return;
     }
+    setAddressError('');
     updateCourierId(selectedCourierId);
     router.push('/checkout/payment');
   };
@@ -417,12 +420,19 @@ export default function ShippingPage() {
                 </span>
               </div>
               {!showNewAddressForm && (
-                <button
-                  onClick={handleContinue}
-                  className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
-                >
-                  Continue to Payment
-                </button>
+                <>
+                  {addressError && (
+                    <div className="mb-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+                      {addressError}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleContinue}
+                    className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
+                  >
+                    Continue to Payment
+                  </button>
+                </>
               )}
               <button
                 onClick={() => router.push('/checkout/cart-review')}

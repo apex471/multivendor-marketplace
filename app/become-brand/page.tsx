@@ -56,6 +56,10 @@ export default function BecomeBrandPage() {
           confirmPassword: formData.confirmPassword,
           phoneNumber: formData.phone || undefined,
           role: 'brand',
+          storeName: formData.brandName || undefined,
+          businessDescription: formData.description || undefined,
+          website: formData.website || undefined,
+          socialLinks: formData.instagram ? { instagram: formData.instagram } : undefined,
         }),
       });
       const data = await res.json();

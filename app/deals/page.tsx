@@ -34,12 +34,15 @@ export default function DealsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/products?onSale=true&limit=12`)
+    const tabParam = activeTab === 'flash' ? 'flash' : activeTab === 'daily' ? 'daily' : 'seasonal';
+    Promise.resolve()
+      .then(() => { if (!cancelled) setIsLoading(true); })
+      .then(() => fetch(`/api/products?onSale=true&dealType=${tabParam}&limit=12`))
       .then(r => r.json())
       .then(json => { if (!cancelled && json.success) setDeals(json.data.products ?? []); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [activeTab]);
 
   const getDiscount = (deal: Deal) => {
     if (deal.discount) return deal.discount;

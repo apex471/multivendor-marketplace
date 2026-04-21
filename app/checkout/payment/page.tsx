@@ -34,10 +34,6 @@ export default function PaymentPage() {
     router.push('/checkout/review');
   };
 
-  const handleContinue = () => {
-    router.push('/checkout/review');
-  };
-
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -282,12 +278,9 @@ export default function PaymentPage() {
                 <span className="text-gold-600">${checkoutData.total.toFixed(2)}</span>
               </div>
               {paymentType === 'new' && (
-                <button
-                  onClick={handleContinue}
-                  className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
-                >
-                  Continue to Review
-                </button>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 text-center">
+                  Fill in your card details above and click &quot;Continue to Review&quot;.
+                </p>
               )}
               <button
                 onClick={() => router.push('/checkout/shipping')}

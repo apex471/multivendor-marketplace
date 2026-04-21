@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
@@ -36,6 +37,7 @@ interface ApiStats {
 }
 
 export default function VendorOrdersPage() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
@@ -49,7 +51,7 @@ export default function VendorOrdersPage() {
 
   const fetchOrders = useCallback(async () => {
     const token = getAuthToken();
-    if (!token) { setError('Not authenticated'); setLoading(false); return; }
+    if (!token) { router.replace('/auth/vendor/login'); return; }
     try {
       const res  = await fetch('/api/vendor/orders', { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
@@ -61,7 +63,7 @@ export default function VendorOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 

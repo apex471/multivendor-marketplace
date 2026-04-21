@@ -55,6 +55,12 @@ export default function BecomeVendorPage() {
           confirmPassword: formData.confirmPassword,
           phoneNumber: formData.phone || undefined,
           role: 'vendor',
+          storeName: formData.businessName || undefined,
+          businessDescription: formData.description || undefined,
+          businessCity: formData.city || undefined,
+          businessState: formData.state || undefined,
+          website: formData.website || undefined,
+          taxId: formData.taxId || undefined,
         }),
       });
       const data = await res.json();

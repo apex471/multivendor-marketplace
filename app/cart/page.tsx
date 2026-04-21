@@ -61,10 +61,7 @@ export default function CartPage() {
   const total = subtotal + shipping + tax;
 
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      alert('Your cart is empty!');
-      return;
-    }
+    if (cartItems.length === 0) return;
     router.push('/checkout/cart-review');
   };
 

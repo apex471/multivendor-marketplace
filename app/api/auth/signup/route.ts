@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
     const email: string = body.email.toLowerCase().trim();
     const password: string = body.password;
     const role: UserRole = body.role || UserRole.CUSTOMER;
+    const storeName: string | undefined = body.storeName ? sanitizeInput(body.storeName) : undefined;
+    const businessDescription: string | undefined = body.businessDescription ? sanitizeInput(body.businessDescription) : undefined;
+    const website: string | undefined = body.website || undefined;
+    const taxId: string | undefined = body.taxId || undefined;
+    const socialLinks: Record<string, string> | undefined = body.socialLinks || undefined;
+    const businessCity: string | undefined = body.businessCity || undefined;
+    const businessState: string | undefined = body.businessState || undefined;
 
     await connectDB();
 
@@ -46,8 +53,15 @@ export async function POST(request: NextRequest) {
       password,
       role,
       phoneNumber: body.phoneNumber || undefined,
+      ...(storeName ? { storeName } : {}),
+      ...(businessDescription ? { businessDescription } : {}),
+      ...(website ? { website } : {}),
+      ...(taxId ? { taxId } : {}),
+      ...(socialLinks ? { socialLinks } : {}),
+      ...(businessCity ? { businessCity } : {}),
+      ...(businessState ? { businessState } : {}),
       applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
-      isEmailVerified: true, // auto-verified; re-enable OTP when Resend domain is set
+      isEmailVerified: true,
     });
 
     await newUser.save();

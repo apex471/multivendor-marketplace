@@ -68,7 +68,7 @@ export default function ProfilePage() {
 
   const handleFollow = async () => {
     const token = getAuthToken();
-    if (!token || !user) { alert('Please log in to follow users'); return; }
+    if (!token || !user) { router.push('/auth/login'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${user.userId}` : '/api/follow';
     const opts: RequestInit = {
@@ -88,7 +88,7 @@ export default function ProfilePage() {
 
   const handleMessage = async () => {
     const token = getAuthToken();
-    if (!token || !user) { alert('Please log in to send messages'); return; }
+    if (!token || !user) { router.push('/auth/login'); return; }
     try {
       const res = await fetch('/api/messages', {
         method: 'POST',

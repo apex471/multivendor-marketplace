@@ -99,8 +99,8 @@ export default function VendorProductsPage() {
           draft:      normalized.filter(p => p.status === 'draft').length,
         });
       }
-    } catch (err) {
-      console.error('[VendorProducts] fetch error:', err);
+    } catch {
+      // fetch failed — isLoading will reset via finally
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +131,6 @@ export default function VendorProductsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedProducts.length === 0) return;
-    if (!confirm(`Delete ${selectedProducts.length} selected product(s)?`)) return;
     const token = getAuthToken();
     await Promise.all(
       selectedProducts.map(id =>

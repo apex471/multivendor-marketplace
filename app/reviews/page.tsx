@@ -9,6 +9,7 @@ export default function ReviewsPage() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
+  const [reviewMsg, setReviewMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const productReviews = [
     {
@@ -37,9 +38,9 @@ export default function ReviewsPage() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rating) { alert('Please select a rating.'); return; }
-    // Reviews page is a general showcase; redirect user to product for full review
-    alert('Thank you for your feedback! Please visit the product page to submit a verified review.');
+    if (!rating) { setReviewMsg({ type: 'error', text: 'Please select a rating.' }); return; }
+    // Reviews page is a general showcase; direct users to the product page for verified reviews
+    setReviewMsg({ type: 'success', text: 'Thank you! Please visit the specific product page to submit a verified review.' });
     setRating(0);
     setReviewText('');
   };
@@ -91,6 +92,15 @@ export default function ReviewsPage() {
                   />
                 </div>
 
+                {reviewMsg && (
+                  <div className={`px-4 py-3 rounded-lg text-sm font-medium ${
+                    reviewMsg.type === 'error'
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+                      : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                  }`}>
+                    {reviewMsg.text}
+                  </div>
+                )}
                 <button
                   type="submit"
                   className="w-full px-4 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors"

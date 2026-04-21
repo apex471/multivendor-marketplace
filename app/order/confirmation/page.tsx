@@ -7,7 +7,9 @@ import { Suspense } from 'react';
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const _router = useRouter();
-  const orderId = searchParams.get('orderId') || 'ORD-UNKNOWN';
+  const orderId = searchParams.get('orderId')
+    || (typeof window !== 'undefined' ? localStorage.getItem('lastOrderNumber') : null)
+    || 'ORD-UNKNOWN';
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center p-4">

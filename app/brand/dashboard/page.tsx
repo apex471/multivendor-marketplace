@@ -1,10 +1,12 @@
 'use client';
 
-import { getAuthToken } from '@/lib/api/auth';
+import { getAuthToken, clearAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function BrandDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'performance' | 'content'>('overview');
   const [brandName, setBrandName] = useState('Brand Portal');
   const [stats, setStats] = useState({
@@ -13,6 +15,16 @@ export default function BrandDashboard() {
     followers: 0,
     engagement: 0,
   });
+
+  // Auth guard
+  useEffect(() => {
+    if (!getAuthToken()) router.replace('/auth/brand/login');
+  }, [router]);
+
+  const handleLogout = () => {
+    clearAuthToken();
+    router.replace('/auth/brand/login');
+  };
 
   useEffect(() => {
     const authToken = getAuthToken();
@@ -57,7 +69,7 @@ export default function BrandDashboard() {
               <Link href="/brand/settings" className="text-sm hover:text-gold-400 transition-colors">
                 Settings
               </Link>
-              <button className="text-sm hover:text-gold-400">Logout</button>
+              <button onClick={handleLogout} className="text-sm hover:text-gold-400">Logout</button>
             </div>
           </div>
         </div>

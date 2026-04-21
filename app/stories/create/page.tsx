@@ -33,6 +33,7 @@ export default function CreateStoryPage() {
   const [currentFontSize, setCurrentFontSize] = useState(24);
   const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
 
   const filters = [
     { id: 'none', name: 'Original', filter: 'none' },
@@ -64,7 +65,7 @@ export default function CreateStoryPage() {
                     file.type.startsWith('video/') ? 'video' : null;
     
     if (!fileType) {
-      alert('Please select an image or video file');
+      setPublishError('Please select an image or video file.');
       return;
     }
 
@@ -98,13 +99,13 @@ export default function CreateStoryPage() {
 
   const handlePublish = async () => {
     if (!mediaFile) {
-      alert('Please select a media file');
+      setPublishError('Please select a media file.');
       return;
     }
 
     const token = getAuthToken();
     if (!token) {
-      alert('Please log in to publish a story');
+      router.push('/auth/login');
       return;
     }
 
@@ -143,7 +144,7 @@ export default function CreateStoryPage() {
 
       router.push('/feed');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to publish story');
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish story');
     } finally {
       setIsPublishing(false);
     }
@@ -448,6 +449,11 @@ export default function CreateStoryPage() {
             )}
 
             {/* Publish Button */}
+            {publishError && (
+              <div className="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+                {publishError}
+              </div>
+            )}
             {mediaFile && (
               <button
                 onClick={handlePublish}
