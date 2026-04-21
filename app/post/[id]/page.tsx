@@ -1,7 +1,7 @@
 'use client';
 
 import { getAuthToken } from '@/lib/api/auth';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -31,6 +31,7 @@ interface PostData {
 
 export default function PostDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const postId = params.id as string;
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -38,6 +39,9 @@ export default function PostDetailPage() {
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [post, setPost] = useState<PostData | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`/api/posts/${postId}`)
@@ -80,6 +84,45 @@ export default function PostDetailPage() {
 
   const handleSave = () => {
     setIsSaved(!isSaved);
+  };
+
+  const handleSharePost = async () => {
+    setShowShareModal(true);
+    const token = getAuthToken();
+    if (token) {
+      await fetch(`/api/posts/${postId}/share`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+  };
+
+  const handleDMAuthor = async () => {
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    if (!post) return;
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: post.user.username }),
+      });
+      const json = await res.json();
+      if (json.success) router.push('/messages');
+    } catch { router.push('/messages'); }
+  };
+
+  const handleReplySubmit = async (commentId: string) => {
+    const text = (replyTexts[commentId] ?? '').trim();
+    if (!text) return;
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    await fetch(`/api/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    }).catch(() => {});
+    setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
+    setReplyingTo(null);
   };
 
   const handleComment = async (e: React.FormEvent) => {
@@ -229,10 +272,32 @@ export default function PostDetailPage() {
                             <button className="hover:text-gold-600 transition-colors font-medium">
                               {comment.likes > 0 && `${comment.likes} likes`}
                             </button>
-                            <button className="hover:text-gold-600 transition-colors font-medium">
+                            <button
+                              onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                              className="hover:text-gold-600 transition-colors font-medium"
+                            >
                               Reply
                             </button>
                           </div>
+                          {replyingTo === comment.id && (
+                            <div className="flex gap-2 mt-2">
+                              <input
+                                type="text"
+                                value={replyTexts[comment.id] ?? ''}
+                                onChange={e => setReplyTexts(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                onKeyDown={e => e.key === 'Enter' && handleReplySubmit(comment.id)}
+                                placeholder={`Reply to ${comment.user.username}...`}
+                                className="flex-1 text-sm px-3 py-1.5 border border-cool-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gold-600"
+                              />
+                              <button
+                                onClick={() => handleReplySubmit(comment.id)}
+                                disabled={!(replyTexts[comment.id] ?? '').trim()}
+                                className="px-3 py-1.5 bg-gold-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                              >
+                                Post
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <button className="text-charcoal-600 hover:text-red-600 transition-colors">
                           ❤️
@@ -286,8 +351,11 @@ export default function PostDetailPage() {
                         <button className="text-2xl text-charcoal-700 hover:text-gold-600 transition-colors">
                           💬
                         </button>
-                        <button className="text-2xl text-charcoal-700 hover:text-gold-600 transition-colors">
-                          📤
+                        <button onClick={handleSharePost} className="text-2xl text-charcoal-700 hover:text-gold-600 transition-colors">
+                          🔁
+                        </button>
+                        <button onClick={handleDMAuthor} className="text-2xl text-charcoal-700 hover:text-blue-600 transition-colors" title="Send DM">
+                          ✉️
                         </button>
                       </div>
                       <button
@@ -333,25 +401,43 @@ export default function PostDetailPage() {
           {/* Related Posts */}
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-charcoal-900 mb-6">More from {post.user.username}</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Link
-                  key={i}
-                  href={`/post/${i + 100}`}
-                  className="group relative aspect-square overflow-hidden rounded-lg bg-gray-200"
-                >
-                  <Image
-                    src={`https://images.unsplash.com/photo-${1551028719 + i}00167b16eac5?w=400`}
-                    alt={`Post ${i + 1}`}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                </Link>
-              ))}
-            </div>
+            <p className="text-charcoal-600 text-sm">Visit their <Link href={`/profile/${post.user.username}`} className="text-gold-600 hover:underline">profile</Link> to see more posts.</p>
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white dark:bg-charcoal-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-2">Share Post</h3>
+            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-4 line-clamp-2">{post.caption}</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => { navigator.clipboard.writeText(window.location.href); setShowShareModal(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+              >
+                <span className="text-2xl">🔗</span>
+                <div className="text-left">
+                  <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Copy Link</p>
+                  <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Copy post URL to clipboard</p>
+                </div>
+              </button>
+              <button
+                onClick={handleDMAuthor}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+              >
+                <span className="text-2xl">💬</span>
+                <div className="text-left">
+                  <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send DM to Author</p>
+                  <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Open a direct message</p>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => setShowShareModal(false)} className="mt-4 w-full py-3 text-charcoal-600 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white">Cancel</button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

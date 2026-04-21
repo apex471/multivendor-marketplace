@@ -7,6 +7,7 @@ import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface PostProduct {
   id: string;
@@ -43,6 +44,10 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [, setIsLoadingFeed] = useState(true);
+  const [commentOpen, setCommentOpen] = useState<Record<string, boolean>>({});
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [shareModal, setShareModal] = useState<string | null>(null);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
 
   // Fetch live posts from API
   useEffect(() => {
@@ -80,12 +85,21 @@ export default function FeedPage() {
       .finally(() => setIsLoadingFeed(false));
   }, []);
 
-  const handleLike = (postId: string) => {
-    setPosts(posts.map(post =>
-      post.id === postId
-        ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 }
-        : post
+  const handleLike = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const action = post.liked ? 'unlike' : 'like';
+    setPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
     ));
+    const token = getAuthToken();
+    if (token) {
+      await fetch(`/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      }).catch(() => {});
+    }
   };
 
   const handleSave = (postId: string) => {
@@ -108,13 +122,63 @@ export default function FeedPage() {
     router.push('/checkout/review');
   };
 
-  const handleCreatePost = () => {
-    if (!newPostContent.trim()) {
-      router.push('/post/create');
-      return;
+  const handleCreatePost = async () => {
+    const text = newPostContent.trim();
+    if (!text) { router.push('/post/create'); return; }
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login?redirect=/feed'); return; }
+    setIsCreatingPost(true);
+    try {
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, privacy: 'public', status: 'published' }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setNewPostContent('');
+        const newPost: Post = {
+          id: String(json.data?.post?._id ?? Date.now()),
+          author: { name: 'You', avatar: '/images/placeholder.jpg', verified: false, isVendor: false },
+          content: text, images: [], likes: 0, comments: 0, shares: 0,
+          timestamp: 'Just now', liked: false, saved: false,
+        };
+        setPosts(prev => [newPost, ...prev]);
+      } else {
+        router.push('/post/create');
+      }
+    } catch { router.push('/post/create'); }
+    finally { setIsCreatingPost(false); }
+  };
+
+  const handleCommentSubmit = async (postId: string) => {
+    const text = (commentTexts[postId] ?? '').trim();
+    if (!text) return;
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    try {
+      const res = await fetch(`/api/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCommentTexts(prev => ({ ...prev, [postId]: '' }));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: p.comments + 1 } : p));
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleShare = async (postId: string) => {
+    setShareModal(postId);
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, shares: p.shares + 1 } : p));
+    const token = getAuthToken();
+    if (token) {
+      await fetch(`/api/posts/${postId}/share`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
     }
-    alert('Post created! (This would save to backend)');
-    setNewPostContent('');
   };
 
   return (
@@ -161,9 +225,10 @@ export default function FeedPage() {
                   </div>
                   <button
                     onClick={handleCreatePost}
-                    className="px-4 sm:px-6 py-2 min-h-9 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-xs sm:text-sm touch-manipulation"
+                    disabled={isCreatingPost}
+                    className="px-4 sm:px-6 py-2 min-h-9 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 active:scale-95 transition-all text-xs sm:text-sm touch-manipulation disabled:opacity-50"
                   >
-                    Post
+                    {isCreatingPost ? 'Posting...' : 'Post'}
                   </button>
                 </div>
               </div>
@@ -289,34 +354,71 @@ export default function FeedPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 sm:gap-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-1 pt-4 border-t border-gray-200 dark:border-charcoal-700">
                     <button
                       onClick={() => handleLike(post.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
                         post.liked
                           ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
                           : 'text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
                       }`}
                     >
-                      <span className="text-base sm:text-lg">{post.liked ? '❤️' : '🤍'}</span>
+                      <span className="text-sm sm:text-base">{post.liked ? '❤️' : '🤍'}</span>
                       <span>Like</span>
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 transition-all text-xs sm:text-sm touch-manipulation min-h-9">
-                      <span className="text-base sm:text-lg">💬</span>
+                    <button
+                      onClick={() => setCommentOpen(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
+                        commentOpen[post.id]
+                          ? 'text-gold-600 bg-gold-50 dark:bg-gold-900/30'
+                          : 'text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
+                      }`}
+                    >
+                      <span className="text-sm sm:text-base">💬</span>
                       <span>Comment</span>
                     </button>
                     <button
+                      onClick={() => handleShare(post.id)}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 sm:py-3 rounded-lg font-semibold text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 transition-all text-xs sm:text-sm touch-manipulation min-h-9"
+                    >
+                      <span className="text-sm sm:text-base">🔁</span>
+                      <span>Share</span>
+                    </button>
+                    <button
                       onClick={() => handleSave(post.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 sm:py-3 rounded-lg font-semibold transition-all text-xs sm:text-sm touch-manipulation min-h-9 ${
                         post.saved
                           ? 'text-gold-600 bg-gold-50 dark:bg-gold-900/30'
                           : 'text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-100 dark:hover:bg-charcoal-700'
                       }`}
                     >
-                      <span className="text-base sm:text-lg">{post.saved ? '🔖' : '📑'}</span>
+                      <span className="text-sm sm:text-base">{post.saved ? '🔖' : '📑'}</span>
                       <span>Save</span>
                     </button>
                   </div>
+
+                  {/* Inline comment form */}
+                  {commentOpen[post.id] && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-charcoal-700">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={commentTexts[post.id] ?? ''}
+                          onChange={e => setCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && handleCommentSubmit(post.id)}
+                          placeholder="Write a comment..."
+                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-600"
+                        />
+                        <button
+                          onClick={() => handleCommentSubmit(post.id)}
+                          disabled={!(commentTexts[post.id] ?? '').trim()}
+                          className="px-4 py-2 bg-gold-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50 hover:bg-gold-700 transition-colors"
+                        >
+                          Post
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -330,6 +432,57 @@ export default function FeedPage() {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {shareModal && (() => {
+        const sharedPost = posts.find(p => p.id === shareModal);
+        const postUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${shareModal}`;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShareModal(null)}>
+            <div className="bg-white dark:bg-charcoal-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-4">Share Post</h3>
+              {sharedPost && (
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-4 line-clamp-2">{sharedPost.content}</p>
+              )}
+              <div className="space-y-3">
+                <button
+                  onClick={() => { navigator.clipboard.writeText(postUrl); setShareModal(null); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+                >
+                  <span className="text-2xl">🔗</span>
+                  <div className="text-left">
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Copy Link</p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Copy post URL to clipboard</p>
+                  </div>
+                </button>
+                <Link
+                  href={`/messages?share=${shareModal}`}
+                  onClick={() => setShareModal(null)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+                >
+                  <span className="text-2xl">💬</span>
+                  <div className="text-left">
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send via DM</p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Share in a direct message</p>
+                  </div>
+                </Link>
+                <Link
+                  href={`/post/${shareModal}`}
+                  onClick={() => setShareModal(null)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+                >
+                  <span className="text-2xl">👁️</span>
+                  <div className="text-left">
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">View Full Post</p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Open post detail page</p>
+                  </div>
+                </Link>
+              </div>
+              <button onClick={() => setShareModal(null)} className="mt-4 w-full py-3 text-charcoal-600 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white">Cancel</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
