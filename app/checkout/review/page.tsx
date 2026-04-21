@@ -7,11 +7,13 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
+import { useCart } from '../../../contexts/CartContext';
 import { getCourierById } from '../../../lib/couriers';
 
 export default function ReviewPage() {
   const router = useRouter();
   const { checkoutData, clearCheckout } = useCheckout();
+  const { clearCart } = useCart();
   const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total, couponCode } = checkoutData;
   const selectedCourier = getCourierById(selectedCourierId);
 
@@ -65,6 +67,7 @@ export default function ReviewPage() {
       localStorage.setItem('lastOrderData', JSON.stringify(data.data.order));
 
       clearCheckout();
+      clearCart();
       router.push('/checkout/confirmation');
     } catch {
       setPlaceError('Network error. Please check your connection and try again.');

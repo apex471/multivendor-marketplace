@@ -118,8 +118,7 @@ export default function LogisticsDashboard() {
           if (s?.todayRevenue    > 0) setTodayEarnings(s.todayRevenue);
           if (s?.todayDeliveries > 0) setTodayDeliveries(s.todayDeliveries);
           if (s?.monthRevenue    > 0) setMonthEarnings(s.monthRevenue);
-          // weekRevenue is not directly available; use monthRevenue as a proxy
-          if (s?.monthRevenue    > 0) setWeekEarnings(+(s.monthRevenue * 0.25).toFixed(2));
+          if (s?.weekRevenue     > 0) setWeekEarnings(s.weekRevenue);
         }
       })
       .catch(() => {});

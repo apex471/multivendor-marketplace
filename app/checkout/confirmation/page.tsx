@@ -14,20 +14,40 @@ const CONFETTI = Array.from({ length: 50 }, () => ({
 }));
 
 export default function ConfirmationPage() {
-  const _router = useRouter();
-  const [orderNumber] = useState(() =>
-    (typeof window !== 'undefined' ? localStorage.getItem('lastOrderNumber') : null) ?? `ORD-${Date.now()}`
+  const router = useRouter();
+  // Read order data synchronously from localStorage (lazy initialisers avoid useEffect setState)
+  const [orderNumber] = useState<string>(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('lastOrderNumber') ?? '') : ''
   );
+  const [courierEta] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const raw = localStorage.getItem('lastOrderData');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { courier?: { eta?: string } };
+        const eta = parsed?.courier?.eta;
+        if (eta && eta !== '\u2014') return eta;
+      }
+    } catch { /* ignore */ }
+    return '';
+  });
   const [showConfetti, setShowConfetti] = useState(true);
 
+  // Redirect to shop if there is no confirmed order to display
   useEffect(() => {
-    // Hide confetti after animation
+    if (!orderNumber) router.replace('/shop');
+  }, [orderNumber, router]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setShowConfetti(false), 3000);
     return () => clearTimeout(timer);
   }, []);
 
   const estimatedDelivery = new Date();
   estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
+
+  // Don't render until order number is loaded (avoid flicker before redirect)
+  if (!orderNumber) return null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900 relative overflow-hidden">
@@ -91,7 +111,7 @@ export default function ConfirmationPage() {
               <div>
                 <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-1">Estimated Delivery</p>
                 <p className="text-xl font-bold text-charcoal-900 dark:text-white">
-                  {estimatedDelivery.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {courierEta || estimatedDelivery.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
             </div>

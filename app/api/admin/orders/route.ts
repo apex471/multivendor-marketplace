@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const [orders, total] = await Promise.all([
       Order.find(filter)
-        .sort({ orderDate: -1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),

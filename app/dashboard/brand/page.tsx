@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAuthToken } from '@/lib/api/auth';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
 
 type TabType = 'overview' | 'products' | 'affiliates' | 'analytics' | 'settings' | 'logistics';
@@ -56,7 +57,7 @@ export default function BrandDashboard() {
   const [_statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const authToken = getAuthToken();
     if (!authToken) return;
     fetch('/api/dashboard/brand', { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.json())
@@ -96,7 +97,7 @@ export default function BrandDashboard() {
 
   // Fetch affiliate data — no dedicated API yet; stub for future wiring
   useEffect(() => {
-    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const authToken = getAuthToken();
     if (!authToken) return;
     // TODO: replace with real endpoint once affiliate model is implemented
     // fetch('/api/brand/affiliates', { headers: { Authorization: `Bearer ${authToken}` } })
@@ -344,7 +345,17 @@ export default function BrandDashboard() {
 
   const affiliatesTab = useMemo(() => (
     <div className="space-y-6">
-      {/* Pending Requests */}
+      {/* Coming Soon notice */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <span className="text-2xl">🚧</span>
+        <div>
+          <p className="font-semibold text-amber-800">Affiliate Management — Coming Soon</p>
+          <p className="text-sm text-amber-700 mt-1">
+            Full affiliate management (approvals, commissions, payouts) is under active development.
+            Changes made here are not yet saved and will not be reflected to partners.
+          </p>
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-xl font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
           <span className="text-2xl">⏳</span>

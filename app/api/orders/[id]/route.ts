@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { sendSuccess, sendError, sendNotFound, sendServerError } from '@/backend/utils/responseAppRouter';
 import * as OrderStore from '@/lib/store/orders';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
+import { verifyToken } from '@/backend/utils/jwt';
 import { connectDB } from '@/backend/config/database';
 import { Order, IOrder } from '@/backend/models/Order';
 
@@ -11,22 +12,40 @@ import { Order, IOrder } from '@/backend/models/Order';
  * Checks MongoDB first, falls back to in-memory store.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    // Require authentication — orders contain PII
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const payload = token ? verifyToken(token) : null;
+    if (!payload) return sendError('Authentication required', 401);
 
     // Try MongoDB first
     try {
       await connectDB();
       const dbOrder = await Order.findOne({ orderId: id }).lean() as IOrder | null;
       if (dbOrder) {
+        // Ownership check: only the customer who placed the order or an admin may view it
+        const isOwner = dbOrder.customerId?.toString() === payload.userId;
+        const isAdmin = payload.role === 'admin';
+        if (!isOwner && !isAdmin) return sendError('Access denied', 403);
         return sendSuccess({
           order: {
             id:            dbOrder.orderId,
             status:        dbOrder.status,
             orderDate:     dbOrder.createdAt,
+            items:         dbOrder.items.map((i, idx) => ({
+              id:       String(idx),
+              name:     i.name,
+              price:    i.price,
+              quantity: i.quantity,
+              image:    i.image ?? '',
+              vendor:   i.vendor ?? '',
+            })),
             products:      dbOrder.items.map(i => i.name),
             vendorName:    dbOrder.items[0]?.vendor ?? '',
             total:         dbOrder.total,

@@ -15,12 +15,12 @@ type WishlistItem = { wishlistId: string; productId: string; name: string; price
 export default function CustomerDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
-  const { user } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
 
-  // Auth guard
+  // Auth guard — wait for AuthContext to rehydrate before redirecting
   useEffect(() => {
-    if (!getAuthToken()) router.replace('/auth/login?redirect=/dashboard/customer');
-  }, [router]);
+    if (!authLoading && !isAuthenticated) router.replace('/auth/login?redirect=/dashboard/customer');
+  }, [authLoading, isAuthenticated, router]);
 
   const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0 });
   const [orders, setOrders] = useState<OrderRow[]>([]);

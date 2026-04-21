@@ -60,14 +60,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         const token = getAuthToken();
-        const storedUser = getStoredUser();
-
-        if (token && storedUser) {
-          setUser(storedUser);
-          setIsAuthenticated(true);
-        } else {
+        if (!token) {
           setIsAuthenticated(false);
           setUser(null);
+          return;
+        }
+        // Validate token against server to catch expired/revoked tokens
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.data?.user) {
+              const freshUser = data.data.user as User;
+              storeUser(freshUser);
+              setUser(freshUser);
+              setIsAuthenticated(true);
+              return;
+            }
+          }
+          // Token invalid or revoked — clear auth
+          clearAuthToken();
+          clearUserData();
+          setIsAuthenticated(false);
+          setUser(null);
+        } catch {
+          // Network error — trust localStorage to avoid logging out offline users
+          const storedUser = getStoredUser();
+          if (storedUser) {
+            setUser(storedUser);
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+            setUser(null);
+          }
         }
       } catch (err) {
         console.error('Auth check failed:', err);

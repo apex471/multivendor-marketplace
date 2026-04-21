@@ -76,14 +76,23 @@ export default function OrderDetailPage() {
           id:     raw.id,
           status: statusMap[raw.status] ?? 'processing',
           date:   raw.orderDate,
-          items:  (raw.products as string[]).map((name: string, i: number) => ({
-            id:       String(i),
-            name,
-            price:    0,
-            quantity: 1,
-            image:    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
-            vendor:   raw.vendorName,
-          })),
+          items:  Array.isArray(raw.items) && raw.items.length > 0
+            ? (raw.items as Array<{ id?: string; name: string; price: number; quantity: number; image?: string; vendor?: string }>).map((item, i) => ({
+                id:       item.id ?? String(i),
+                name:     item.name,
+                price:    item.price,
+                quantity: item.quantity,
+                image:    item.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+                vendor:   item.vendor ?? raw.vendorName,
+              }))
+            : (raw.products as string[]).map((name: string, i: number) => ({
+                id:       String(i),
+                name,
+                price:    0,
+                quantity: 1,
+                image:    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+                vendor:   raw.vendorName,
+              })),
           subtotal:         raw.subtotal ?? raw.total,
           shipping:         raw.courier?.price ?? 0,
           tax:              raw.tax ?? 0,

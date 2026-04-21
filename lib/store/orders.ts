@@ -29,6 +29,7 @@ export interface StoredOrder {
   vendorName: string;
   vendorAddress: string;
   products: string[];
+  items?: Array<{ id: string; name: string; price: number; quantity: number; image: string; vendor: string }>;
   total: number;
   subtotal: number;
   tax: number;
