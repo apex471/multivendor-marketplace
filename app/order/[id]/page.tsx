@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface OrderItem {
   id: string;
@@ -55,7 +56,11 @@ export default function OrderDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/orders/${orderId}`)
+    const token = getAuthToken();
+    if (!token) { router.replace('/auth/login'); return; }
+    fetch(`/api/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(r => r.json())
       .then(d => {
         if (!d.success || !d.data?.order) { setNotFound(true); return; }
@@ -102,7 +107,7 @@ export default function OrderDetailPage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [orderId]);
+  }, [orderId, router]);
 
   if (loading) {
     return (

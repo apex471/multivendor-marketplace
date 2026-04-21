@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
@@ -22,6 +23,8 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/notifications'); }, [router]);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);

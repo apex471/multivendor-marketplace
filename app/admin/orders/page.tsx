@@ -51,7 +51,7 @@ export default function OrderManagementPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res  = await fetch('/api/orders', { headers: { Authorization: `Bearer ${getToken()}` } });
+      const res  = await fetch('/api/admin/orders', { headers: { Authorization: `Bearer ${getToken()}` } });
       const data = await res.json();
       if (data.success) setOrders(data.data.orders ?? []);
       else setError(data.message || 'Failed to load orders');
@@ -158,10 +158,10 @@ export default function OrderManagementPage() {
 
   const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      await fetch(`/api/orders/${orderId}`, {
+      await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ orderId, status: newStatus }),
       });
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
       setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: newStatus } : prev);
@@ -171,10 +171,10 @@ export default function OrderManagementPage() {
 
   const handleUpdateTracking = async (orderId: string, trackingNumber: string) => {
     try {
-      await fetch(`/api/orders/${orderId}`, {
+      await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ trackingNumber }),
+        body: JSON.stringify({ orderId, trackingNumber }),
       });
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, trackingNumber } : o));
       setSelectedOrder(prev => prev?.id === orderId ? { ...prev, trackingNumber } : prev);
@@ -185,10 +185,10 @@ export default function OrderManagementPage() {
   const handleRefund = async (orderId: string) => {
     if (!window.confirm('Process a full refund for this order?')) return;
     try {
-      await fetch(`/api/orders/${orderId}`, {
+      await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ status: 'refunded', paymentStatus: 'refunded' }),
+        body: JSON.stringify({ orderId, status: 'refunded', paymentStatus: 'refunded' }),
       });
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'refunded', paymentStatus: 'refunded' } : o));
       setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: 'refunded', paymentStatus: 'refunded' } : prev);

@@ -18,16 +18,24 @@ function SearchContent() {
 
   // ── Real search results ───────────────────────────────────────────────
   type ProductResult = { id: string; name: string; price: number; image: string; rating: number };
+  type VendorResult = { id: string; name: string; logo: string; products: number; rating: number };
   const [searchProducts, setSearchProducts] = useState<ProductResult[]>([]);
+  const [searchVendors, setSearchVendors] = useState<VendorResult[]>([]);
+  const [currentQuery, setCurrentQuery] = useState(initialQuery);
 
   useEffect(() => {
-    if (!initialQuery.trim()) return; // empty query — just bail, displayed list is derived below
+    setCurrentQuery(initialQuery);
+    setSearchQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    if (!currentQuery.trim()) return;
     const apiSort: Record<string, string> = {
       relevance: 'popular', price_low: 'price-asc',
       price_high: 'price-high', rating: 'rating', newest: 'newest',
     };
     const params = new URLSearchParams({
-      search: initialQuery,
+      search: currentQuery,
       sort:   apiSort[sortBy] ?? 'popular',
       limit:  '24',
     });
@@ -50,16 +58,38 @@ function SearchContent() {
         }
       })
       .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+
+    // Fetch vendors
+    fetch(`/api/vendors?search=${encodeURIComponent(currentQuery)}&limit=12`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setSearchVendors(
+            (json.data.vendors ?? []).map((v: {
+              _id: string; firstName: string; lastName: string; avatar?: string;
+              productCount?: number; rating?: number;
+            }) => ({
+              id:       String(v._id),
+              name:     `${v.firstName} ${v.lastName}`.trim(),
+              logo:     v.avatar ?? '/images/placeholder.jpg',
+              products: v.productCount ?? 0,
+              rating:   v.rating ?? 0,
+            }))
+          );
+        }
+      })
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+
     return () => controller.abort();
-  }, [initialQuery, sortBy]);
+  }, [currentQuery, sortBy]);
 
   const results = {
-    products: initialQuery.trim() ? searchProducts : [],
-    vendors:  [] as { id: string; name: string; logo: string; products: number; rating: number }[],
+    products: currentQuery.trim() ? searchProducts : [],
+    vendors:  currentQuery.trim() ? searchVendors  : [],
     posts:    [] as { id: string; author: string; content: string; image: string }[],
   };
 
-  const totalResults = results.products.length;
+  const totalResults = results.products.length + results.vendors.length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,10 +120,10 @@ function SearchContent() {
         {/* Results Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-2">
-            Search Results {initialQuery && `for "${initialQuery}"`}
+            Search Results {currentQuery && `for "${currentQuery}"`}
           </h1>
           <p className="text-charcoal-600 dark:text-cool-gray-400">
-            {initialQuery ? `${totalResults} result${totalResults !== 1 ? 's' : ''} found` : 'Enter a search term above'}
+            {currentQuery ? `${totalResults} result${totalResults !== 1 ? 's' : ''} found` : 'Enter a search term above'}
           </p>
         </div>
 
@@ -229,10 +259,10 @@ function SearchContent() {
               <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-12 text-center">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">
-                  {initialQuery ? 'No results found' : 'Start searching'}
+                  {currentQuery ? 'No results found' : 'Start searching'}
                 </h3>
                 <p className="text-charcoal-600 dark:text-cool-gray-400 mb-6">
-                  {initialQuery ? 'Try adjusting your search or filters' : 'Enter a search term to find products'}
+                  {currentQuery ? 'Try adjusting your search or filters' : 'Enter a search term to find products'}
                 </p>
                 <Link
                   href="/shop"

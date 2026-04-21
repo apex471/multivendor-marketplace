@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
@@ -22,7 +23,9 @@ interface WishlistItem {
 }
 
 export default function WishlistPage() {
+  const router = useRouter();
   const { addItem: addToCart } = useCart();
+  useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/wishlist'); }, [router]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

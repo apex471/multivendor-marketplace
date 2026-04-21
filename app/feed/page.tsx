@@ -40,41 +40,11 @@ export default function FeedPage() {
   const router = useRouter();
   const { addItem } = useCart();
 
-  // Seed with demo product-tagged posts so vendors/brands are visible immediately
-  const SEED_POSTS: Post[] = [
-    {
-      id: 'seed-1',
-      author: { name: 'Luxury Fashion Co.', avatar: '/images/vendors/vendor1.jpg', verified: true, isVendor: true },
-      content: 'New Spring Collection dropping this Friday! ✨ Get ready for the most exquisite pieces of the season. #LuxuryFashion #SpringCollection',
-      images: ['/images/posts/post1.jpg'],
-      likes: 1245, comments: 89, shares: 34,
-      timestamp: '2 hours ago', liked: false, saved: false,
-      product: { id: 'demo-1', name: 'Designer Silk Dress', price: 299.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400', vendor: 'Luxury Fashion Co.', vendorId: 'vendor-1' },
-    },
-    {
-      id: 'seed-2',
-      author: { name: 'Sarah Chen', avatar: '/images/users/user1.jpg', verified: false, isVendor: false },
-      content: 'Loving my new dress from @LuxuryFashionCo! The quality is absolutely amazing 😍 #OOTD #FashionInspo',
-      images: ['/images/posts/post3.jpg'],
-      likes: 567, comments: 43, shares: 12,
-      timestamp: '5 hours ago', liked: true, saved: false,
-    },
-    {
-      id: 'seed-3',
-      author: { name: 'Elite Wear', avatar: '/images/vendors/vendor2.jpg', verified: true, isVendor: true },
-      content: 'Timeless elegance meets modern sophistication. Our new tailored suit collection is now available. Limited pieces. 🖤',
-      images: ['/images/posts/post4.jpg'],
-      likes: 2103, comments: 156, shares: 78,
-      timestamp: '1 day ago', liked: false, saved: true,
-      product: { id: 'demo-3', name: 'Tailored Suit', price: 549.00, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400', vendor: 'Elite Wear', vendorId: 'vendor-2' },
-    },
-  ];
-
-  const [posts, setPosts] = useState<Post[]>(SEED_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [, setIsLoadingFeed] = useState(true);
 
-  // Fetch live posts from API (prepend to seed posts so feed is never empty)
+  // Fetch live posts from API
   useEffect(() => {
     fetch('/api/posts?limit=20')
       .then(r => r.json())
@@ -102,13 +72,12 @@ export default function FeedPage() {
             liked:     false,
             saved:     false,
           }));
-          // Live posts on top, seed posts as fallback below
-          setPosts([...livePosts, ...SEED_POSTS]);
+          // Set live posts
+          setPosts(livePosts);
         }
       })
-      .catch(() => { /* keep seed posts */ })
+      .catch(() => { /* keep empty feed */ })
       .finally(() => setIsLoadingFeed(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLike = (postId: string) => {

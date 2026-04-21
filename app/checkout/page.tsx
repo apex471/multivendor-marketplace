@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,8 +11,17 @@ import { getAuthToken } from '@/lib/api/auth';
 export default function CheckoutPage() {
   const router = useRouter();
   const { items: cartItems, clearCart } = useCart();
+
+  // Auth guard — redirect unauthenticated users to login
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.replace('/auth/login?redirect=/checkout');
+    }
+  }, [router]);
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orderError, setOrderError] = useState('');
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState({
@@ -80,14 +89,15 @@ export default function CheckoutPage() {
         }),
       });
       const data = await res.json();
-      const orderId = data?.data?.orderId ?? `ORD-${Math.floor(Math.random() * 1_000_000)}`;
-          clearCart();
-          router.push(`/order/confirmation?orderId=${orderId}`);
-    } catch {
-      // Fallback — still navigate to confirmation on client-side error
-      const orderId = `ORD-${Math.floor(Math.random() * 1_000_000)}`;
+      if (!res.ok || !data?.success) {
+        setOrderError(data?.message || 'Failed to place order. Please try again.');
+        return;
+      }
+      const orderId = data.data?.orderId;
       clearCart();
       router.push(`/order/confirmation?orderId=${orderId}`);
+    } catch {
+      setOrderError('Network error. Please check your connection and try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -598,6 +608,11 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {orderError && (
+                  <div className="mb-4 px-4 py-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-lg text-sm font-medium">
+                    {orderError}
+                  </div>
+                )}
                 <div className="flex gap-4">
                   <button onClick={() => setCurrentStep(3)}
                     className="flex-1 px-6 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-700 dark:text-white rounded-lg font-semibold hover:bg-cool-gray-100 dark:hover:bg-charcoal-600 transition-colors">

@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
@@ -24,6 +25,8 @@ interface Order {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
+  useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/orders'); }, [router]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [dateRange, setDateRange] = useState<string>('all');

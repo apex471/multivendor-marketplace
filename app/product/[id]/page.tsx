@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 
 interface Review {
@@ -50,9 +50,9 @@ interface RelatedProduct {
   rating: number;
 }
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage() {
   const router = useRouter();
-  const { addItem: addToCart } = useCart();
+  const { id: productId } = useParams() as { id: string };  const { addItem: addToCart } = useCart();
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -69,7 +69,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const [notFound,        setNotFound]        = useState(false);
 
   useEffect(() => {
-    fetch(`/api/products/${params.id}/reviews`)
+    fetch(`/api/products/${productId}/reviews`)
       .then(r => r.json())
       .then(json => {
         if (!json.success) return;
@@ -84,10 +84,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           comment: r.comment, verified: r.verified ?? false, helpful: r.helpful ?? 0,
         })));
       });
-  }, [params.id]);
+  }, [productId]);
 
   useEffect(() => {
-    fetch(`/api/products/${params.id}`)
+    fetch(`/api/products/${productId}`)
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data?.product) { setNotFound(true); return; }
@@ -143,7 +143,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
       })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
-  }, [params.id]);
+  }, [productId]);
 
   useEffect(() => {
     if (notFound) router.push('/shop');

@@ -1,7 +1,7 @@
 'use client';
 
 import { getAuthToken } from '@/lib/api/auth';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -84,8 +84,26 @@ export default function ProfilePage() {
     } : prev);
   };
 
-  const handleMessage = () => {
-    alert('Messaging feature coming soon!');
+  const router = useRouter();
+
+  const handleMessage = async () => {
+    const token = getAuthToken();
+    if (!token || !user) { alert('Please log in to send messages'); return; }
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ recipientId: user.userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        router.push('/messages');
+      } else {
+        alert(data.message || 'Could not start conversation');
+      }
+    } catch {
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   if (!user) {

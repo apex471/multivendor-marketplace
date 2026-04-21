@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
@@ -21,6 +22,8 @@ interface ChatMessage {
 }
 
 export default function MessagesPage() {
+  const router = useRouter();
+  useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/messages'); }, [router]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

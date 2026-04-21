@@ -89,16 +89,42 @@ export default function SettingsPage() {
 
   const handleSaveNotifications = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 400));
-    showMsg('success', 'Notification preferences saved!');
-    setIsSaving(false);
+    try {
+      const token = getAuthToken();
+      if (!token) { showMsg('error', 'You must be logged in.'); return; }
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notificationPreferences: notifications }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save notifications');
+      showMsg('success', 'Notification preferences saved!');
+    } catch (err: unknown) {
+      showMsg('error', (err as Error).message || 'Failed to save notifications');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSavePrivacy = async () => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 400));
-    showMsg('success', 'Privacy settings saved!');
-    setIsSaving(false);
+    try {
+      const token = getAuthToken();
+      if (!token) { showMsg('error', 'You must be logged in.'); return; }
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ privacySettings: privacy }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save privacy settings');
+      showMsg('success', 'Privacy settings saved!');
+    } catch (err: unknown) {
+      showMsg('error', (err as Error).message || 'Failed to save privacy settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {

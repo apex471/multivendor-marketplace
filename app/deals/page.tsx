@@ -22,6 +22,16 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Flash sale ends in 48h from page load
+  const [timeLeft, setTimeLeft] = useState(() => 48 * 3600 + 23 * 60 + 45);
+  useEffect(() => {
+    const timer = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const hrs  = Math.floor(timeLeft / 3600);
+  const mins = Math.floor((timeLeft % 3600) / 60);
+  const secs = timeLeft % 60;
+
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/products?onSale=true&limit=12`)
@@ -49,15 +59,15 @@ export default function DealsPage() {
           <p className="text-xl mb-6">Up to 70% off on luxury fashion items</p>
           <div className="flex justify-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-4">
-              <div className="text-3xl font-bold">48</div>
+              <div className="text-3xl font-bold">{String(hrs).padStart(2, '0')}</div>
               <div className="text-sm">Hours</div>
             </div>
             <div className="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-4">
-              <div className="text-3xl font-bold">23</div>
+              <div className="text-3xl font-bold">{String(mins).padStart(2, '0')}</div>
               <div className="text-sm">Minutes</div>
             </div>
             <div className="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-4">
-              <div className="text-3xl font-bold">45</div>
+              <div className="text-3xl font-bold">{String(secs).padStart(2, '0')}</div>
               <div className="text-sm">Seconds</div>
             </div>
           </div>

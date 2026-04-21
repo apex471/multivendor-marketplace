@@ -89,14 +89,8 @@ export default function CreatePostPage() {
       .catch(() => { /* ignore */ });
   }, [searchParams]);
 
-  // Products shown in the search dropdown
-  const mockProducts: TaggedProduct[] = vendorProducts.length > 0 ? vendorProducts : [
-    { id: '1', name: 'Designer Silk Dress',  price: 299.99, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=100' },
-    { id: '2', name: 'Leather Handbag',       price: 399.99, image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=100' },
-    { id: '3', name: 'Evening Clutch',        price: 149.99, image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100' },
-  ];
-
-  const filteredProducts = mockProducts.filter(
+  // Products shown in the search dropdown — only real API products
+  const filteredProducts = vendorProducts.filter(
     product =>
       product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) &&
       !taggedProducts.find(tp => tp.id === product.id)
