@@ -39,10 +39,10 @@ export async function GET(request: NextRequest) {
       status:    o.status,
       total:     o.total,
       itemCount: o.items.length,
-      items: o.items.slice(0, 4).map((i: { productId?: string; name: string; image?: string; quantity: number }) => ({
-        id:       i.productId ?? String(Math.random()),
+      items: o.items.slice(0, 4).map((i: { productId?: string; name: string; image?: string; quantity: number }, idx: number) => ({
+        id:       i.productId ?? `item-${idx}`,
         name:     i.name,
-        image:    i.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+        image:    i.image || null,
         quantity: i.quantity,
       })),
     }));

@@ -9,7 +9,7 @@ function normalizeUser(u: Record<string, unknown>) {
   return {
     id: u.id,
     email: u.email,
-    username: u.email?.split('@')[0] ?? '',
+    username: (u.email as string | undefined)?.split('@')[0] ?? '',
     role: u.role,
     fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
     firstName: u.firstName,

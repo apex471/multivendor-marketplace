@@ -308,9 +308,9 @@ export default function LogisticsProvidersPage() {
 
   const handleOpenReferralModal = () => {
     if (!user) return;
-    // Use real user.id and role once auth is wired; fall back to mock for now
+    // Build referral URL using real user id
     const url = buildLogisticsReferralUrl(
-      user.id || 'mock-id',
+      user.id,
       user.role as 'vendor' | 'brand',
       user.username || 'A CLW Member'
     );

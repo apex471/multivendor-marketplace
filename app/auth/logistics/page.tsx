@@ -404,19 +404,62 @@ function LogisticsSignupContent() {
 
     setIsSubmitting(true);
     try {
-      // TODO: replace with real API call to /api/auth/logistics/signup
-      console.log('Logistics signup payload:', {
-        ...companyInfo,
-        ...serviceDetails,
-        password: '[REDACTED]',
-        referredBy: referralPayload?.referrerId,
-        referrerRole: referralPayload?.referrerRole,
+      const res = await fetch('/api/auth/logistics/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Company info
+          companyName:      companyInfo.companyName,
+          contactName:      companyInfo.contactName,
+          email:            companyInfo.email,
+          phone:            companyInfo.phone,
+          addressLine1:     companyInfo.addressLine1,
+          city:             companyInfo.city,
+          state:            companyInfo.state,
+          zipCode:          companyInfo.zipCode,
+          country:          companyInfo.country,
+          licenseNumber:    companyInfo.licenseNumber,
+          yearsInOperation: companyInfo.yearsInOperation,
+          fleetSize:        companyInfo.fleetSize,
+          // Service details
+          coverageAreas:       serviceDetails.coverageAreas,
+          serviceTypes:        serviceDetails.serviceTypes,
+          specialCapabilities: serviceDetails.specialCapabilities,
+          estimatedDelivery:   serviceDetails.estimatedDelivery,
+          baseFee:             serviceDetails.baseFee,
+          pricePerKg:          serviceDetails.pricePerKg,
+          insuranceCoverage:   serviceDetails.insuranceCoverage || undefined,
+          websiteUrl:          serviceDetails.websiteUrl || undefined,
+          // Account
+          password: accountSecurity.password,
+          // Referral
+          referredBy:   referralPayload?.referrerId,
+          referrerRole: referralPayload?.referrerRole,
+        }),
       });
-      await new Promise((r) => setTimeout(r, 2000));
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Surface field-level errors (e.g. duplicate email) or generic message
+        const msg =
+          data?.errors?.email ||
+          data?.errors?.password ||
+          data?.message ||
+          'An error occurred. Please try again.';
+        setFormError(msg);
+        return;
+      }
+
+      // Persist the JWT so the user is considered "logged in" (pending approval)
+      if (data?.data?.token) {
+        localStorage.setItem('authToken', data.data.token);
+      }
+
       setStep('success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      setFormError('An error occurred. Please try again.');
+      setFormError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }

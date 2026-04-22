@@ -5,7 +5,7 @@ import NextImage from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-// import { useCart } from '../../contexts/CartContext';
+import { useCart } from '../../contexts/CartContext';
 
 export default function Header() {
   const pathname = usePathname();
@@ -37,8 +37,8 @@ export default function Header() {
     router.push('/');
   };
   
-  // Temporary mock data - replace with useCart() when ready
-  const cartItemsCount = 3;
+  const { items: cartItems } = useCart();
+  const cartItemsCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const hasNotifications = true;
   const isLoggedIn = !!user;
 

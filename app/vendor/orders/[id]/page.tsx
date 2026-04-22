@@ -187,8 +187,7 @@ export default function OrderDetailPage() {
   };
 
   const handlePrintLabel = () => {
-    console.log('Printing shipping label...');
-    alert('Shipping label would be generated and printed here');
+    window.print();
   };
 
   const handleMessageCustomer = () => {

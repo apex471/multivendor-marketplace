@@ -43,7 +43,7 @@ export async function GET(
         filter:       story.filter,
         duration:     story.duration,
         textOverlays: story.textOverlays ?? [],
-        viewCount:    story.viewedBy?.length ?? 0,
+        viewCount:    (story.viewedBy as unknown[])?.length ?? 0,
         expiresAt:    story.expiresAt,
         createdAt:    story.createdAt,
         author: author ? {

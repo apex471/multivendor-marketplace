@@ -10,7 +10,7 @@ import Footer from '@/components/common/Footer';
 
 interface Comment {
   id: string;
-  user: { username: string; name: string; avatar: string; verified: boolean };
+  user: { username: string; name: string; avatar: string | null; verified: boolean };
   text: string;
   likes: number;
   timestamp: string;
@@ -74,7 +74,7 @@ export default function PostDetailPage() {
       });
 
     // Load persisted comments from API
-    fetch(`/api/posts/${postId}/comment?limit=20`)
+    fetch(`/api/posts/${postId}/comment?limit=20`, { headers })
       .then(r => r.json())
       .then(json => {
         if (!json.success) return;
@@ -86,7 +86,7 @@ export default function PostDetailPage() {
           user: {
             username: c.authorName.toLowerCase().replace(/\s/g, ''),
             name:     c.authorName,
-            avatar:   c.authorAvatar ?? `https://i.pravatar.cc/40?u=${c.id}`,
+            avatar:   c.authorAvatar ?? null,
             verified: false,
           },
           text:      c.text,
@@ -171,7 +171,7 @@ export default function PostDetailPage() {
         user:      {
           username: c.authorName?.toLowerCase().replace(/\s/g, '') ?? 'user',
           name:     c.authorName ?? 'User',
-          avatar:   c.authorAvatar ?? `https://i.pravatar.cc/40?u=${c.id}`,
+          avatar:   c.authorAvatar ?? null,
           verified: false,
         },
         text:      c.text,
@@ -180,6 +180,17 @@ export default function PostDetailPage() {
       }, ...prev]);
       setCommentText('');
     }
+  };
+
+  // Avatar helper — real image or gradient initials fallback
+  const CommentAvatar = ({ src, name, size = 32 }: { src: string | null; name: string; size?: number }) => {
+    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    if (src) return <Image src={src} alt={name} width={size} height={size} className="rounded-full object-cover" unoptimized />;
+    return (
+      <div style={{ width: size, height: size, fontSize: size * 0.38 }} className="rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-semibold shrink-0">
+        {initials}
+      </div>
+    );
   };
 
   if (!post) {
@@ -282,13 +293,7 @@ export default function PostDetailPage() {
                     <div key={comment.id}>
                       <div className="flex gap-3">
                         <Link href={`/profile/${comment.user.username}`}>
-                          <Image
-                            src={comment.user.avatar}
-                            alt={comment.user.username}
-                            width={32}
-                            height={32}
-                            className="rounded-full"
-                          />
+                          <CommentAvatar src={comment.user.avatar} name={comment.user.name} size={32} />
                         </Link>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -343,13 +348,7 @@ export default function PostDetailPage() {
                           {comment.replies.map((reply) => (
                             <div key={reply.id} className="flex gap-3">
                               <Link href={`/profile/${reply.user.username}`}>
-                                <Image
-                                  src={reply.user.avatar}
-                                  alt={reply.user.username}
-                                  width={28}
-                                  height={28}
-                                  className="rounded-full"
-                                />
+                                <CommentAvatar src={reply.user.avatar} name={reply.user.name} size={28} />
                               </Link>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">

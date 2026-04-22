@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
+import { useCart } from '../../contexts/CartContext';
+import { getAuthToken } from '@/lib/api/auth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ApiProduct {
@@ -134,14 +136,38 @@ export default function ShopPage() {
     icon: CATEGORY_META[id]?.icon ?? '🏷️',
   }));
 
+  const { addItem } = useCart();
+
   const handleAddToCart = (productId: string) => {
-    console.log('Adding to cart:', productId);
-    alert('Product added to cart!');
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    addItem({
+      productId: product.id,
+      name:      product.name,
+      price:     product.price,
+      image:     product.image,
+      vendor:    product.vendor,
+      size:      'One Size',
+      color:     'Default',
+      quantity:  1,
+    });
   };
 
-  const handleAddToWishlist = (productId: string) => {
-    console.log('Adding to wishlist:', productId);
-    alert('Product added to wishlist!');
+  const handleAddToWishlist = async (productId: string) => {
+    const token = getAuthToken();
+    if (!token) { alert('Please log in to save items to your wishlist.'); return; }
+    try {
+      const res = await fetch('/api/wishlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId }),
+      });
+      const json = await res.json();
+      if (res.ok) alert('Added to wishlist!');
+      else alert(json.message || 'Could not add to wishlist.');
+    } catch {
+      alert('Network error. Please try again.');
+    }
   };
 
   return (

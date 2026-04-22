@@ -19,7 +19,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   date: string;
   items: OrderItem[];
   subtotal: number;
@@ -148,7 +148,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  const statusConfig = {
+  const statusConfig: Record<string, { color: string; icon: string; label: string }> = {
+    pending:    { color: 'bg-gray-100 text-gray-800',   icon: '🕐', label: 'Pending' },
     processing: { color: 'bg-yellow-100 text-yellow-800', icon: '⏳', label: 'Processing' },
     shipped: { color: 'bg-blue-100 text-blue-800', icon: '🚚', label: 'Shipped' },
     delivered: { color: 'bg-green-100 text-green-800', icon: '✓', label: 'Delivered' },
@@ -412,9 +413,23 @@ export default function OrderDetailPage() {
                 )}
                 {order.status === 'delivered' && (
                   <button
-                    onClick={() => {
-                      console.log('Return order:', order.id);
-                      alert('Return process initiated');
+                    onClick={async () => {
+                      try {
+                        const { getAuthToken } = await import('@/lib/api/auth');
+                        const token = getAuthToken();
+                        const res = await fetch(`/api/orders/${order.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ status: 'returned' }),
+                        });
+                        if (res.ok) {
+                          setOrder(prev => prev ? { ...prev, status: 'returned' } : prev);
+                          alert('Return process initiated. You will receive instructions by email.');
+                        } else {
+                          const j = await res.json();
+                          alert(j.message || 'Could not initiate return.');
+                        }
+                      } catch { alert('Network error. Please try again.'); }
                     }}
                     className="block w-full px-4 py-3 border-2 border-gray-300 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center"
                   >

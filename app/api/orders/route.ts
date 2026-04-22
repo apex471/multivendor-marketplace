@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         country:      shippingInfo.country ?? 'United States',
       },
       paymentMethod: {
-        type:      paymentMethod?.type ?? 'mock',
+        type:      paymentMethod?.type ?? 'card',
         cardLast4: paymentMethod?.cardNumber?.slice(-4),
         cardHolder: paymentMethod?.cardHolder,
       },
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       total:        total        ?? 0,
       couponCode:   couponCode   || undefined,
       status:        'pending',
-      paymentStatus: 'paid',
+      paymentStatus: paymentMethod?.paymentIntentId ? 'paid' : 'pending',
     }).save();
 
     // Also keep in-memory store so the logistics driver dashboard still works

@@ -6,11 +6,11 @@ import { useLogistics, LogisticProvider } from '../../../contexts/LogisticsConte
 import LogisticSelector from '../../../components/marketplace/LogisticSelector';
 
 export default function BrandLogisticsPage() {
-  const { selectedLogistics } = useLogistics();
+  const { selectedLogistics, selectLogistics } = useLogistics();
   const [activeTab, setActiveTab] = useState<'select' | 'settings' | 'performance'>('select');
 
   const handleSelectionComplete = (provider: LogisticProvider) => {
-    console.log('Provider selected:', provider.name);
+    selectLogistics(provider);
   };
 
   return (

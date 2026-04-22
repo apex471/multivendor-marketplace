@@ -50,3 +50,24 @@ export async function GET(request: NextRequest) {
     return sendServerError('An error occurred while fetching user profile');
   }
 }
+
+// DELETE /api/auth/me — permanently delete the authenticated user's account
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = extractBearer(request);
+    if (!token) return sendUnauthorized('Authentication required');
+
+    const decoded = verifyToken(token);
+    if (!decoded) return sendUnauthorized('Invalid or expired token');
+
+    await connectDB();
+
+    const user = await User.findByIdAndDelete(decoded.userId);
+    if (!user) return sendNotFound('User not found');
+
+    return sendSuccess({}, 'Account deleted successfully');
+  } catch (error) {
+    console.error('Delete account error:', error);
+    return sendServerError('An error occurred while deleting account');
+  }
+}

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         items: vendorItems.map(i => ({
           id:       i.productId ?? '',
           name:     i.name,
-          image:    i.image ?? 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=100',
+          image:    i.image ?? null,
           quantity: i.quantity,
           price:    i.price,
         })),

@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return sendSuccess({ conversationId: String(convo._id) }, 'Conversation ready', 200);
+    return sendSuccess({ conversationId: String((convo as NonNullable<typeof convo>)._id) }, 'Conversation ready', 200);
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
