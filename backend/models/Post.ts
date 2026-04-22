@@ -12,6 +12,7 @@ export interface IPostProduct {
 export interface IPost extends Document {
   authorId: mongoose.Types.ObjectId;
   authorName: string;
+  authorAvatar?: string;
   authorRole: 'vendor' | 'brand' | 'customer';
   content: string;
   images: string[];
@@ -46,7 +47,8 @@ const postSchema = new Schema<IPost>(
       required: true,
       index: true,
     },
-    authorName: { type: String, required: true, trim: true },
+    authorName:   { type: String, required: true, trim: true },
+    authorAvatar: { type: String, default: null },
     authorRole: {
       type: String,
       enum: ['vendor', 'brand', 'customer'],

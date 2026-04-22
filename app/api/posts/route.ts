@@ -64,8 +64,27 @@ export async function GET(request: NextRequest) {
       likedSet = new Set(likes.map(l => String(l.postId)));
     }
 
+    // Bulk-fill missing authorAvatars from User collection
+    const missingAvatarIds = posts
+      .filter(p => !p.authorAvatar)
+      .map(p => p.authorId);
+    const avatarMap = new Map<string, string>();
+    if (missingAvatarIds.length > 0) {
+      const users = await User.find({ _id: { $in: missingAvatarIds } })
+        .select('_id avatar')
+        .lean();
+      for (const u of users) {
+        if (u.avatar) avatarMap.set(String(u._id), u.avatar);
+      }
+    }
+
     return sendSuccess({
-      posts: posts.map(p => ({ ...p, liked: likedSet.has(String(p._id)) })),
+      posts: posts.map(p => ({
+        ...p,
+        authorId:     String(p.authorId),
+        authorAvatar: p.authorAvatar || avatarMap.get(String(p.authorId)) || null,
+        liked:        likedSet.has(String(p._id)),
+      })),
       pagination: {
         page,
         limit,
@@ -131,9 +150,10 @@ export async function POST(request: NextRequest) {
 
     // Build the post
     const post = await Post.create({
-      authorId:   decoded.userId,
-      authorName: `${user.firstName} ${user.lastName}`.trim(),
-      authorRole: user.role === 'admin' ? 'vendor' : user.role,
+      authorId:     decoded.userId,
+      authorName:   `${user.firstName} ${user.lastName}`.trim(),
+      authorAvatar: (user.avatar as string | undefined) ?? null,
+      authorRole:   user.role === 'admin' ? 'vendor' : user.role,
       content:    content.trim(),
       images:     Array.isArray(images) ? images : [],
       product:    product ?? undefined,
