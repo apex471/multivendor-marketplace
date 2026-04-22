@@ -4,7 +4,7 @@ import { getAuthToken } from '@/lib/api/auth';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
@@ -29,31 +29,48 @@ interface UserData {
   userId: string;
 }
 
+interface FollowUser {
+  id: string;
+  username: string;
+  fullName: string;
+  avatar: string | null;
+  verified: boolean;
+  isFollowing: boolean;
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const username = params.username as string;
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('posts');
   const [isFollowing, setIsFollowing] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null);
+  const [followList, setFollowList] = useState<FollowUser[]>([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/users/${username}`)
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`/api/users/${username}`, { headers })
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data?.user) return;
         const u = json.data.user;
         setUser({
-          userId:     String(u.id),
-          username:   u.username,
-          fullName:   u.fullName,
-          avatar:     u.avatar ?? `https://i.pravatar.cc/300?u=${username}`,
-          bio:        u.bio ?? '',
-          location:   '',
-          website:    '',
-          joinedDate: new Date(u.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-          stats:      { posts: u.stats.posts, followers: u.stats.followers, following: u.stats.following },
-          isVerified: u.verified,
+          userId:      String(u.id),
+          username:    u.username,
+          fullName:    u.fullName,
+          avatar:      u.avatar ?? `https://i.pravatar.cc/300?u=${username}`,
+          bio:         u.bio ?? '',
+          location:    '',
+          website:     '',
+          joinedDate:  new Date(u.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          stats:       { posts: u.stats.posts, followers: u.stats.followers, following: u.stats.following },
+          isVerified:  u.verified,
           isFollowing: u.isFollowing,
         });
         setIsFollowing(u.isFollowing);
@@ -66,6 +83,37 @@ export default function ProfilePage() {
       });
   }, [username]);
 
+  const openFollowModal = useCallback(async (type: 'followers' | 'following') => {
+    if (!user) return;
+    setFollowModal(type);
+    setFollowListLoading(true);
+    setFollowList([]);
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const res = await fetch(`/api/follow?userId=${user.userId}&type=${type}&limit=50`, { headers });
+      const json = await res.json();
+      if (json.success) setFollowList(json.data.users ?? []);
+    } finally {
+      setFollowListLoading(false);
+    }
+  }, [user]);
+
+  const handleFollowInModal = useCallback(async (targetId: string, currently: boolean) => {
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    const method = currently ? 'DELETE' : 'POST';
+    const url = currently ? `/api/follow?followingId=${targetId}` : '/api/follow';
+    const opts: RequestInit = {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    };
+    if (!currently) opts.body = JSON.stringify({ followingId: targetId });
+    await fetch(url, opts);
+    setFollowList(prev => prev.map(u => u.id === targetId ? { ...u, isFollowing: !currently } : u));
+  }, [router]);
+
   const handleFollow = async () => {
     const token = getAuthToken();
     if (!token || !user) { router.push('/auth/login'); return; }
@@ -76,15 +124,18 @@ export default function ProfilePage() {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     };
     if (!isFollowing) opts.body = JSON.stringify({ followingId: user.userId });
-    await fetch(url, opts);
-    setIsFollowing(!isFollowing);
+    const res = await fetch(url, opts);
+    const json = await res.json();
+    const newFollowing = !isFollowing;
+    setIsFollowing(newFollowing);
     setUser(prev => prev ? {
       ...prev,
-      stats: { ...prev.stats, followers: prev.stats.followers + (isFollowing ? -1 : 1) },
+      stats: {
+        ...prev.stats,
+        followers: json.data?.followerCount ?? prev.stats.followers + (newFollowing ? 1 : -1),
+      },
     } : prev);
   };
-
-  const router = useRouter();
 
   const handleMessage = async () => {
     const token = getAuthToken();
@@ -180,15 +231,21 @@ export default function ProfilePage() {
 
               {/* Stats */}
               <div className="flex gap-8 mb-4">
-                <button className="text-center hover:text-gold-600 transition-colors">
+                <div className="text-center">
                   <div className="font-bold text-lg text-charcoal-900">{user.stats.posts}</div>
                   <div className="text-sm text-charcoal-600">Posts</div>
-                </button>
-                <button className="text-center hover:text-gold-600 transition-colors">
+                </div>
+                <button
+                  onClick={() => openFollowModal('followers')}
+                  className="text-center hover:text-gold-600 transition-colors"
+                >
                   <div className="font-bold text-lg text-charcoal-900">{user.stats.followers.toLocaleString()}</div>
                   <div className="text-sm text-charcoal-600">Followers</div>
                 </button>
-                <button className="text-center hover:text-gold-600 transition-colors">
+                <button
+                  onClick={() => openFollowModal('following')}
+                  className="text-center hover:text-gold-600 transition-colors"
+                >
                   <div className="font-bold text-lg text-charcoal-900">{user.stats.following.toLocaleString()}</div>
                   <div className="text-sm text-charcoal-600">Following</div>
                 </button>
@@ -256,6 +313,13 @@ export default function ProfilePage() {
         {/* Posts Grid */}
         {activeTab === 'posts' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+            {posts.length === 0 && (
+              <div className="col-span-full bg-white rounded-lg shadow-md p-12 text-center">
+                <div className="text-6xl mb-4">📷</div>
+                <h3 className="text-xl font-bold text-charcoal-900 mb-2">No posts yet</h3>
+                <p className="text-charcoal-600">Posts will appear here</p>
+              </div>
+            )}
             {posts.map((post) => (
               <Link
                 key={post.id}
@@ -302,6 +366,76 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Followers / Following Modal */}
+      {followModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setFollowModal(null)}
+        >
+          <div
+            className="bg-white dark:bg-charcoal-800 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-charcoal-700">
+              <h2 className="font-bold text-lg text-charcoal-900 dark:text-white capitalize">{followModal}</h2>
+              <button
+                onClick={() => setFollowModal(null)}
+                className="text-charcoal-500 hover:text-charcoal-900 dark:text-cool-gray-400 dark:hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 px-4 py-2">
+              {followListLoading && (
+                <div className="py-12 text-center text-charcoal-500 dark:text-cool-gray-400">Loading…</div>
+              )}
+              {!followListLoading && followList.length === 0 && (
+                <div className="py-12 text-center text-charcoal-500 dark:text-cool-gray-400">
+                  No {followModal} yet
+                </div>
+              )}
+              {followList.map(fu => (
+                <div key={fu.id} className="flex items-center gap-3 py-3 border-b border-gray-100 dark:border-charcoal-700 last:border-0">
+                  <Link href={`/profile/${fu.username}`} onClick={() => setFollowModal(null)}>
+                    <Image
+                      src={fu.avatar ?? `https://i.pravatar.cc/80?u=${fu.id}`}
+                      alt={fu.fullName}
+                      width={44}
+                      height={44}
+                      className="rounded-full object-cover border border-gray-200"
+                    />
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/profile/${fu.username}`}
+                      onClick={() => setFollowModal(null)}
+                      className="font-semibold text-charcoal-900 dark:text-white hover:text-gold-600 block truncate"
+                    >
+                      {fu.fullName}
+                      {fu.verified && <span className="ml-1 text-blue-500 text-xs">✓</span>}
+                    </Link>
+                    <p className="text-sm text-charcoal-500 dark:text-cool-gray-400 truncate">@{fu.username}</p>
+                  </div>
+                  <button
+                    onClick={() => handleFollowInModal(fu.id, fu.isFollowing)}
+                    className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                      fu.isFollowing
+                        ? 'bg-gray-200 text-charcoal-700 hover:bg-gray-300'
+                        : 'bg-gold-600 text-white hover:bg-gold-700'
+                    }`}
+                  >
+                    {fu.isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

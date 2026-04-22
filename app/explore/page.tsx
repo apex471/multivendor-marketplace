@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface TrendingPost {
   id: string;
-  image: string;
+  image: string | null;
   likes: number;
   comments: number;
   user: {
@@ -23,25 +25,14 @@ interface TrendingTag {
 }
 
 interface SuggestedUser {
+  id: string;
   username: string;
   fullName: string;
-  avatar: string;
+  avatar: string | null;
   followers: number;
-  isVerified: boolean;
-  category: string;
+  verified: boolean;
+  isFollowing: boolean;
 }
-
-// Pre-computed outside component — avoids impure Math.random() calls during render
-const TRENDING_POSTS: TrendingPost[] = Array.from({ length: 24 }, (_, i) => ({
-  id: String(i + 1),
-  image: `https://images.unsplash.com/photo-${1551028719 + i}00167b16eac5?w=400`,
-  likes: 500 + (i * 197 % 4500),
-  comments: 50 + (i * 43 % 450),
-  user: {
-    username: `user_${i + 1}`,
-    avatar: `https://i.pravatar.cc/150?u=user${i}`,
-  },
-}));
 
 const TRENDING_TAGS: TrendingTag[] = [
   { name: 'FallFashion', count: 12345 },
@@ -56,60 +47,118 @@ const TRENDING_TAGS: TrendingTag[] = [
   { name: 'FormalWear', count: 1987 },
 ];
 
-const SUGGESTED_USERS: SuggestedUser[] = [
-    {
-      username: 'fashionista_queen',
-      fullName: 'Emma Wilson',
-      avatar: 'https://i.pravatar.cc/150?u=emma',
-      followers: 45600,
-      isVerified: true,
-      category: 'Fashion Influencer',
-    },
-    {
-      username: 'urban_streetwear',
-      fullName: 'Marcus Lee',
-      avatar: 'https://i.pravatar.cc/150?u=marcus',
-      followers: 32100,
-      isVerified: true,
-      category: 'Streetwear Expert',
-    },
-    {
-      username: 'chic_boutique',
-      fullName: 'Sophia Chen',
-      avatar: 'https://i.pravatar.cc/150?u=sophia',
-      followers: 28900,
-      isVerified: false,
-      category: 'Boutique Owner',
-    },
-    {
-      username: 'minimalist_style',
-      fullName: 'Alex Johnson',
-      avatar: 'https://i.pravatar.cc/150?u=alex',
-      followers: 19800,
-      isVerified: true,
-      category: 'Style Curator',
-    },
-    {
-      username: 'vintage_finds',
-      fullName: 'Isabella Rose',
-      avatar: 'https://i.pravatar.cc/150?u=isabella',
-      followers: 15400,
-      isVerified: false,
-      category: 'Vintage Collector',
-    },
-];
-
 export default function ExplorePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'posts' | 'people' | 'tags'>('posts');
   const [searchQuery, setSearchQuery] = useState('');
+  const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsHasMore, setPostsHasMore] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersHasMore, setUsersHasMore] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [searchDebounce, setSearchDebounce] = useState('');
 
-  const trendingPosts = TRENDING_POSTS;
-  const trendingTags = TRENDING_TAGS;
-  const suggestedUsers = SUGGESTED_USERS;
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounce(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const fetchPosts = useCallback(async (page: number, append = false) => {
+    setPostsLoading(true);
+    try {
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/posts?page=${page}&limit=24`, { headers });
+      const json = await res.json();
+      if (!json.success) return;
+      const mapped: TrendingPost[] = (json.data.posts ?? []).map((p: {
+        _id: string; images?: string[]; likes: number; comments: number;
+        authorName?: string; authorAvatar?: string;
+      }) => ({
+        id:       String(p._id),
+        image:    p.images?.[0] ?? null,
+        likes:    p.likes,
+        comments: p.comments,
+        user: {
+          username: p.authorName ?? 'user',
+          avatar:   p.authorAvatar ?? `https://i.pravatar.cc/40?u=${p._id}`,
+        },
+      }));
+      setTrendingPosts(prev => append ? [...prev, ...mapped] : mapped);
+      setPostsHasMore(json.data.pagination?.hasNext ?? false);
+    } finally {
+      setPostsLoading(false);
+    }
+  }, []);
+
+  const fetchUsers = useCallback(async (page: number, q: string, append = false) => {
+    setUsersLoading(true);
+    try {
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const qParam = q ? `&q=${encodeURIComponent(q)}` : '';
+      const res = await fetch(`/api/users?page=${page}&limit=15${qParam}`, { headers });
+      const json = await res.json();
+      if (!json.success) return;
+      setSuggestedUsers(prev => append ? [...prev, ...json.data.users] : json.data.users);
+      setUsersHasMore(json.data.pagination?.hasNext ?? false);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => { fetchPosts(1); }, [fetchPosts]);
+  useEffect(() => { fetchUsers(1, ''); }, [fetchUsers]);
+
+  // Re-fetch users on search debounce
+  useEffect(() => {
+    setUsersPage(1);
+    fetchUsers(1, searchDebounce);
+  }, [searchDebounce, fetchUsers]);
+
+  const handleFollowUser = async (userId: string, currently: boolean) => {
+    const token = getAuthToken();
+    if (!token) { router.push('/auth/login'); return; }
+    const method = currently ? 'DELETE' : 'POST';
+    const url = currently ? `/api/follow?followingId=${userId}` : '/api/follow';
+    const opts: RequestInit = {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    };
+    if (!currently) opts.body = JSON.stringify({ followingId: userId });
+    const res = await fetch(url, opts);
+    const json = await res.json();
+    if (json.success) {
+      setSuggestedUsers(prev => prev.map(u =>
+        u.id === userId
+          ? { ...u, isFollowing: !currently, followers: json.data.followerCount ?? u.followers }
+          : u
+      ));
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: wire to search page
+    // search is handled via debounce + fetchUsers
+  };
+
+  const handleLoadMorePosts = () => {
+    const next = postsPage + 1;
+    setPostsPage(next);
+    fetchPosts(next, true);
+  };
+
+  const handleLoadMoreUsers = () => {
+    const next = usersPage + 1;
+    setUsersPage(next);
+    fetchUsers(next, searchDebounce, true);
   };
 
   return (
@@ -175,6 +224,9 @@ export default function ExplorePage() {
         {/* Trending Posts Tab */}
         {activeTab === 'posts' && (
           <div>
+            {postsLoading && trendingPosts.length === 0 && (
+              <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">Loading posts…</div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
               {trendingPosts.map((post) => (
                 <Link
@@ -182,12 +234,16 @@ export default function ExplorePage() {
                   href={`/post/${post.id}`}
                   className="group relative aspect-square overflow-hidden rounded-lg bg-gray-200"
                 >
-                  <Image
-                    src={post.image}
-                    alt={`Post ${post.id}`}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
+                  {post.image ? (
+                    <Image
+                      src={post.image as string}
+                      alt={`Post ${post.id}`}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-4xl">📷</div>
+                  )}
                   {/* User Avatar Overlay */}
                   <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Image
@@ -214,67 +270,89 @@ export default function ExplorePage() {
             </div>
 
             {/* Load More */}
-            <div className="mt-8 text-center">
-              <button className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
-                Load More Posts
-              </button>
-            </div>
+            {postsHasMore && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleLoadMorePosts}
+                  disabled={postsLoading}
+                  className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors disabled:opacity-50"
+                >
+                  {postsLoading ? 'Loading…' : 'Load More Posts'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Suggested People Tab */}
         {activeTab === 'people' && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {suggestedUsers.map((user) => (
-              <div key={user.username} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
-                <div className="flex flex-col items-center text-center">
-                  <Link href={`/profile/${user.username}`} className="mb-4">
-                    <div className="relative">
-                      <Image
-                        src={user.avatar}
-                        alt={user.fullName}
-                        width={80}
-                        height={80}
-                        className="rounded-full"
-                      />
-                      {user.isVerified && (
-                        <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
-                          <span className="text-white text-xs">✓</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-
-                  <Link href={`/profile/${user.username}`} className="hover:text-gold-600">
-                    <h3 className="font-bold text-lg text-charcoal-900 mb-1">{user.fullName}</h3>
-                  </Link>
-                  <p className="text-charcoal-600 mb-2">@{user.username}</p>
-                  <p className="text-sm text-gold-600 font-medium mb-3">{user.category}</p>
-                  <p className="text-sm text-charcoal-600 mb-4">
-                    {user.followers.toLocaleString()} followers
-                  </p>
-
-                  <div className="flex gap-2 w-full">
-                    <Link
-                      href={`/profile/${user.username}`}
-                      className="flex-1 px-4 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-center"
-                    >
-                      View Profile
+          <div>
+            {usersLoading && suggestedUsers.length === 0 && (
+              <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">Loading people…</div>
+            )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {suggestedUsers.map((user) => (
+                <div key={user.id} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
+                  <div className="flex flex-col items-center text-center">
+                    <Link href={`/profile/${user.username}`} className="mb-4">
+                      <div className="relative">
+                        <Image
+                          src={(user.avatar ?? `https://i.pravatar.cc/80?u=${user.id}`) as string}
+                          alt={user.fullName}
+                          width={80}
+                          height={80}
+                          className="rounded-full object-cover"
+                        />
+                        {user.verified && (
+                          <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                        )}
+                      </div>
                     </Link>
-                    <button className="px-4 py-2 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
-                      Follow
-                    </button>
+
+                    <Link href={`/profile/${user.username}`} className="hover:text-gold-600">
+                      <h3 className="font-bold text-lg text-charcoal-900 dark:text-white mb-1">{user.fullName}</h3>
+                  </Link>
+                  <p className="text-charcoal-600 dark:text-cool-gray-400 mb-4 text-sm">
+                      {user.followers.toLocaleString()} followers
+                    </p>
+
+                    <div className="flex gap-2 w-full">
+                      <Link
+                        href={`/profile/${user.username}`}
+                        className="flex-1 px-4 py-2 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-center"
+                      >
+                        View Profile
+                      </Link>
+                      <button
+                        onClick={() => handleFollowUser(user.id, user.isFollowing)}
+                        className={`px-4 py-2 border-2 rounded-lg font-semibold transition-colors ${
+                          user.isFollowing
+                            ? 'border-gray-300 text-charcoal-700 dark:text-cool-gray-300 hover:bg-gray-50 dark:hover:bg-charcoal-700'
+                            : 'border-gold-600 text-gold-600 hover:bg-gold-50 dark:hover:bg-charcoal-700'
+                        }`}
+                      >
+                        {user.isFollowing ? 'Following' : 'Follow'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             {/* Load More */}
-            <div className="sm:col-span-2 lg:col-span-3 text-center mt-4">
-              <button className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors">
-                Load More People
-              </button>
-            </div>
+            {usersHasMore && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleLoadMoreUsers}
+                  disabled={usersLoading}
+                  className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors disabled:opacity-50"
+                >
+                  {usersLoading ? 'Loading…' : 'Load More People'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -282,7 +360,7 @@ export default function ExplorePage() {
         {activeTab === 'tags' && (
           <div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {trendingTags.map((tag, index) => (
+              {TRENDING_TAGS.map((tag, index) => (
                 <Link
                   key={tag.name}
                   href={`/explore?tag=${tag.name}`}
@@ -302,7 +380,7 @@ export default function ExplorePage() {
 
             {/* Featured Categories */}
             <div className="mt-12">
-              <h2 className="text-2xl font-bold text-charcoal-900 mb-6">Browse by Category</h2>
+              <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Browse by Category</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 {[
                   { name: 'Streetwear', emoji: '👟' },
