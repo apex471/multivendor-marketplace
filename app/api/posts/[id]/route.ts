@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
+import { PostLike } from '@/backend/models/PostLike';
 import { User } from '@/backend/models/User';
+import { verifyToken } from '@/backend/utils/jwt';
 import {
   sendSuccess,
   sendNotFound,
@@ -10,7 +12,7 @@ import {
 
 // GET /api/posts/[id] — public post detail
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -19,6 +21,17 @@ export async function GET(
     const post = await Post.findById(params.id).lean();
     if (!post || post.status !== 'published' || post.privacy !== 'public') {
       return sendNotFound('Post not found');
+    }
+
+    // Identify current user for liked-state
+    const authHeader = req.headers.get('Authorization');
+    let liked = false;
+    if (authHeader?.startsWith('Bearer ')) {
+      const tok = verifyToken(authHeader.slice(7));
+      if (tok) {
+        const existingLike = await PostLike.findOne({ postId: params.id, userId: tok.userId }).lean();
+        liked = !!existingLike;
+      }
     }
 
     // Fetch author info
@@ -36,6 +49,7 @@ export async function GET(
         likes:     post.likes,
         comments:  post.comments,
         shares:    post.shares,
+        liked,
         createdAt: post.createdAt,
         author: author
           ? {

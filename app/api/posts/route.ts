@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
+import { PostLike } from '@/backend/models/PostLike';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
@@ -38,6 +39,14 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
+    // Identify current user for liked-state
+    const authHeader = request.headers.get('Authorization');
+    let currentUserId: string | null = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      const tok = verifyToken(authHeader.slice(7));
+      if (tok) currentUserId = tok.userId;
+    }
+
     const [posts, total] = await Promise.all([
       Post.find(filter)
         .sort({ createdAt: -1 })
@@ -47,8 +56,16 @@ export async function GET(request: NextRequest) {
       Post.countDocuments(filter),
     ]);
 
+    // Fetch liked state for current user
+    let likedSet = new Set<string>();
+    if (currentUserId && posts.length > 0) {
+      const postIds = posts.map(p => p._id);
+      const likes = await PostLike.find({ postId: { $in: postIds }, userId: currentUserId }).select('postId').lean();
+      likedSet = new Set(likes.map(l => String(l.postId)));
+    }
+
     return sendSuccess({
-      posts,
+      posts: posts.map(p => ({ ...p, liked: likedSet.has(String(p._id)) })),
       pagination: {
         page,
         limit,

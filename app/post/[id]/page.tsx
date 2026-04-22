@@ -21,7 +21,7 @@ interface PostData {
   id: string;
   image: string;
   caption: string;
-  user: { username: string; fullName: string; avatar: string; verified: boolean };
+  user: { id: string; username: string; fullName: string; avatar: string; verified: boolean };
   location: string;
   timestamp: string;
   likes: number;
@@ -44,7 +44,10 @@ export default function PostDetailPage() {
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch(`/api/posts/${postId}`)
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch(`/api/posts/${postId}`, { headers })
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data?.post) return;
@@ -54,6 +57,7 @@ export default function PostDetailPage() {
           image:         p.images?.[0] ?? 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800',
           caption:       p.content,
           user: {
+            id:       String(p.author.id),
             username:  p.author.username,
             fullName:  p.author.name,
             avatar:    p.author.avatar ?? `https://i.pravatar.cc/150?u=${p.author.id}`,
@@ -66,7 +70,31 @@ export default function PostDetailPage() {
           tags:          p.hashtags ?? [],
         });
         setLikesCount(p.likes);
+        setIsLiked(p.liked ?? false);
       });
+
+    // Load persisted comments from API
+    fetch(`/api/posts/${postId}/comment?limit=20`)
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success) return;
+        setComments((json.data.comments ?? []).map((c: {
+          id: string; authorName: string; authorAvatar: string | null;
+          text: string; likes: number; createdAt: string;
+        }) => ({
+          id:        c.id,
+          user: {
+            username: c.authorName.toLowerCase().replace(/\s/g, ''),
+            name:     c.authorName,
+            avatar:   c.authorAvatar ?? `https://i.pravatar.cc/40?u=${c.id}`,
+            verified: false,
+          },
+          text:      c.text,
+          likes:     c.likes,
+          timestamp: new Date(c.createdAt).toLocaleDateString(),
+        })));
+      })
+      .catch(() => {});
   }, [postId]);
 
   const handleLike = async () => {
@@ -104,7 +132,7 @@ export default function PostDetailPage() {
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientId: post.user.username }),
+        body: JSON.stringify({ recipientId: post.user.id }),
       });
       const json = await res.json();
       if (json.success) router.push('/messages');
@@ -140,7 +168,12 @@ export default function PostDetailPage() {
       const c = json.data;
       setComments(prev => [{
         id:        c.id,
-        user:      { username: c.user.username, name: c.user.name, avatar: c.user.avatar ?? '', verified: c.user.verified },
+        user:      {
+          username: c.authorName?.toLowerCase().replace(/\s/g, '') ?? 'user',
+          name:     c.authorName ?? 'User',
+          avatar:   c.authorAvatar ?? `https://i.pravatar.cc/40?u=${c.id}`,
+          verified: false,
+        },
         text:      c.text,
         likes:     0,
         timestamp: 'Just now',

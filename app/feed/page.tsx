@@ -9,6 +9,20 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
 
+interface StoryAuthor {
+  id: string;
+  username: string;
+  name: string;
+  avatar?: string | null;
+}
+
+interface Story {
+  id: string;
+  mediaUrls: string[];
+  author: StoryAuthor;
+  expiresAt: string;
+}
+
 interface PostProduct {
   id: string;
   name: string;
@@ -42,23 +56,41 @@ export default function FeedPage() {
   const { addItem } = useCart();
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [, setIsLoadingFeed] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [commentOpen, setCommentOpen] = useState<Record<string, boolean>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [shareModal, setShareModal] = useState<string | null>(null);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
 
-  // Fetch live posts from API
+  // Fetch active stories
   useEffect(() => {
-    fetch('/api/posts?limit=20')
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch('/api/stories?limit=20', { headers })
+      .then(r => r.json())
+      .then(json => { if (json.success) setStories(json.data.stories ?? []); })
+      .catch(() => {});
+  }, []);
+
+  const fetchPosts = (pageNum: number, append: boolean) => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return fetch(`/api/posts?limit=10&page=${pageNum}`, { headers })
       .then(r => r.json())
       .then(json => {
-        if (json.success && json.data?.posts?.length) {
+        if (json.success && json.data?.posts) {
           const livePosts: Post[] = json.data.posts.map((p: {
             _id: string; authorName: string; authorRole: string;
             content: string; images: string[]; product?: PostProduct;
-            likes: number; comments: number; shares: number; createdAt: string;
+            likes: number; comments: number; shares: number;
+            createdAt: string; liked?: boolean;
           }) => ({
             id:        p._id,
             author: {
@@ -74,14 +106,23 @@ export default function FeedPage() {
             comments:  p.comments,
             shares:    p.shares,
             timestamp: new Date(p.createdAt).toLocaleDateString(),
-            liked:     false,
+            liked:     p.liked ?? false,
             saved:     false,
           }));
-          // Set live posts
-          setPosts(livePosts);
+          if (append) {
+            setPosts(prev => [...prev, ...livePosts]);
+          } else {
+            setPosts(livePosts);
+          }
+          setHasMore(json.data.pagination?.hasNext ?? false);
         }
-      })
-      .catch(() => { /* keep empty feed */ })
+      });
+  };
+
+  // Fetch live posts from API
+  useEffect(() => {
+    fetchPosts(1, false)
+      .catch(() => {})
       .finally(() => setIsLoadingFeed(false));
   }, []);
 
@@ -196,6 +237,36 @@ export default function FeedPage() {
               Share and discover the latest fashion trends
             </p>
           </div>
+
+          {/* Stories Carousel */}
+          {stories.length > 0 && (
+            <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl shadow-md p-4 mb-6">
+              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                {stories.map(story => (
+                  <button
+                    key={story.id}
+                    onClick={() => router.push(`/stories/${story.id}`)}
+                    className="shrink-0 text-center"
+                  >
+                    <div className="relative w-16 h-16 mb-1">
+                      <div className="absolute inset-0 rounded-full bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500 p-0.5">
+                        <div className="w-full h-full rounded-full bg-white p-0.5">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                            {story.author.avatar ? (
+                              <Image src={story.author.avatar} alt={story.author.username} width={60} height={60} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-2xl">👤</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-charcoal-700 dark:text-cool-gray-300 truncate w-16">{story.author.username}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Create Post */}
           <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-md mb-6">
@@ -425,11 +496,23 @@ export default function FeedPage() {
           </div>
 
           {/* Load More */}
-          <div className="text-center mt-8">
-            <button className="px-6 py-3 bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 border-2 border-cool-gray-300 dark:border-charcoal-600 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-sm sm:text-base touch-manipulation min-h-11">
-              Load More Posts
-            </button>
-          </div>
+          {hasMore && (
+            <div className="text-center mt-8">
+              <button
+                onClick={async () => {
+                  const nextPage = page + 1;
+                  setIsLoadingMore(true);
+                  setPage(nextPage);
+                  await fetchPosts(nextPage, true).catch(() => {});
+                  setIsLoadingMore(false);
+                }}
+                disabled={isLoadingMore}
+                className="px-6 py-3 bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-cool-gray-300 border-2 border-cool-gray-300 dark:border-charcoal-600 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-sm sm:text-base touch-manipulation min-h-11 disabled:opacity-50"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load More Posts'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
