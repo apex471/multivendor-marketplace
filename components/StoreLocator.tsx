@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocation } from '../contexts/LocationContext';
 
 interface Store {
@@ -13,14 +14,11 @@ interface Store {
   city: string;
   state: string;
   zipCode: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
   phone: string;
-  hours: string;
-  rating: number;
-  logo: string;
+  avatar: string | null;
+  bio: string;
+  products: number;
+  coordinates: { lat: number; lng: number } | null;
 }
 
 interface StoreLocatorProps {
@@ -29,142 +27,89 @@ interface StoreLocatorProps {
   filterType?: 'vendor' | 'brand' | 'all';
 }
 
-export default function StoreLocator({ 
-  maxResults = 10, 
+export default function StoreLocator({
+  maxResults = 10,
   showMap = true,
-  filterType = 'all' 
+  filterType = 'all',
 }: StoreLocatorProps) {
-  const { 
-    userLocation, 
-    requestLocation, 
-    calculateDistance, 
+  const {
+    userLocation,
+    requestLocation,
+    calculateDistance,
     formatDistance,
-    isLoadingLocation 
+    isLoadingLocation,
   } = useLocation();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery]   = useState('');
   const [selectedCity, setSelectedCity] = useState('all');
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [stores, setStores] = useState<Store[]>([]);
+  const [viewMode, setViewMode]         = useState<'list' | 'map'>('list');
+  const [allStores, setAllStores]       = useState<Store[]>([]);
+  const [cities, setCities]             = useState<string[]>([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mock store data
-  const mockStores: Store[] = [
-    {
-      id: '1',
-      name: 'Chic Boutique Downtown',
-      type: 'vendor',
-      category: 'Fashion',
-      address: '123 Market St',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94103',
-      coordinates: { lat: 37.7749, lng: -122.4194 },
-      phone: '(415) 555-0101',
-      hours: 'Mon-Sat 10am-8pm, Sun 11am-6pm',
-      rating: 4.8,
-      logo: '👗'
-    },
-    {
-      id: '2',
-      name: 'Gucci Union Square',
-      type: 'brand',
-      category: 'Luxury',
-      address: '789 Union Square',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94108',
-      coordinates: { lat: 37.7879, lng: -122.4074 },
-      phone: '(415) 555-0201',
-      hours: 'Mon-Sat 10am-7pm, Sun 12pm-6pm',
-      rating: 4.9,
-      logo: '👑'
-    },
-    {
-      id: '3',
-      name: 'Urban Threads',
-      type: 'vendor',
-      category: 'Streetwear',
-      address: '456 Valencia St',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94110',
-      coordinates: { lat: 37.7599, lng: -122.4214 },
-      phone: '(415) 555-0102',
-      hours: 'Daily 11am-9pm',
-      rating: 4.7,
-      logo: '👕'
-    },
-    {
-      id: '4',
-      name: 'Nike Store SF',
-      type: 'brand',
-      category: 'Sportswear',
-      address: '278 Post St',
-      city: 'San Francisco',
-      state: 'CA',
-      zipCode: '94108',
-      coordinates: { lat: 37.7885, lng: -122.4077 },
-      phone: '(415) 555-0202',
-      hours: 'Mon-Sat 10am-9pm, Sun 11am-7pm',
-      rating: 4.6,
-      logo: '⚡'
-    },
-    {
-      id: '5',
-      name: 'Eco Wear Oakland',
-      type: 'vendor',
-      category: 'Sustainable',
-      address: '567 Broadway',
-      city: 'Oakland',
-      state: 'CA',
-      zipCode: '94607',
-      coordinates: { lat: 37.8044, lng: -122.2712 },
-      phone: '(510) 555-0301',
-      hours: 'Tue-Sat 10am-6pm',
-      rating: 4.9,
-      logo: '🌱'
-    }
-  ];
+  const fetchStores = useCallback(async (search: string, city: string) => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({ type: filterType, limit: String(maxResults * 4) });
+      if (search) params.set('search', search);
+      if (city && city !== 'all') params.set('city', city);
+      const res  = await fetch(`/api/store-locator?${params}`);
+      const json = await res.json();
+      if (json.success) {
+        setAllStores(json.data.stores ?? []);
+        setCities(['all', ...(json.data.cities ?? [])]);
+      }
+    } catch { /* silent */ }
+    finally { setIsLoading(false); }
+  }, [filterType, maxResults]);
 
+  // Initial load
+  useEffect(() => { fetchStores('', 'all'); }, [fetchStores]);
+
+  // Re-fetch when city changes
+  useEffect(() => { fetchStores(searchQuery, selectedCity); }, [selectedCity, fetchStores, searchQuery]);
+
+  // Debounced search
   useEffect(() => {
-    let filtered = mockStores;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchStores(searchQuery, selectedCity), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery, fetchStores, selectedCity]);
 
-    // Filter by type
-    if (filterType !== 'all') {
-      filtered = filtered.filter(store => store.type === filterType);
+  // Sort by distance if user location available, otherwise keep API order
+  const stores = (() => {
+    let list = [...allStores];
+    if (userLocation) {
+      list = list
+        .filter(s => s.coordinates)
+        .map(s => ({
+          ...s,
+          _dist: calculateDistance(
+            userLocation.lat, userLocation.lng,
+            s.coordinates!.lat, s.coordinates!.lng
+          ),
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .sort((a: any, b: any) => a._dist - b._dist);
     }
+    return list.slice(0, maxResults);
+  })();
 
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(store => 
-        store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        store.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        store.address.toLowerCase().includes(searchQuery.toLowerCase())
+  const StoreAvatar = ({ store }: { store: Store }) => {
+    const initials = store.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    if (store.avatar) {
+      return (
+        <Image src={store.avatar} alt={store.name} width={48} height={48}
+          className="w-12 h-12 rounded-lg object-cover" />
       );
     }
-
-    // Filter by city
-    if (selectedCity !== 'all') {
-      filtered = filtered.filter(store => store.city === selectedCity);
-    }
-
-    // Calculate distances and sort if user location available
-    if (userLocation) {
-      filtered = filtered.map(store => ({
-        ...store,
-        distance: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          store.coordinates.lat,
-          store.coordinates.lng
-        )
-      })).sort((a: any, b: any) => a.distance - b.distance);
-    }
-
-    setStores(filtered.slice(0, maxResults));
-  }, [searchQuery, selectedCity, userLocation, filterType, maxResults]);
-
-  const cities = ['all', ...Array.from(new Set(mockStores.map(s => s.city)))];
+    return (
+      <div className="w-12 h-12 rounded-lg bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+        {store.type === 'brand' ? '👑' : initials}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl overflow-hidden">
@@ -198,6 +143,12 @@ export default function StoreLocator({
               </option>
             ))}
           </select>
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex items-center px-4 py-2 text-sm text-charcoal-500 dark:text-cool-gray-400">
+              Loading stores…
+            </div>
+          )}
 
           {/* Location Button */}
           {!userLocation ? (
@@ -244,7 +195,12 @@ export default function StoreLocator({
 
       {/* Results */}
       <div className="p-6">
-        {stores.length === 0 ? (
+        {isLoading && stores.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4 animate-pulse">🏪</div>
+            <p className="text-charcoal-600 dark:text-cool-gray-400">Loading stores…</p>
+          </div>
+        ) : stores.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-2">
@@ -263,12 +219,13 @@ export default function StoreLocator({
             {viewMode === 'list' ? (
               <div className="space-y-4">
                 {stores.map((store) => {
-                  const distance = userLocation ? calculateDistance(
-                    userLocation.lat,
-                    userLocation.lng,
-                    store.coordinates.lat,
-                    store.coordinates.lng
-                  ) : null;
+                  const distance =
+                    userLocation && store.coordinates
+                      ? calculateDistance(
+                          userLocation.lat, userLocation.lng,
+                          store.coordinates.lat, store.coordinates.lng
+                        )
+                      : null;
 
                   return (
                     <div
@@ -276,9 +233,7 @@ export default function StoreLocator({
                       className="p-4 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:shadow-md transition-shadow"
                     >
                       <div className="flex gap-4">
-                        <div className="w-12 h-12 bg-linear-to-br from-gold-400 to-gold-600 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                          {store.logo}
-                        </div>
+                        <StoreAvatar store={store} />
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-1">
                             <div>
@@ -293,7 +248,8 @@ export default function StoreLocator({
                                 }`}>
                                   {store.type === 'brand' ? '👑 Brand' : '🏪 Vendor'}
                                 </span>
-                                <span>⭐ {store.rating}</span>
+                                {store.category && <span className="capitalize">{store.category}</span>}
+                                {store.products > 0 && <span>{store.products} products</span>}
                               </div>
                             </div>
                             {distance !== null && (
@@ -308,25 +264,29 @@ export default function StoreLocator({
                             )}
                           </div>
                           <div className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-2">
-                            <div>📍 {store.address}, {store.city}, {store.state} {store.zipCode}</div>
-                            <div>📞 {store.phone}</div>
-                            <div>🕐 {store.hours}</div>
+                            {(store.address || store.city) && (
+                              <div>📍 {[store.address, store.city, store.state, store.zipCode].filter(Boolean).join(', ')}</div>
+                            )}
+                            {store.phone && <div>📞 {store.phone}</div>}
+                            {store.bio && <div className="line-clamp-1">ℹ️ {store.bio}</div>}
                           </div>
                           <div className="flex gap-2">
                             <Link
-                              href={`/${store.type === 'brand' ? 'brands' : 'vendors'}/${store.id}`}
+                              href={`/${store.type === 'brand' ? 'brands' : 'vendor'}/${store.id}`}
                               className="text-sm px-3 py-1 bg-gold-600 text-white rounded-lg hover:bg-gold-700"
                             >
                               View Store
                             </Link>
-                            <a
-                              href={`https://www.google.com/maps/dir/?api=1&destination=${store.coordinates.lat},${store.coordinates.lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm px-3 py-1 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700"
-                            >
-                              Directions
-                            </a>
+                            {store.coordinates && (
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${store.coordinates.lat},${store.coordinates.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm px-3 py-1 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700"
+                              >
+                                Directions
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -44,6 +44,7 @@ export default function ExplorePage() {
   const [searchDebounce, setSearchDebounce] = useState('');
   const [trendingTags, setTrendingTags] = useState<{ name: string; count: number; likes: number }[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Debounce search
@@ -111,10 +112,25 @@ export default function ExplorePage() {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/products/categories');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data.categories)) {
+        setCategories(json.data.categories.map((c: { name: string; count: number; icon: string }) => ({
+          name:  c.name,
+          count: c.count,
+          icon:  c.icon,
+        })));
+      }
+    } catch { /* silent */ }
+  }, []);
+
   // Initial load
   useEffect(() => { fetchPosts(1); }, [fetchPosts]);
   useEffect(() => { fetchUsers(1, ''); }, [fetchUsers]);
   useEffect(() => { fetchTags(); }, [fetchTags]);
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
   // Real-time polling: refresh posts every 30s, tags every 60s
   useEffect(() => {
@@ -261,13 +277,19 @@ export default function ExplorePage() {
                   )}
                   {/* User Avatar Overlay */}
                   <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Image
-                      src={post.user.avatar}
-                      alt={post.user.username}
-                      width={32}
-                      height={32}
-                      className="rounded-full border-2 border-white"
-                    />
+                    {post.user.avatar && !post.user.avatar.includes('pravatar') ? (
+                      <Image
+                        src={post.user.avatar}
+                        alt={post.user.username}
+                        width={32}
+                        height={32}
+                        className="rounded-full border-2 border-white object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full border-2 border-white bg-gold-600 flex items-center justify-center text-white text-xs font-bold">
+                        {post.user.username.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                   {/* Stats Overlay */}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white">
@@ -310,14 +332,20 @@ export default function ExplorePage() {
                 <div key={user.id} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
                   <div className="flex flex-col items-center text-center">
                     <Link href={`/profile/${user.username}`} className="mb-4">
-                      <div className="relative">
-                        <Image
-                          src={(user.avatar ?? `https://i.pravatar.cc/80?u=${user.id}`) as string}
-                          alt={user.fullName}
-                          width={80}
-                          height={80}
-                          className="rounded-full object-cover"
-                        />
+                      <div className="relative w-20 h-20">
+                        {user.avatar ? (
+                          <Image
+                            src={user.avatar}
+                            alt={user.fullName}
+                            width={80}
+                            height={80}
+                            className="w-20 h-20 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-2xl">
+                            {user.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
                         {user.verified && (
                           <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
                             <span className="text-white text-xs">✓</span>
@@ -399,32 +427,26 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            {/* Featured Categories */}
+            {/* Browse by Category — fetched from real product data */}
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Browse by Category</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {[
-                  { name: 'Streetwear', emoji: '👟' },
-                  { name: 'Formal', emoji: '👔' },
-                  { name: 'Casual', emoji: '👕' },
-                  { name: 'Athletic', emoji: '⚽' },
-                  { name: 'Vintage', emoji: '📻' },
-                  { name: 'Luxury', emoji: '💎' },
-                  { name: 'Sustainable', emoji: '🌱' },
-                  { name: 'Accessories', emoji: '👜' },
-                  { name: 'Footwear', emoji: '👞' },
-                  { name: 'Jewelry', emoji: '💍' },
-                ].map((category) => (
-                  <Link
-                    key={category.name}
-                    href={`/explore?category=${category.name}`}
-                    className="bg-linear-to-br from-gold-500 to-gold-700 rounded-lg p-6 text-white text-center hover:scale-105 transition-transform"
-                  >
-                    <div className="text-4xl mb-2">{category.emoji}</div>
-                    <div className="font-semibold">{category.name}</div>
-                  </Link>
-                ))}
-              </div>
+              {categories.length === 0 ? (
+                <p className="text-charcoal-500 dark:text-cool-gray-400 text-sm">No categories found yet.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {categories.map((category) => (
+                    <Link
+                      key={category.name}
+                      href={`/shop?category=${encodeURIComponent(category.name)}`}
+                      className="bg-linear-to-br from-gold-500 to-gold-700 rounded-lg p-6 text-white text-center hover:scale-105 transition-transform"
+                    >
+                      <div className="text-4xl mb-2">{category.icon}</div>
+                      <div className="font-semibold">{category.name}</div>
+                      <div className="text-xs opacity-80 mt-1">{category.count} products</div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
