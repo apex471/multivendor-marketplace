@@ -8,7 +8,6 @@ import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
-
 interface StoryAuthor {
   id: string;
   username: string;
@@ -75,6 +74,8 @@ export default function FeedPage() {
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [shareModal, setShareModal] = useState<string | null>(null);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const latestPostIdRef = useRef<string | null>(null);
 
   // Track if initial fetch is done to avoid double-fetch
   const didFetch = useRef(false);
@@ -157,9 +158,36 @@ export default function FeedPage() {
     if (didFetch.current) return;
     didFetch.current = true;
     fetchPosts(1, false)
+      .then(() => {
+        // capture the ID of the top post after initial load
+        setPosts(prev => {
+          if (prev.length > 0) latestPostIdRef.current = prev[0].id;
+          return prev;
+        });
+      })
       .catch(() => {})
       .finally(() => setIsLoadingFeed(false));
   }, [fetchPosts]);
+
+  // Real-time polling: silently check for new posts every 30s
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      try {
+        const res = await fetch('/api/posts?limit=1&page=1', { headers });
+        const json = await res.json();
+        if (json.success && json.data?.posts?.length > 0) {
+          const newestId = String(json.data.posts[0]._id);
+          if (latestPostIdRef.current && newestId !== latestPostIdRef.current) {
+            setNewPostsAvailable(true);
+          }
+        }
+      } catch { /* silent */ }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLike = async (postId: string) => {
     const post = posts.find(p => p.id === postId);
@@ -307,6 +335,27 @@ export default function FeedPage() {
               Share and discover the latest fashion trends
             </p>
           </div>
+
+          {/* New Posts Available Banner */}
+          {newPostsAvailable && (
+            <button
+              onClick={async () => {
+                setNewPostsAvailable(false);
+                setIsLoadingFeed(true);
+                setPage(1);
+                await fetchPosts(1, false).catch(() => {});
+                setIsLoadingFeed(false);
+                setPosts(prev => {
+                  if (prev.length > 0) latestPostIdRef.current = prev[0].id;
+                  return prev;
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full mb-4 py-3 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-md"
+            >
+              <span>✨</span> New posts available — tap to refresh
+            </button>
+          )}
 
           {/* Stories Carousel — always visible so users can start the first story */}
           {(currentUser || stories.length > 0) && (

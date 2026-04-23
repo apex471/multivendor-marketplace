@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,11 +19,6 @@ interface TrendingPost {
   };
 }
 
-interface TrendingTag {
-  name: string;
-  count: number;
-}
-
 interface SuggestedUser {
   id: string;
   username: string;
@@ -33,19 +28,6 @@ interface SuggestedUser {
   verified: boolean;
   isFollowing: boolean;
 }
-
-const TRENDING_TAGS: TrendingTag[] = [
-  { name: 'FallFashion', count: 12345 },
-  { name: 'OOTD', count: 9876 },
-  { name: 'StreetStyle', count: 8765 },
-  { name: 'Sneakers', count: 7654 },
-  { name: 'Minimalist', count: 6543 },
-  { name: 'VintageFashion', count: 5432 },
-  { name: 'SustainableFashion', count: 4321 },
-  { name: 'LuxuryFashion', count: 3210 },
-  { name: 'CasualStyle', count: 2109 },
-  { name: 'FormalWear', count: 1987 },
-];
 
 export default function ExplorePage() {
   const router = useRouter();
@@ -60,6 +42,9 @@ export default function ExplorePage() {
   const [usersHasMore, setUsersHasMore] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [searchDebounce, setSearchDebounce] = useState('');
+  const [trendingTags, setTrendingTags] = useState<{ name: string; count: number; likes: number }[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -113,9 +98,39 @@ export default function ExplorePage() {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    setTagsLoading(true);
+    try {
+      const res = await fetch('/api/posts/trending-tags?limit=20&days=7');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data.tags)) {
+        setTrendingTags(json.data.tags);
+      }
+    } finally {
+      setTagsLoading(false);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => { fetchPosts(1); }, [fetchPosts]);
   useEffect(() => { fetchUsers(1, ''); }, [fetchUsers]);
+  useEffect(() => { fetchTags(); }, [fetchTags]);
+
+  // Real-time polling: refresh posts every 30s, tags every 60s
+  useEffect(() => {
+    const postInterval = setInterval(() => {
+      fetchPosts(1);
+      setPostsPage(1);
+    }, 30_000);
+    const tagInterval = setInterval(() => {
+      fetchTags();
+    }, 60_000);
+    pollRef.current = postInterval;
+    return () => {
+      clearInterval(postInterval);
+      clearInterval(tagInterval);
+    };
+  }, [fetchPosts, fetchTags]);
 
   // Re-fetch users on search debounce
   useEffect(() => {
@@ -359,8 +374,14 @@ export default function ExplorePage() {
         {/* Trending Tags Tab */}
         {activeTab === 'tags' && (
           <div>
+            {tagsLoading && trendingTags.length === 0 && (
+              <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">Loading trending tags…</div>
+            )}
+            {!tagsLoading && trendingTags.length === 0 && (
+              <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">No trending tags yet. Start posting with hashtags!</div>
+            )}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {TRENDING_TAGS.map((tag, index) => (
+              {trendingTags.map((tag, index) => (
                 <Link
                   key={tag.name}
                   href={`/explore?tag=${tag.name}`}
