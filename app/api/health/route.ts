@@ -1,12 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/backend/config/database';
+import { verifyToken } from '@/backend/utils/jwt';
 
 /**
  * GET /api/health
  * Diagnostic endpoint — checks env vars and DB connectivity.
- * Useful for debugging Netlify deployment issues without reading logs.
+ * In production this requires a valid admin Bearer token to prevent
+ * information disclosure to unauthenticated parties.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // In production, require admin auth to prevent info leakage
+  if (process.env.NODE_ENV === 'production') {
+    const auth = req.headers.get('Authorization') ?? '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    const payload = token ? verifyToken(token) : null;
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  }
   const checks: Record<string, string> = {};
 
   // ── Env var checks ─────────────────────────────────────────────────────────

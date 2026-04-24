@@ -7,20 +7,9 @@ export async function GET(_req: NextRequest) {
   try {
     await connectDB();
 
-    // Attempt to load from DB if a LogisticsProvider model is available.
-    // Falls back to a curated static list so checkout never breaks even before
-    // an admin has configured providers in the database.
+    // Providers are currently served from a curated static list.
+    // When a LogisticsProvider MongoDB model is added, replace this with a DB query.
     let providers: unknown[] = [];
-
-    try {
-      // Dynamic import so the build never fails if the model doesn't exist yet.
-      const mod = require('@/backend/models/LogisticsProvider');
-      if (mod?.default) {
-        providers = await mod.default.find({ isActive: true }).lean();
-      }
-    } catch {
-      // Model not yet created — fall through to static list
-    }
 
     if (!providers || providers.length === 0) {
       providers = [

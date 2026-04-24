@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-this-in-production';
+const _secret = process.env.JWT_SECRET;
+if (!_secret && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production.');
+}
+const JWT_SECRET = _secret || 'dev-only-insecure-secret-replace-before-deploy';
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 
 export interface JWTPayload {
@@ -22,7 +26,7 @@ export function generateToken(userId: string, email: string, role: string): stri
   };
 
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRE as any,
+    expiresIn: JWT_EXPIRE as `${number}${'s'|'m'|'h'|'d'|'w'|'y'}` | number,
   });
 }
 

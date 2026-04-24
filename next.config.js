@@ -1,32 +1,66 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Prevent webpack from trying to bundle server-only Node.js packages.
-  // These packages either use native bindings, dynamic requires, or built-in
-  // Node modules that webpack cannot resolve in a browser/edge bundle context.
-  // Without this setting the build will fail on Netlify with MODULE_NOT_FOUND
-  // or "Critical dependency: the request of a CommonJS require is an expression".
   serverExternalPackages: [
-    'mongoose',        // native bindings (bson C++ addon)
-    'bcryptjs',        // native crypto fallback
-    'nodemailer',      // dynamic require() for transports
-    'google-auth-library', // uses fs, crypto, net built-ins directly
-    'cloudinary',      // uses http/https + Buffer streams
+    'mongoose',
+    'bcryptjs',
+    'nodemailer',
+    'google-auth-library',
+    'cloudinary',
   ],
 
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      // Cloudinary — all CLW uploads
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      // Google user avatars (OAuth)
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      // Generic fallback for vendor/brand-supplied image URLs stored in DB
+      { protocol: 'https', hostname: '**' },
     ],
     unoptimized: true,
   },
 
+  // Security headers applied to every response
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          // Prevent clickjacking
+          { key: 'X-Frame-Options', value: 'DENY' },
+          // Prevent MIME sniffing
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // Enable XSS filter in older browsers
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          // Control referrer information
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Permissions policy — disable unused browser features
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self), payment=(self)',
+          },
+          // HSTS — force HTTPS for 1 year (set on Netlify which handles TLS)
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+        ],
+      },
+      // Allow the health check endpoint to be called server-to-server without credentials
+      {
+        source: '/api/health',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+    ];
+  },
+
   // Required: declare empty turbopack config so Next.js 16 knows Turbopack
-  // is intentional. Without this, any future webpack config additions would
-  // trigger a build error on "webpack config without turbopack config".
+  // is intentional.
   turbopack: {},
 };
 
 module.exports = nextConfig;
+
