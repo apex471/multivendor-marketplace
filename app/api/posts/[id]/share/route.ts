@@ -12,8 +12,9 @@ import {
 // POST /api/posts/[id]/share — increment share count (requires auth)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const auth = req.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -23,7 +24,7 @@ export async function POST(
 
     await connectDB();
 
-    const post = await Post.findById(params.id);
+    const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
     post.shares = (post.shares ?? 0) + 1;

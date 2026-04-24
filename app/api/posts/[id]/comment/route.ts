@@ -16,8 +16,9 @@ import {
 // GET /api/posts/[id]/comment — list persisted comments (public)
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
@@ -26,16 +27,16 @@ export async function GET(
     const limit = Math.min(50, parseInt(sp.get('limit') ?? '20'));
     const skip  = (page - 1) * limit;
 
-    const post = await Post.findById(params.id).select('_id').lean();
+    const post = await Post.findById(id).select('_id').lean();
     if (!post) return sendNotFound('Post not found');
 
     const [comments, total] = await Promise.all([
-      Comment.find({ postId: params.id, parentId: { $exists: false } })
+      Comment.find({ postId: id, parentId: { $exists: false } })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Comment.countDocuments({ postId: params.id, parentId: { $exists: false } }),
+      Comment.countDocuments({ postId: id, parentId: { $exists: false } }),
     ]);
 
     return sendSuccess({
@@ -58,8 +59,9 @@ export async function GET(
 // POST /api/posts/[id]/comment — add a comment (requires auth)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const auth = req.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -72,7 +74,7 @@ export async function POST(
 
     await connectDB();
 
-    const post = await Post.findById(params.id);
+    const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
     // Fetch commenter info
@@ -83,7 +85,7 @@ export async function POST(
 
     // Store the comment in the Comment collection
     const comment = await Comment.create({
-      postId:      params.id,
+      postId:      id,
       authorId:    payload.userId,
       authorName,
       authorAvatar: user?.avatar ?? undefined,
@@ -103,7 +105,7 @@ export async function POST(
         actorName:   authorName,
         actorAvatar: user?.avatar ?? undefined,
         text:        `${authorName} commented on your post`,
-        link:        `/post/${params.id}`,
+        link:        `/post/${id}`,
       }).catch(() => {});
     }
 

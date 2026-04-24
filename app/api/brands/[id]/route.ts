@@ -11,13 +11,14 @@ import {
 // GET /api/brands/[id] — public brand profile + products
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
     const brand = await User.findOne({
-      _id:               params.id,
+      _id:               id,
       role:              'brand',
       applicationStatus: 'approved',
       isActive:          true,

@@ -13,12 +13,13 @@ import {
 // GET /api/posts/[id] — public post detail
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
-    const post = await Post.findById(params.id).lean();
+    const post = await Post.findById(id).lean();
     if (!post || post.status !== 'published' || post.privacy !== 'public') {
       return sendNotFound('Post not found');
     }
@@ -29,7 +30,7 @@ export async function GET(
     if (authHeader?.startsWith('Bearer ')) {
       const tok = verifyToken(authHeader.slice(7));
       if (tok) {
-        const existingLike = await PostLike.findOne({ postId: params.id, userId: tok.userId }).lean();
+        const existingLike = await PostLike.findOne({ postId: id, userId: tok.userId }).lean();
         liked = !!existingLike;
       }
     }

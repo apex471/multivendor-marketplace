@@ -15,8 +15,9 @@ import {
 // GET /api/products/[id]/reviews — public product reviews
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
@@ -26,17 +27,17 @@ export async function GET(
     const skip  = (page - 1) * limit;
 
     const [reviews, total] = await Promise.all([
-      Review.find({ productId: params.id })
+      Review.find({ productId: id })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Review.countDocuments({ productId: params.id }),
+      Review.countDocuments({ productId: id }),
     ]);
 
     // Compute aggregate stats
     const stats = await Review.aggregate([
-      { $match: { productId: { $in: [params.id] } } },
+      { $match: { productId: { $in: [id] } } },
       {
         $group: {
           _id: null,
@@ -87,8 +88,9 @@ export async function GET(
 // POST /api/products/[id]/reviews — submit a review (requires auth)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const auth = req.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -98,7 +100,7 @@ export async function POST(
 
     await connectDB();
 
-    const product = await Product.findById(params.id).lean();
+    const product = await Product.findById(id).lean();
     if (!product) return sendNotFound('Product not found');
 
     const { rating, title, comment } = await req.json();
@@ -109,9 +111,9 @@ export async function POST(
     if (!user) return sendUnauthorized('User not found');
 
     const review = await Review.findOneAndUpdate(
-      { productId: params.id, userId: payload.userId },
+      { productId: id, userId: payload.userId },
       {
-        productId:  params.id,
+        productId:  id,
         userId:     payload.userId,
         userName:   `${user.firstName} ${user.lastName}`.trim(),
         userAvatar: user.avatar,
@@ -124,11 +126,11 @@ export async function POST(
 
     // Update product aggregate rating
     const agg = await Review.aggregate([
-      { $match: { productId: { $in: [params.id] } } },
+      { $match: { productId: { $in: [id] } } },
       { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
     ]);
     if (agg[0]) {
-      await Product.findByIdAndUpdate(params.id, {
+      await Product.findByIdAndUpdate(id, {
         rating:      Math.round(agg[0].avg * 10) / 10,
         reviewCount: agg[0].count,
       });

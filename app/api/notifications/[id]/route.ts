@@ -18,8 +18,9 @@ function getPayload(req: NextRequest) {
 // PATCH /api/notifications/[id] — mark single notification as read
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const payload = getPayload(req);
     if (!payload) return sendUnauthorized('Authentication required');
@@ -27,7 +28,7 @@ export async function PATCH(
     await connectDB();
 
     const notification = await Notification.findOneAndUpdate(
-      { _id: params.id, recipientId: payload.userId },
+      { _id: id, recipientId: payload.userId },
       { isRead: true },
       { new: true }
     );
@@ -43,15 +44,16 @@ export async function PATCH(
 // DELETE /api/notifications/[id] — delete a notification
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const payload = getPayload(req);
     if (!payload) return sendUnauthorized('Authentication required');
 
     await connectDB();
 
-    await Notification.findOneAndDelete({ _id: params.id, recipientId: payload.userId });
+    await Notification.findOneAndDelete({ _id: id, recipientId: payload.userId });
 
     return sendSuccess({ deleted: true });
   } catch (err) {

@@ -11,13 +11,14 @@ import {
 // GET /api/vendors/[id] — public vendor profile + products
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
 
     const vendor = await User.findOne({
-      _id:               params.id,
+      _id:               id,
       role:              'vendor',
       applicationStatus: 'approved',
       isActive:          true,

@@ -14,8 +14,9 @@ import {
 // POST /api/posts/[id]/like — toggle like on a post (requires auth)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const auth = req.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -25,19 +26,19 @@ export async function POST(
 
     await connectDB();
 
-    const post = await Post.findById(params.id);
+    const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
     const { action } = await req.json().catch(() => ({ action: 'like' }));
 
     if (action === 'unlike') {
-      await PostLike.findOneAndDelete({ postId: params.id, userId: payload.userId });
+      await PostLike.findOneAndDelete({ postId: id, userId: payload.userId });
       post.likes = Math.max(0, post.likes - 1);
     } else {
       // upsert prevents duplicate likes
       const result = await PostLike.findOneAndUpdate(
-        { postId: params.id, userId: payload.userId },
-        { postId: params.id, userId: payload.userId },
+        { postId: id, userId: payload.userId },
+        { postId: id, userId: payload.userId },
         { upsert: true, new: true }
       );
 
@@ -52,7 +53,7 @@ export async function POST(
             type:        'like',
             actorId:     payload.userId,
             text:        'Someone liked your post',
-            link:        `/post/${params.id}`,
+            link:        `/post/${id}`,
           }).catch(() => {});
         }
       }
@@ -64,7 +65,7 @@ export async function POST(
   } catch (err) {
     // E11000 duplicate key — already liked, just return current state
     if (err instanceof Error && err.message.includes('E11000')) {
-      const post = await Post.findById(params.id).lean();
+      const post = await Post.findById(id).lean();
       return sendSuccess({ likes: post?.likes ?? 0, liked: true });
     }
     return sendServerError(err instanceof Error ? err.message : String(err));

@@ -16,8 +16,9 @@ type MsgDoc  = { _id: unknown; text: string; senderId: unknown; read: boolean; c
 // GET /api/messages/[id] — fetch messages in a conversation
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return sendError('Unauthorized', 401);
   const payload = verifyToken(authHeader.slice(7));
@@ -25,7 +26,7 @@ export async function GET(
 
   try {
     await connectDB();
-    const convo = await Conversation.findById(params.id).lean() as ConvoDoc | null;
+    const convo = await Conversation.findById(id).lean() as ConvoDoc | null;
     if (!convo) return sendNotFound('Conversation not found');
 
     const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
@@ -36,7 +37,7 @@ export async function GET(
     const limit  = Math.min(50, parseInt(sp.get('limit') ?? '30'));
     const skip   = (page - 1) * limit;
 
-    const messages = await Message.find({ conversationId: params.id })
+    const messages = await Message.find({ conversationId: id })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -44,13 +45,13 @@ export async function GET(
 
     // Mark messages as read
     await Message.updateMany(
-      { conversationId: params.id, senderId: { $ne: payload.userId }, read: false },
+      { conversationId: id, senderId: { $ne: payload.userId }, read: false },
       { $set: { read: true } }
     );
 
     // Reset unread count for this user
     await Conversation.updateOne(
-      { _id: params.id },
+      { _id: id },
       { $set: { [`unreadCounts.${payload.userId}`]: 0 } }
     );
 
@@ -72,8 +73,9 @@ export async function GET(
 // POST /api/messages/[id] — send a message in a conversation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return sendError('Unauthorized', 401);
   const payload = verifyToken(authHeader.slice(7));
@@ -84,21 +86,21 @@ export async function POST(
     if (!text?.trim()) return sendError('Message text is required', 400);
 
     await connectDB();
-    const convo = await Conversation.findById(params.id).lean() as ConvoDoc | null;
+    const convo = await Conversation.findById(id).lean() as ConvoDoc | null;
     if (!convo) return sendNotFound('Conversation not found');
 
     const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
     if (!isParticipant) return sendError('Access denied', 403);
 
     const message = await Message.create({
-      conversationId: params.id,
+      conversationId: id,
       senderId:       payload.userId,
       text:           text.trim(),
     });
 
     // Increment unread counts for other participants
     await Conversation.updateOne(
-      { _id: params.id },
+      { _id: id },
       {
         lastMessage:   text.trim(),
         lastMessageAt: new Date(),

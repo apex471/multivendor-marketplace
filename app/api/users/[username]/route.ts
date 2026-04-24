@@ -15,12 +15,12 @@ import {
 // or falls back to _id lookup
 export async function GET(
   req: NextRequest,
-  { params }: { params: { username: string } }
+  { params }: { params: Promise<{ username: string }> }
 ) {
   try {
     await connectDB();
 
-    const { username } = params;
+    const { username } = await params;
 
     // Try _id first (MongoDB ObjectId 24-char hex)
     let user = null;

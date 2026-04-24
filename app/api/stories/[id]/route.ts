@@ -12,11 +12,12 @@ import {
 // GET /api/stories/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await connectDB();
-    const story = await Story.findById(params.id).lean() as Record<string, unknown> | null;
+    const story = await Story.findById(id).lean() as Record<string, unknown> | null;
     if (!story) return sendNotFound('Story not found or has expired');
 
     const author = await User.findById(story.authorId)
