@@ -6,6 +6,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { getAuthToken } from '@/lib/api/auth';
+
+interface AppNotification {
+  id: string;
+  text: string;
+  time: string;
+  read: boolean;
+  link?: string | null;
+}
 
 export default function Header() {
   const pathname = usePathname();
@@ -17,38 +26,37 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    if (profileMenuOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [profileMenuOpen]);
-
-  const handleLogout = () => {
-    logout();
-    setProfileMenuOpen(false);
-    setMobileMenuOpen(false);
-    router.push('/');
+  const loadNotifications = () => {
+    const token = getAuthToken();
+    if (!token) return;
+    fetch('/api/notifications?limit=10', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (!json.success) return;
+        setNotifications((json.data.notifications ?? []).map((n: Record<string, unknown>) => ({
+          id:   String(n.id),
+          text: (n.text ?? n.message ?? '') as string,
+          time: new Date((n.createdAt as string) ?? Date.now()).toLocaleDateString(),
+          read: (n.isRead ?? false) as boolean,
+          link: (n.link ?? null) as string | null,
+        })));
+      })
+      .catch(() => { /* non-critical */ });
   };
-  
-  const { items: cartItems } = useCart();
-  const cartItemsCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
-  const hasNotifications = true;
-  const isLoggedIn = !!user;
 
-  const navigation = [
-    { name: 'Shop', href: '/shop' },
-    { name: 'Brands', href: '/brands' },
-    { name: 'Vendors', href: '/vendors' },
-    { name: 'Feed', href: '/feed' },
-    { name: 'Explore', href: '/explore' },
-  ];
+  useEffect(() => {
+    loadNotifications();
+  }, []); // mount-only — intentional
+
+  const handleNotificationClick = () => {
+    setNotificationsOpen(prev => {
+      if (!prev) loadNotifications();
+      return !prev;
+    });
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,14 +75,35 @@ export default function Header() {
     router.push('/cart');
   };
 
-  const handleNotificationClick = () => {
-    setNotificationsOpen(!notificationsOpen);
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    }
+    if (profileMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [profileMenuOpen]);
+
+  const handleLogout = () => {
+    logout();
+    setProfileMenuOpen(false);
+    setMobileMenuOpen(false);
+    router.push('/');
   };
 
-  const mockNotifications = [
-    { id: 1, text: 'Your order has been shipped', time: '2h ago', read: false },
-    { id: 2, text: 'New vendor nearby: Luxury Boutique', time: '5h ago', read: false },
-    { id: 3, text: 'Sale: 30% off watches', time: '1d ago', read: true },
+  const { items: cartItems } = useCart();
+  const cartItemsCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const hasNotifications = notifications.some(n => !n.read);
+  const isLoggedIn = !!user;
+
+  const navigation = [
+    { name: 'Shop', href: '/shop' },
+    { name: 'Brands', href: '/brands' },
+    { name: 'Vendors', href: '/vendors' },
+    { name: 'Feed', href: '/feed' },
+    { name: 'Explore', href: '/explore' },
   ];
 
   return (
@@ -155,18 +184,22 @@ export default function Header() {
                     <h3 className="font-semibold text-charcoal-900 dark:text-white">Notifications</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {mockNotifications.map((notif) => (
-                      <button
-                        key={notif.id}
-                        onClick={() => setNotificationsOpen(false)}
-                        className={`w-full text-left p-4 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors border-b border-cool-gray-100 dark:border-charcoal-700 ${
-                          !notif.read ? 'bg-gold-50 dark:bg-charcoal-700/50' : ''
-                        }`}
-                      >
-                        <p className="text-sm text-charcoal-900 dark:text-white">{notif.text}</p>
-                        <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mt-1">{notif.time}</p>
-                      </button>
-                    ))}
+                    {notifications.length === 0 ? (
+                      <p className="p-4 text-sm text-charcoal-500 dark:text-cool-gray-400 text-center">No notifications yet</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <button
+                          key={notif.id}
+                          onClick={() => { setNotificationsOpen(false); if (notif.link) router.push(notif.link); }}
+                          className={`w-full text-left p-4 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors border-b border-cool-gray-100 dark:border-charcoal-700 ${
+                            !notif.read ? 'bg-gold-50 dark:bg-charcoal-700/50' : ''
+                          }`}
+                        >
+                          <p className="text-sm text-charcoal-900 dark:text-white">{notif.text}</p>
+                          <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mt-1">{notif.time}</p>
+                        </button>
+                      ))
+                    )}
                   </div>
                   <div className="p-3 border-t border-cool-gray-200 dark:border-charcoal-700">
                     <button className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold">
@@ -198,7 +231,7 @@ export default function Header() {
                     aria-expanded={profileMenuOpen}
                   >
                     <span className="text-lg sm:text-xl">👤</span>
-                    <span className="hidden lg:block text-xs font-medium max-w-[80px] truncate">
+                    <span className="hidden lg:block text-xs font-medium max-w-20 truncate">
                       {user?.firstName || user?.fullName?.split(' ')[0] || 'Account'}
                     </span>
                     <span className="text-xs opacity-60">{profileMenuOpen ? '▲' : '▼'}</span>

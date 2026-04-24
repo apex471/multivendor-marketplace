@@ -400,10 +400,24 @@ export default function OrderDetailPage() {
                 </Link>
                 {order.status === 'processing' && (
                   <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to cancel this order?')) {
-                        console.log('Cancel order:', order.id);
-                        alert('Order cancellation requested');
+                    onClick={async () => {
+                      if (!confirm('Are you sure you want to cancel this order?')) return;
+                      try {
+                        const { getAuthToken } = await import('@/lib/api/auth');
+                        const token = getAuthToken();
+                        const res = await fetch(`/api/orders/${order.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                          body: JSON.stringify({ status: 'cancelled' }),
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                          setOrder(prev => prev ? { ...prev, status: 'cancelled' } : prev);
+                        } else {
+                          alert(json.message ?? 'Failed to cancel order');
+                        }
+                      } catch {
+                        alert('Network error — please try again');
                       }
                     }}
                     className="block w-full px-4 py-3 border-2 border-red-300 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition-colors text-center"

@@ -277,7 +277,7 @@ export default function ExplorePage() {
                   )}
                   {/* User Avatar Overlay */}
                   <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {post.user.avatar && !post.user.avatar.includes('pravatar') ? (
+                    {post.user.avatar ? (
                       <Image
                         src={post.user.avatar}
                         alt={post.user.username}

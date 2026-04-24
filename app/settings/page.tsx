@@ -470,9 +470,24 @@ export default function SettingsPage() {
                         <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Permanently delete your account and data</p>
                       </div>
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure? This action cannot be undone.')) {
-                            console.log('Delete account');
+                        onClick={async () => {
+                          if (!confirm('Are you sure? This action cannot be undone.')) return;
+                          try {
+                            const { getAuthToken } = await import('@/lib/api/auth');
+                            const token = getAuthToken();
+                            const res = await fetch('/api/auth/me', {
+                              method: 'DELETE',
+                              headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            const json = await res.json();
+                            if (json.success) {
+                              localStorage.clear();
+                              window.location.href = '/';
+                            } else {
+                              alert(json.message ?? 'Failed to delete account');
+                            }
+                          } catch {
+                            alert('Network error — please try again');
                           }
                         }}
                         className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
