@@ -22,8 +22,8 @@ interface Product {
 interface BrandData {
   id: string;
   name: string;
-  logo: string;
-  banner: string;
+  logo: string | null;
+  banner: string | null;
   category: string;
   description: string;
   founded: string;
@@ -52,8 +52,8 @@ export default function BrandDetailPage() {
         setBrand({
           id:             String(b.id),
           name:           b.name,
-          logo:           b.avatar || 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=300',
-          banner:         'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=1200',
+          logo:           b.avatar || null,
+          banner:         b.banner || null,
           category:       'Brand',
           description:    b.bio || `Welcome to ${b.name}.`,
           founded:        new Date(b.joinedAt).getFullYear().toString(),
@@ -64,7 +64,7 @@ export default function BrandDetailPage() {
             products:         b.productCount,
             affiliateVendors: 0,
             followers:        0,
-            rating:           4.5,
+            rating:           b.rating ?? 0,
           },
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -123,13 +123,15 @@ export default function BrandDetailPage() {
 
       {/* Banner */}
       <div className="relative h-48 sm:h-64 md:h-80 bg-linear-to-br from-charcoal-800 to-charcoal-900 overflow-hidden">
-        <Image
-          src={brand.banner}
-          alt={brand.name}
-          fill
-          className="object-cover opacity-60"
-          priority
-        />
+        {brand.banner && (
+          <Image
+            src={brand.banner}
+            alt={brand.name}
+            fill
+            className="object-cover opacity-60"
+            priority
+          />
+        )}
         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent"></div>
       </div>
 
@@ -139,14 +141,18 @@ export default function BrandDetailPage() {
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Logo */}
             <div className="shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white dark:bg-charcoal-700 rounded-2xl shadow-lg border-4 border-cool-gray-100 dark:border-charcoal-600 overflow-hidden mx-auto sm:mx-0">
-                <Image
-                  src={brand.logo}
-                  alt={brand.name}
-                  width={128}
-                  height={128}
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white dark:bg-charcoal-700 rounded-2xl shadow-lg border-4 border-cool-gray-100 dark:border-charcoal-600 overflow-hidden mx-auto sm:mx-0 flex items-center justify-center">
+                {brand.logo ? (
+                  <Image
+                    src={brand.logo}
+                    alt={brand.name}
+                    width={128}
+                    height={128}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-4xl font-bold text-charcoal-400 dark:text-charcoal-300">{brand.name.charAt(0)}</span>
+                )}
               </div>
             </div>
 

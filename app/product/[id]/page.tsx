@@ -11,7 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 interface Review {
   id: string;
   author: string;
-  avatar: string;
+  avatar: string | null;
   rating: number;
   date: string;
   comment: string;
@@ -79,7 +79,7 @@ export default function ProductDetailPage() {
           verified?: boolean; helpful?: number;
         }) => ({
           id: String(r._id), author: r.userName,
-          avatar: r.userAvatar ?? `https://i.pravatar.cc/40?u=${r._id}`,
+          avatar: r.userAvatar ?? null,
           rating: r.rating, date: new Date(r.createdAt).toLocaleDateString(),
           comment: r.comment, verified: r.verified ?? false, helpful: r.helpful ?? 0,
         })));
@@ -515,13 +515,17 @@ export default function ProductDetailPage() {
                 {reviews.map((review) => (
                   <div key={review.id} className="border-b border-cool-gray-300 dark:border-charcoal-700 pb-6 last:border-0">
                     <div className="flex items-start gap-4">
-                      <Image
-                        src={review.avatar}
-                        alt={review.author}
-                        width={48}
-                        height={48}
-                        className="rounded-full"
-                      />
+                      {review.avatar ? (
+                        <Image
+                          src={review.avatar}
+                          alt={review.author}
+                          width={48}
+                          height={48}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-charcoal-200 dark:bg-charcoal-600 flex items-center justify-center text-lg font-bold text-charcoal-600 dark:text-white shrink-0">{review.author.charAt(0)}</div>
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <div>

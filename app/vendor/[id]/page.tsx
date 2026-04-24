@@ -2,12 +2,15 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCart } from '../../../contexts/CartContext';
 
-export default function VendorDetailPage({ params }: { params: { id: string } }) {
+export default function VendorDetailPage() {
+  const params = useParams();
+  const vendorId = params.id as string;
   const { addItem: addToCart } = useCart();
   const [activeTab, setActiveTab] = useState<'products' | 'posts' | 'about'>('products');
   const [isFollowing, setIsFollowing] = useState(false);
@@ -28,7 +31,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/vendors/${params.id}`)
+    fetch(`/api/vendors/${vendorId}`)
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data?.vendor) return;
@@ -63,7 +66,7 @@ export default function VendorDetailPage({ params }: { params: { id: string } })
         })));
       })
       .finally(() => setIsLoading(false));
-  }, [params.id]);
+  }, [vendorId]);
 
   const handleAddToCart = (product: VendorProduct) => {
     addToCart({

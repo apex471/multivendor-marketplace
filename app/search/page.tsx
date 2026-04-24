@@ -53,7 +53,7 @@ function SearchContent() {
               id:     p._id,
               name:   p.name,
               price:  p.price,
-              image:  p.images?.[0] ?? 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+              image:  p.images?.[0] ?? '/images/placeholder.jpg',
               rating: p.rating ?? 0,
             }))
           );

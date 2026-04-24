@@ -19,9 +19,9 @@ interface Comment {
 
 interface PostData {
   id: string;
-  image: string;
+  image: string | null;
   caption: string;
-  user: { id: string; username: string; fullName: string; avatar: string; verified: boolean };
+  user: { id: string; username: string; fullName: string; avatar: string | null; verified: boolean };
   location: string;
   timestamp: string;
   likes: number;
@@ -54,13 +54,13 @@ export default function PostDetailPage() {
         const p = json.data.post;
         setPost({
           id:            p.id,
-          image:         p.images?.[0] ?? 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800',
+          image:         p.images?.[0] ?? null,
           caption:       p.content,
           user: {
             id:       String(p.author.id),
             username:  p.author.username,
             fullName:  p.author.name,
-            avatar:    p.author.avatar ?? `https://i.pravatar.cc/150?u=${p.author.id}`,
+            avatar:    p.author.avatar ?? null,
             verified:  p.author.verified,
           },
           location:      '',
@@ -210,14 +210,18 @@ export default function PostDetailPage() {
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="grid lg:grid-cols-2">
               {/* Image Section */}
-              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto">
-                <Image
-                  src={post.image}
-                  alt={post.caption}
-                  fill
-                  className="object-cover"
-                  priority
-                />
+              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center">
+                {post.image ? (
+                  <Image
+                    src={post.image}
+                    alt={post.caption}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                ) : (
+                  <span className="text-charcoal-500 text-6xl">🖼️</span>
+                )}
               </div>
 
               {/* Content Section */}
@@ -226,13 +230,17 @@ export default function PostDetailPage() {
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <Link href={`/profile/${post.user.username}`} className="flex items-center gap-3 hover:opacity-80">
-                      <Image
-                        src={post.user.avatar}
-                        alt={post.user.fullName}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                      />
+                      {post.user.avatar ? (
+                        <Image
+                          src={post.user.avatar}
+                          alt={post.user.fullName}
+                          width={40}
+                          height={40}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-charcoal-300 dark:bg-charcoal-600 flex items-center justify-center text-sm font-bold text-charcoal-700 dark:text-white">{post.user.fullName.charAt(0)}</div>
+                      )}
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-charcoal-900">{post.user.username}</span>
@@ -256,13 +264,17 @@ export default function PostDetailPage() {
                   {/* Caption as first comment */}
                   <div className="flex gap-3">
                     <Link href={`/profile/${post.user.username}`}>
-                      <Image
-                        src={post.user.avatar}
-                        alt={post.user.fullName}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
+                      {post.user.avatar ? (
+                        <Image
+                          src={post.user.avatar}
+                          alt={post.user.fullName}
+                          width={32}
+                          height={32}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-charcoal-300 dark:bg-charcoal-600 flex items-center justify-center text-xs font-bold text-charcoal-700 dark:text-white">{post.user.fullName.charAt(0)}</div>
+                      )}
                     </Link>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">

@@ -82,7 +82,7 @@ export default function OrderDetailPage() {
                 name:     item.name,
                 price:    item.price,
                 quantity: item.quantity,
-                image:    item.image || 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+                image:    item.image || '/images/placeholder.jpg',
                 vendor:   item.vendor ?? raw.vendorName,
               }))
             : (raw.products as string[]).map((name: string, i: number) => ({
@@ -90,7 +90,7 @@ export default function OrderDetailPage() {
                 name,
                 price:    0,
                 quantity: 1,
-                image:    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400',
+                image:    '/images/placeholder.jpg',
                 vendor:   raw.vendorName,
               })),
           subtotal:         raw.subtotal ?? raw.total,

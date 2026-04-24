@@ -18,7 +18,7 @@ interface Post {
 interface UserData {
   username: string;
   fullName: string;
-  avatar: string;
+  avatar: string | null;
   bio: string;
   location: string;
   website: string;
@@ -64,7 +64,7 @@ export default function ProfilePage() {
           userId:      String(u.id),
           username:    u.username,
           fullName:    u.fullName,
-          avatar:      u.avatar ?? `https://i.pravatar.cc/300?u=${username}`,
+          avatar:      u.avatar ?? null,
           bio:         u.bio ?? '',
           location:    '',
           website:     '',
@@ -176,12 +176,18 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="shrink-0">
               <div className="relative w-32 h-32 sm:w-40 sm:h-40 mx-auto sm:mx-0">
-                <Image
-                  src={user.avatar}
-                  alt={user.fullName}
-                  fill
-                  className="rounded-full object-cover border-4 border-gold-200"
-                />
+                {user.avatar ? (
+                  <Image
+                    src={user.avatar}
+                    alt={user.fullName}
+                    fill
+                    className="rounded-full object-cover border-4 border-gold-200"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gold-100 dark:bg-charcoal-700 border-4 border-gold-200 flex items-center justify-center text-4xl font-bold text-gold-600">
+                    {user.fullName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 {user.isVerified && (
                   <div className="absolute bottom-2 right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
                     <span className="text-white text-sm">✓</span>
@@ -402,7 +408,7 @@ export default function ProfilePage() {
                 <div key={fu.id} className="flex items-center gap-3 py-3 border-b border-gray-100 dark:border-charcoal-700 last:border-0">
                   <Link href={`/profile/${fu.username}`} onClick={() => setFollowModal(null)}>
                     <Image
-                      src={fu.avatar ?? `https://i.pravatar.cc/80?u=${fu.id}`}
+                      src={fu.avatar ?? ''}
                       alt={fu.fullName}
                       width={44}
                       height={44}

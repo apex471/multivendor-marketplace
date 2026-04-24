@@ -17,25 +17,29 @@ export default function AboutPage() {
     {
       name: 'Sarah Johnson',
       role: 'Founder & CEO',
-      image: 'https://i.pravatar.cc/300?u=sarah',
+      initials: 'SJ',
+      color: 'bg-rose-500',
       bio: '15 years in fashion tech',
     },
     {
       name: 'Michael Chen',
       role: 'CTO',
-      image: 'https://i.pravatar.cc/300?u=michael',
+      initials: 'MC',
+      color: 'bg-blue-600',
       bio: 'Former tech lead at major e-commerce',
     },
     {
       name: 'Emma Williams',
       role: 'Head of Design',
-      image: 'https://i.pravatar.cc/300?u=emma',
+      initials: 'EW',
+      color: 'bg-purple-500',
       bio: 'Award-winning fashion designer',
     },
     {
       name: 'David Rodriguez',
       role: 'VP of Operations',
-      image: 'https://i.pravatar.cc/300?u=david',
+      initials: 'DR',
+      color: 'bg-emerald-600',
       bio: 'Supply chain optimization expert',
     },
   ];
@@ -166,13 +170,8 @@ export default function AboutPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {team.map((member, index) => (
             <div key={index} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md overflow-hidden">
-              <div className="relative h-64">
-                <Image
-                  src={member.image}
-                  alt={member.name}
-                  fill
-                  className="object-cover"
-                />
+              <div className={`h-64 flex items-center justify-center ${member.color}`}>
+                <span className="text-6xl font-bold text-white">{member.initials}</span>
               </div>
               <div className="p-6 text-center">
                 <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-1">{member.name}</h3>

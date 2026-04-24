@@ -72,7 +72,7 @@ export default function ExplorePage() {
         comments: p.comments,
         user: {
           username: p.authorName ?? 'user',
-          avatar:   p.authorAvatar ?? `https://i.pravatar.cc/40?u=${p._id}`,
+          avatar:   p.authorAvatar ?? null,
         },
       }));
       setTrendingPosts(prev => append ? [...prev, ...mapped] : mapped);
