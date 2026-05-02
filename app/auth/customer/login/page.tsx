@@ -166,18 +166,7 @@ export default function CustomerLoginPage() {
 
         </div>
 
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-            Are you a seller?{' '}
-            <Link href="/auth/vendor/login" className="text-gold-600 hover:text-gold-700 font-semibold">
-              Vendor Login
-            </Link>
-            {' | '}
-            <Link href="/auth/brand/login" className="text-gold-600 hover:text-gold-700 font-semibold">
-              Brand Login
-            </Link>
-          </p>
-        </div>
+
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 import { useCart } from "../contexts/CartContext";
 import { getAuthToken } from "../lib/api/auth";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Post {
   _id: string;
@@ -51,6 +52,8 @@ export default function Home() {
   const [_selectedCategory, setSelectedCategory] = useState('');
   const router = useRouter();
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const isCustomer = user?.role === 'customer';
 
   const [posts,    setPosts]    = useState<Post[]>([]);
   const [vendors,  setVendors]  = useState<Vendor[]>([]);
@@ -516,31 +519,33 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section>
-          <div className="bg-white dark:bg-charcoal-800 rounded-xl sm:rounded-2xl shadow-xl dark:shadow-charcoal-950/50 p-6 sm:p-8 md:p-12 text-center">
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-2 sm:mb-3 md:mb-4 leading-tight px-2">
-              Start Your Fashion Business Today
-            </h2>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-cool-gray-500 dark:text-cool-gray-400 mb-6 sm:mb-7 md:mb-8 max-w-2xl mx-auto px-2">
-              Join thousands of vendors selling on our platform. Easy setup, powerful tools, and reach thousands of customers.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
-              <Link 
-                href="/auth/signup?role=vendor"
-                className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-lg font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
-              >
-                Become a Vendor
-              </Link>
-              <Link 
-                href="/auth/signup?role=customer"
-                className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-gold-600 dark:bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
-              >
-                Start Shopping
-              </Link>
+        {/* CTA Section — hidden for logged-in customers */}
+        {!isCustomer && (
+          <section>
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl sm:rounded-2xl shadow-xl dark:shadow-charcoal-950/50 p-6 sm:p-8 md:p-12 text-center">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-2 sm:mb-3 md:mb-4 leading-tight px-2">
+                Start Your Fashion Business Today
+              </h2>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-cool-gray-500 dark:text-cool-gray-400 mb-6 sm:mb-7 md:mb-8 max-w-2xl mx-auto px-2">
+                Join thousands of vendors selling on our platform. Easy setup, powerful tools, and reach thousands of customers.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+                <Link 
+                  href="/auth/signup?role=vendor"
+                  className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-lg font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                >
+                  Become a Vendor
+                </Link>
+                <Link 
+                  href="/auth/signup?role=customer"
+                  className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-gold-600 dark:bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                >
+                  Start Shopping
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
 
       <Footer />

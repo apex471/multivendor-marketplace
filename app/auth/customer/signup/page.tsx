@@ -237,14 +237,7 @@ export default function CustomerSignupPage() {
 
         </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-            Want to sell on our platform?{' '}
-            <Link href="/auth/vendor/signup" className="text-gold-600 hover:text-gold-700 font-semibold">
-              Become a Vendor
-            </Link>
-          </p>
-        </div>
+
       </div>
     </div>
   );

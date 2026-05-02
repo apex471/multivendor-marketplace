@@ -1,8 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { user } = useAuth();
+  const isCustomer = user?.role === 'customer';
 
   return (
     <footer className="bg-charcoal-900 text-white">
@@ -101,21 +106,23 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Brand Owner CTA */}
-        <div className="border-t border-charcoal-800 mt-6 sm:mt-7 md:mt-8 pt-6 sm:pt-7 md:pt-8">
-          <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-            <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Own a Fashion Brand?</h3>
-            <p className="text-sm sm:text-base text-white/90 mb-4">
-              Partner with top vendors through our affiliate program. Expand your reach and grow your brand.
-            </p>
-            <Link 
-              href="/auth/signup?role=brand"
-              className="inline-block px-6 sm:px-8 py-2.5 sm:py-3 bg-charcoal-900 text-white rounded-lg font-semibold hover:bg-charcoal-800 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
-            >
-              Become a Brand Owner
-            </Link>
+        {/* Brand Owner CTA — hidden for logged-in customers */}
+        {!isCustomer && (
+          <div className="border-t border-charcoal-800 mt-6 sm:mt-7 md:mt-8 pt-6 sm:pt-7 md:pt-8">
+            <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Own a Fashion Brand?</h3>
+              <p className="text-sm sm:text-base text-white/90 mb-4">
+                Partner with top vendors through our affiliate program. Expand your reach and grow your brand.
+              </p>
+              <Link 
+                href="/auth/signup?role=brand"
+                className="inline-block px-6 sm:px-8 py-2.5 sm:py-3 bg-charcoal-900 text-white rounded-lg font-semibold hover:bg-charcoal-800 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+              >
+                Become a Brand Owner
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="border-t border-charcoal-800 mt-6 sm:mt-7 md:mt-8 pt-6 sm:pt-7 md:pt-8 text-center text-xs sm:text-sm text-gray-400">
           <p>© {currentYear} CLW. All rights reserved.</p>
