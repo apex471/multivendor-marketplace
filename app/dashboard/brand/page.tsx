@@ -57,6 +57,41 @@ export default function BrandDashboard() {
   });
   const [_statsLoading, setStatsLoading] = useState(true);
 
+  // Products state
+  interface BrandProduct {
+    id: string; name: string; price: number; stock: number;
+    status: string; category: string; image: string; sku: string;
+  }
+  const [products, setProducts] = useState<BrandProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+
+  const fetchProducts = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setProductsLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: '50' });
+      if (productSearch) params.set('search', productSearch);
+      const res = await fetch(`/api/vendor/products?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setProducts((json.data.products as Array<{ _id: string; name: string; price: number; stock?: number; status: string; category: string; images?: string[]; sku?: string }>).map(p => ({
+          id: p._id, name: p.name, price: p.price, stock: p.stock ?? 0,
+          status: p.status, category: p.category,
+          image: p.images?.[0] ?? '/images/placeholder.jpg', sku: p.sku ?? '—',
+        })));
+      }
+    } catch { /* silent */ }
+    finally { setProductsLoading(false); }
+  }, [productSearch]);
+
+  useEffect(() => {
+    if (activeTab === 'products') fetchProducts();
+  }, [activeTab, fetchProducts]);
+
   useEffect(() => {
     const authToken = getAuthToken();
     if (!authToken) return;
@@ -300,7 +335,7 @@ export default function BrandDashboard() {
         <h2 className="text-xl font-display font-bold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
-            onClick={() => setActiveTab('products')}
+            onClick={() => router.push('/vendor/products/add')}
             className="px-4 py-3 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11"
           >
             ➕ Add Product
@@ -326,23 +361,101 @@ export default function BrandDashboard() {
         </div>
       </div>
     </div>
-  ), [brandStats, setActiveTab]);
+  ), [brandStats, setActiveTab, router]);
 
   const productsTab = useMemo(() => (
     <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-white">Product Catalog</h2>
-        <button className="px-4 py-2 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11">
+        <button
+          onClick={() => router.push('/vendor/products/add')}
+          className="px-4 py-2 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11"
+        >
           + Add Product
         </button>
       </div>
-      <div className="text-center py-12">
-        <span className="text-6xl mb-4 block">📦</span>
-        <p className="text-cool-gray-400 mb-4">Manage your product catalog here</p>
-        <p className="text-sm text-cool-gray-500">Add products that affiliates can showcase in their stores</p>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search products…"
+          value={productSearch}
+          onChange={e => setProductSearch(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg bg-charcoal-900 border border-charcoal-700 text-white placeholder-cool-gray-500 focus:outline-none focus:border-gold-500"
+        />
       </div>
+
+      {productsLoading ? (
+        <div className="text-center py-12 text-cool-gray-400">Loading products…</div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-12">
+          <span className="text-6xl mb-4 block">📦</span>
+          <p className="text-cool-gray-400 mb-4">No products yet</p>
+          <p className="text-sm text-cool-gray-500 mb-6">Add products that affiliates can showcase in their stores</p>
+          <button
+            onClick={() => router.push('/vendor/products/add')}
+            className="px-6 py-3 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors"
+          >
+            + Add Your First Product
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-charcoal-700 text-cool-gray-400 text-left">
+                <th className="pb-3 pr-4">Product</th>
+                <th className="pb-3 pr-4">Category</th>
+                <th className="pb-3 pr-4">Price</th>
+                <th className="pb-3 pr-4">Stock</th>
+                <th className="pb-3 pr-4">Status</th>
+                <th className="pb-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(p => (
+                <tr key={p.id} className="border-b border-charcoal-700/50 hover:bg-charcoal-700/30 transition-colors">
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-charcoal-700 shrink-0">
+                        <Image src={p.image} alt={p.name} width={40} height={40} className="object-cover w-full h-full" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">{p.name}</p>
+                        <p className="text-xs text-cool-gray-500">SKU: {p.sku}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4 text-cool-gray-300">{p.category}</td>
+                  <td className="py-3 pr-4 text-white font-semibold">${p.price.toFixed(2)}</td>
+                  <td className="py-3 pr-4 text-cool-gray-300">{p.stock}</td>
+                  <td className="py-3 pr-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      p.status === 'active'   ? 'bg-green-900/40 text-green-400' :
+                      p.status === 'pending'  ? 'bg-yellow-900/40 text-yellow-400' :
+                      p.status === 'rejected' ? 'bg-red-900/40 text-red-400' :
+                      'bg-charcoal-700 text-cool-gray-400'
+                    }`}>
+                      {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="py-3">
+                    <button
+                      onClick={() => router.push(`/vendor/products/${p.id}`)}
+                      className="text-gold-400 hover:text-gold-300 text-xs font-semibold"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  ), []);
+  ), [products, productsLoading, productSearch, setProductSearch, router]);
 
   const affiliatesTab = useMemo(() => (
     <div className="space-y-6">
