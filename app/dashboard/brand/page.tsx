@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
@@ -124,17 +125,17 @@ export default function BrandDashboard() {
   const logisticsTab = useMemo(() => (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="bg-linear-to-br from-gray-900 to-gray-700 text-white rounded-xl p-6 sm:p-8">
+      <div className="bg-linear-to-br from-charcoal-950 to-charcoal-800 border border-charcoal-700 text-white rounded-2xl p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-display font-bold mb-1">Logistics Management</h2>
-            <p className="text-white/70 text-sm">
+            <p className="text-cool-gray-400 text-sm">
               Browse trusted delivery partners and invite logistics companies to join CLW.
             </p>
           </div>
           <Link
             href="/logistics/providers"
-            className="shrink-0 inline-flex items-center gap-2 px-5 py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm transition-all"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-3 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold text-sm transition-all"
           >
             <span>🚚</span> Browse Providers
           </Link>
@@ -144,26 +145,26 @@ export default function BrandDashboard() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { icon: '📦', label: 'Active Shipments', value: brandStats.totalProducts > 0 ? '—' : '0',      color: 'bg-blue-50 border-blue-200 text-blue-700' },
-          { icon: '✅', label: 'Delivery Rate',    value: '—',                                            color: 'bg-green-50 border-green-200 text-green-700' },
-          { icon: '⏱️', label: 'Avg Delivery',     value: '—',                                            color: 'bg-purple-50 border-purple-200 text-purple-700' },
-          { icon: '⭐', label: 'Provider Rating',  value: '—',                                            color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+          { icon: '📦', label: 'Active Shipments', value: brandStats.totalProducts > 0 ? '—' : '0',      color: 'bg-charcoal-800 border-charcoal-700 text-white' },
+          { icon: '✅', label: 'Delivery Rate',    value: '—',                                            color: 'bg-charcoal-800 border-charcoal-700 text-white' },
+          { icon: '⏱️', label: 'Avg Delivery',     value: '—',                                            color: 'bg-charcoal-800 border-charcoal-700 text-white' },
+          { icon: '⭐', label: 'Provider Rating',  value: '—',                                            color: 'bg-charcoal-800 border-charcoal-700 text-white' },
         ].map((s) => (
           <div key={s.label} className={`rounded-xl border p-4 ${s.color.split(' ').slice(0, 2).join(' ')}`}>
             <div className="text-2xl mb-1">{s.icon}</div>
-            <p className="text-xs font-medium text-gray-600 mb-1">{s.label}</p>
+            <p className="text-xs font-medium text-cool-gray-500 mb-1">{s.label}</p>
             <p className={`text-2xl font-bold ${s.color.split(' ')[2]}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Invite Logistics Provider */}
-      <div className="bg-white rounded-xl shadow-md p-5 sm:p-6 border-2 border-dashed border-yellow-400">
+      <div className="bg-charcoal-800 border-2 border-dashed border-gold-600/50 rounded-2xl p-5 sm:p-6">
         <div className="flex items-start gap-4 mb-5">
-          <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl shrink-0">🔗</div>
+          <div className="w-12 h-12 bg-gold-900/20 border border-gold-700/40 rounded-xl flex items-center justify-center text-2xl shrink-0">🔗</div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Invite a Logistics Provider</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-bold text-white mb-1">Invite a Logistics Provider</h3>
+            <p className="text-sm text-cool-gray-400">
               As a brand owner, you can generate a unique referral link and share it with a logistics company. They&apos;ll use it to register on CLW. Customers cannot generate or view these invitations.
             </p>
           </div>
@@ -172,19 +173,19 @@ export default function BrandDashboard() {
         {!referralLink ? (
           <button
             onClick={handleGenerateReferral}
-            className="w-full sm:w-auto px-6 py-3 bg-yellow-600 text-white rounded-xl hover:bg-yellow-700 transition-colors font-semibold"
+            className="w-full sm:w-auto px-6 py-3 bg-gold-600 text-charcoal-950 rounded-xl hover:bg-gold-500 transition-colors font-bold"
           >
             🔗 Generate Referral Link
           </button>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <span className="text-green-600 font-bold text-sm shrink-0">✓ Ready</span>
+            <div className="flex items-center gap-2 p-3 bg-charcoal-700 border border-charcoal-600 rounded-lg">
+              <span className="text-gold-400 font-bold text-sm shrink-0">✓ Ready</span>
               <input
                 type="text"
                 readOnly
                 value={referralLink}
-                className="flex-1 bg-transparent text-xs text-gray-600 outline-none font-mono truncate"
+                className="flex-1 bg-transparent text-xs text-cool-gray-400 outline-none font-mono truncate"
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
             </div>
@@ -192,7 +193,7 @@ export default function BrandDashboard() {
               <button
                 onClick={handleCopyReferral}
                 className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                  referralCopied ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                  referralCopied ? 'bg-emerald-700 text-white' : 'bg-gold-600 text-charcoal-950 hover:bg-gold-500'
                 }`}
               >
                 {referralCopied ? '✓ Copied!' : '📋 Copy Link'}
@@ -205,26 +206,26 @@ export default function BrandDashboard() {
                   );
                   window.open(`mailto:?subject=${subject}&body=${body}`);
                 }}
-                className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors"
+                className="px-5 py-2.5 border border-charcoal-600 text-cool-gray-300 rounded-xl font-semibold text-sm hover:bg-charcoal-700 transition-colors"
               >
                 📧 Send via Email
               </button>
               <button
                 onClick={() => setReferralLink('')}
-                className="px-4 py-2.5 text-gray-500 rounded-xl font-semibold text-sm hover:bg-gray-100 transition-colors"
+                className="px-4 py-2.5 text-cool-gray-500 rounded-xl font-semibold text-sm hover:bg-charcoal-700 transition-colors"
               >
                 ↺ Reset
               </button>
             </div>
-            <p className="text-xs text-gray-500">⏰ This link expires in 7 days. Each use creates a new registration application that you can track from the admin panel once approved.</p>
+            <p className="text-xs text-cool-gray-500">⏰ This link expires in 7 days. Each use creates a new registration application that you can track from the admin panel once approved.</p>
           </div>
         )}
       </div>
 
       {/* Info Card */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-        <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2"><span>ℹ️</span> Why invite logistics providers?</h4>
-        <ul className="space-y-1.5 text-sm text-blue-800">
+      <div className="bg-charcoal-800/60 border border-charcoal-700 rounded-xl p-5">
+        <h4 className="font-semibold text-cool-gray-200 mb-2 flex items-center gap-2"><span>ℹ️</span> Why invite logistics providers?</h4>
+        <ul className="space-y-1.5 text-sm text-cool-gray-400">
           <li>• Ensure your orders are handled by logistics companies you personally vetted</li>
           <li>• Invite companies that specialize in luxury goods, fragile items, or white-glove delivery</li>
           <li>• Invited providers must pass CLW&apos;s approval process before appearing in the directory</li>
@@ -239,88 +240,88 @@ export default function BrandDashboard() {
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Total Products</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Total Products</h3>
             <span className="text-2xl">📦</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{brandStats.totalProducts}</p>
-          <p className="text-xs text-gray-500 mt-2">In your catalog</p>
+          <p className="text-3xl font-bold text-white">{brandStats.totalProducts}</p>
+          <p className="text-xs text-cool-gray-500 mt-2">In your catalog</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Active Affiliates</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Active Affiliates</h3>
             <span className="text-2xl">🤝</span>
           </div>
-          <p className="text-3xl font-bold text-gray-400">—</p>
-          <p className="text-xs text-gray-400 mt-2">Affiliate system coming soon</p>
+          <p className="text-3xl font-bold text-cool-gray-600">—</p>
+          <p className="text-xs text-cool-gray-500 mt-2">Affiliate system coming soon</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Total Revenue</h3>
             <span className="text-2xl">💰</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">${brandStats.totalRevenue.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-2">Total revenue earned</p>
+          <p className="text-3xl font-bold text-white">${brandStats.totalRevenue.toLocaleString()}</p>
+          <p className="text-xs text-cool-gray-500 mt-2">Total revenue earned</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Monthly Revenue</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Monthly Revenue</h3>
             <span className="text-2xl">📈</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">${brandStats.monthRevenue.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-2">Current month</p>
+          <p className="text-3xl font-bold text-white">${brandStats.monthRevenue.toLocaleString()}</p>
+          <p className="text-xs text-cool-gray-500 mt-2">Current month</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Affiliate Earnings</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Affiliate Earnings</h3>
             <span className="text-2xl">💸</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">${brandStats.affiliateEarnings.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-2">Paid to partners</p>
+          <p className="text-3xl font-bold text-white">${brandStats.affiliateEarnings.toLocaleString()}</p>
+          <p className="text-xs text-cool-gray-500 mt-2">Paid to partners</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Pending Requests</h3>
+            <h3 className="text-sm font-medium text-cool-gray-400">Pending Requests</h3>
             <span className="text-2xl">⏳</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{brandStats.pendingRequests}</p>
-          <p className="text-xs text-yellow-600 mt-2">Requires action</p>
+          <p className="text-3xl font-bold text-white">{brandStats.pendingRequests}</p>
+          <p className="text-xs text-gold-500 mt-2">Requires action</p>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Quick Actions</h2>
+      <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
+        <h2 className="text-xl font-display font-bold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
             onClick={() => setActiveTab('products')}
-            className="px-4 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11"
+            className="px-4 py-3 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11"
           >
-            Add Product
+            ➕ Add Product
           </button>
           <button
             onClick={() => setActiveTab('affiliates')}
-            className="px-4 py-3 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition-colors min-h-11"
+            className="px-4 py-3 bg-charcoal-700 hover:bg-charcoal-600 border border-charcoal-600 text-cool-gray-200 rounded-xl font-semibold transition-colors min-h-11"
           >
-            Review Requests
+            📋 Review Requests
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
-            className="px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-11"
+            className="px-4 py-3 bg-charcoal-700 hover:bg-charcoal-600 border border-charcoal-600 text-cool-gray-200 rounded-xl font-semibold transition-colors min-h-11"
           >
-            View Analytics
+            📊 View Analytics
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className="px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors min-h-11"
+            className="px-4 py-3 bg-charcoal-700 hover:bg-charcoal-600 border border-charcoal-600 text-cool-gray-200 rounded-xl font-semibold transition-colors min-h-11"
           >
-            Settings
+            ⚙️ Settings
           </button>
         </div>
       </div>
@@ -328,17 +329,17 @@ export default function BrandDashboard() {
   ), [brandStats, setActiveTab]);
 
   const productsTab = useMemo(() => (
-    <div className="bg-white rounded-xl shadow-lg p-6">
+    <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-display font-bold text-gray-900">Product Catalog</h2>
-        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
+        <h2 className="text-xl font-display font-bold text-white">Product Catalog</h2>
+        <button className="px-4 py-2 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11">
           + Add Product
         </button>
       </div>
       <div className="text-center py-12">
         <span className="text-6xl mb-4 block">📦</span>
-        <p className="text-gray-600 mb-4">Manage your product catalog here</p>
-        <p className="text-sm text-gray-500">Add products that affiliates can showcase in their stores</p>
+        <p className="text-cool-gray-400 mb-4">Manage your product catalog here</p>
+        <p className="text-sm text-cool-gray-500">Add products that affiliates can showcase in their stores</p>
       </div>
     </div>
   ), []);
@@ -346,11 +347,11 @@ export default function BrandDashboard() {
   const affiliatesTab = useMemo(() => (
     <div className="space-y-6">
       {/* Coming Soon notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+      <div className="bg-gold-900/20 border border-gold-700/40 rounded-xl p-4 flex items-start gap-3">
         <span className="text-2xl">🚧</span>
         <div>
-          <p className="font-semibold text-amber-800">Affiliate Management — Coming Soon</p>
-          <p className="text-sm text-amber-700 mt-1">
+          <p className="font-semibold text-gold-300">Affiliate Management — Coming Soon</p>
+          <p className="text-sm text-gold-400/80 mt-1">
             Full affiliate management (approvals, commissions, payouts) is under active development.
             Changes made here are not yet saved and will not be reflected to partners.
           </p>
@@ -365,37 +366,37 @@ export default function BrandDashboard() {
           {affiliateRequests
             .filter(req => req.status === 'pending')
             .map(request => (
-              <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+              <div key={request.id} className="border border-charcoal-700 rounded-xl p-4 hover:border-charcoal-600 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 bg-linear-to-br from-gold-700 to-gold-500 rounded-full flex items-center justify-center text-charcoal-950 font-bold text-lg">
                         {request.vendorName.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{request.vendorName}</h3>
-                        <p className="text-sm text-gray-600">{request.storeName}</p>
+                        <h3 className="font-semibold text-white">{request.vendorName}</h3>
+                        <p className="text-sm text-cool-gray-400">{request.storeName}</p>
                       </div>
                     </div>
-                    <div className="space-y-1 text-sm text-gray-600 ml-15">
+                    <div className="space-y-1 text-sm text-cool-gray-400 ml-15">
                       <p>📧 {request.email}</p>
                       <p>📱 {request.phone}</p>
                       <p>📅 Requested: {new Date(request.requestDate).toLocaleDateString()}</p>
                     </div>
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-700">{request.message}</p>
+                    <div className="mt-3 p-3 bg-charcoal-700 rounded-lg">
+                      <p className="text-sm text-cool-gray-300">{request.message}</p>
                     </div>
                   </div>
                   <div className="flex sm:flex-col gap-2">
                     <button
                       onClick={() => handleRequestAction(request.id, 'approve')}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors min-h-11"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors min-h-11"
                     >
                       ✓ Approve
                     </button>
                     <button
                       onClick={() => handleRequestAction(request.id, 'reject')}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors min-h-11"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors min-h-11"
                     >
                       ✗ Reject
                     </button>
@@ -405,56 +406,56 @@ export default function BrandDashboard() {
             ))}
           {affiliateRequests.filter(r => r.status === 'pending').length === 0 && (
             <div className="text-center py-8">
-              <p className="text-gray-500">No pending requests</p>
+              <p className="text-cool-gray-500">No pending requests</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Active Partners */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
+        <h2 className="text-xl font-display font-bold text-white mb-4 flex items-center gap-2">
           <span className="text-2xl">🤝</span>
           Active Affiliate Partners ({affiliatePartners.length})
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Partner</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Commission</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Products</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Total Sales</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Joined</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+              <tr className="border-b border-charcoal-700">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Partner</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Commission</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Products</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Total Sales</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Joined</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-cool-gray-400">Status</th>
               </tr>
             </thead>
             <tbody>
               {affiliatePartners.map(partner => (
-                <tr key={partner.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={partner.id} className="border-b border-charcoal-700/50 hover:bg-charcoal-700/30">
                   <td className="py-4 px-4">
                     <div>
-                      <p className="font-semibold text-gray-900">{partner.vendorName}</p>
-                      <p className="text-sm text-gray-600">{partner.storeName}</p>
+                      <p className="font-semibold text-white">{partner.vendorName}</p>
+                      <p className="text-sm text-cool-gray-400">{partner.storeName}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="font-semibold text-yellow-600">{partner.commissionRate}%</span>
+                    <span className="font-semibold text-gold-500">{partner.commissionRate}%</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-gray-900">{partner.productsListed}</span>
+                    <span className="text-white">{partner.productsListed}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="font-semibold text-green-600">${partner.totalSales.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-400">${partner.totalSales.toLocaleString()}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-gray-600">{new Date(partner.joinedDate).toLocaleDateString()}</span>
+                    <span className="text-sm text-cool-gray-400">{new Date(partner.joinedDate).toLocaleDateString()}</span>
                   </td>
                   <td className="py-4 px-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      partner.status === 'active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-700'
+                      partner.status === 'active'
+                        ? 'bg-emerald-900/30 text-emerald-400'
+                        : 'bg-charcoal-700 text-cool-gray-400'
                     }`}>
                       {partner.status}
                     </span>
@@ -469,20 +470,20 @@ export default function BrandDashboard() {
   ), [affiliateRequests, affiliatePartners, handleRequestAction]);
 
   const analyticsTab = useMemo(() => (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Analytics & Reports</h2>
+    <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
+      <h2 className="text-xl font-display font-bold text-white mb-4">Analytics & Reports</h2>
       <div className="text-center py-12">
         <span className="text-6xl mb-4 block">📊</span>
-        <p className="text-gray-600 mb-4">Detailed analytics and performance metrics</p>
-        <p className="text-sm text-gray-500">Track sales, affiliate performance, and revenue trends</p>
+        <p className="text-cool-gray-400 mb-4">Detailed analytics and performance metrics</p>
+        <p className="text-sm text-cool-gray-500">Track sales, affiliate performance, and revenue trends</p>
       </div>
     </div>
   ), []);
 
   const settingsTab = useMemo(() => (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Brand Settings</h2>
+      <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
+        <h2 className="text-xl font-display font-bold text-white mb-6">Brand Settings</h2>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -501,38 +502,38 @@ export default function BrandDashboard() {
               }),
             });
           }}
-          className="space-y-4"
+          className="space-y-5"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Brand Name</label>
+            <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Brand Name</label>
             <input
               name="brandName"
               type="text"
               defaultValue={user?.fullName || ''}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-11"
+              className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-transparent outline-none min-h-11"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Default Commission Rate (%)</label>
+            <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Default Commission Rate (%)</label>
             <input
               type="number"
               defaultValue="10"
               min="0"
               max="100"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent min-h-11"
+              className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-transparent outline-none min-h-11"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Brand Description</label>
+            <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Brand Description</label>
             <textarea
               name="description"
               rows={4}
               defaultValue={(user as unknown as Record<string,string>)?.bio || ''}
               placeholder="Describe your brand…"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-transparent outline-none placeholder:text-cool-gray-600"
             />
           </div>
-          <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors min-h-11">
+          <button type="submit" className="px-6 py-3 bg-gold-600 hover:bg-gold-500 text-charcoal-950 rounded-xl font-bold transition-colors min-h-11">
             Save Changes
           </button>
         </form>
@@ -541,50 +542,76 @@ export default function BrandDashboard() {
   ), [user]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gold-600/10 via-white to-gold-600/5 dark:from-charcoal-900 dark:via-charcoal-900 dark:to-charcoal-800">
+    <div className="min-h-screen bg-charcoal-950">
       {/* Header */}
-      <header className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700 shadow-md sticky top-0 z-50">
+      <header className="bg-charcoal-900 border-b border-charcoal-800 shadow-lg shadow-charcoal-950/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">👑</span>
+              <Link href="/" className="shrink-0">
+                <Image
+                  src="/images/brand/clw-logo.png"
+                  alt="CLW"
+                  width={40}
+                  height={28}
+                  className="h-9 w-auto object-contain"
+                />
+              </Link>
+              <div className="hidden sm:block w-px h-8 bg-charcoal-700" />
               <div>
-                <h1 className="text-xl sm:text-2xl font-display font-bold text-gray-900">Brand Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600">{user?.fullName || user?.email || 'My Brand'}</p>
+                <h1 className="text-lg sm:text-xl font-display font-bold text-white flex items-center gap-2">
+                  <span>👑</span> Brand Dashboard
+                </h1>
+                <p className="text-xs text-cool-gray-500">{user?.fullName || user?.email || 'My Brand'}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm sm:text-base min-h-11"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <Link href="/" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
+                ← Marketplace
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 border border-charcoal-700 hover:border-red-700/50 text-cool-gray-400 hover:text-red-400 rounded-xl text-sm font-semibold transition-colors min-h-9"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        {/* Brand identity strip */}
+        <div className="mb-6 p-5 bg-charcoal-900 border border-charcoal-800 rounded-2xl flex items-center gap-4">
+          <div className="w-1 h-12 bg-linear-to-b from-gold-500 to-gold-700 rounded-full shrink-0" />
+          <div>
+            <p className="text-gold-500 text-xs font-semibold tracking-widest uppercase mb-0.5">Brand Owner Portal</p>
+            <h2 className="text-xl font-display font-bold text-white">{user?.fullName || 'My Brand'}</h2>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="mb-6 sm:mb-8">
-          <div className="border-b border-gray-200 overflow-x-auto">
-            <nav className="flex gap-4 sm:gap-8 min-w-max" aria-label="Tabs">
+          <div className="border-b border-charcoal-800 overflow-x-auto">
+            <nav className="flex gap-1 min-w-max" aria-label="Tabs">
               {[
-                { id: 'overview', label: 'Overview', icon: '📊' },
-                { id: 'products', label: 'Products', icon: '📦' },
+                { id: 'overview',   label: 'Overview',   icon: '📊' },
+                { id: 'products',   label: 'Products',   icon: '📦' },
                 { id: 'affiliates', label: 'Affiliates', icon: '🤝' },
-                { id: 'analytics', label: 'Analytics', icon: '📈' },
-                { id: 'logistics', label: 'Logistics', icon: '🚚' },
-                { id: 'settings', label: 'Settings', icon: '⚙️' },
+                { id: 'analytics',  label: 'Analytics',  icon: '📈' },
+                { id: 'logistics',  label: 'Logistics',  icon: '🚚' },
+                { id: 'settings',   label: 'Settings',   icon: '⚙️' },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
                   className={`
-                    py-3 sm:py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors min-h-11
+                    py-3 sm:py-4 px-3 sm:px-5 border-b-2 font-medium text-sm whitespace-nowrap transition-all min-h-11
                     ${activeTab === tab.id
-                      ? 'border-yellow-600 text-yellow-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-gold-500 text-gold-400'
+                      : 'border-transparent text-cool-gray-500 hover:text-cool-gray-300 hover:border-charcoal-600'
                     }
                   `}
                 >

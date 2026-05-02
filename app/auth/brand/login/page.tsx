@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { setAuthSession } from '@/lib/api/auth';
 
 export default function BrandLoginPage() {
@@ -63,26 +64,45 @@ export default function BrandLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gold-900 via-gold-800 to-gold-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-charcoal-950 flex flex-col items-center justify-center p-4">
+      {/* Subtle gold glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#b8962e18_0%,transparent_55%)] pointer-events-none" />
+
+      <div className="relative w-full max-w-md">
+        {/* Brand logo + wordmark */}
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-gold-600 rounded-2xl mb-4">
-            <span className="text-4xl">👑</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Brand Portal</h1>
-          <p className="text-gold-200">Premium brand management platform</p>
+          <Link href="/" className="inline-flex flex-col items-center gap-3 group">
+            <div className="relative w-16 h-16">
+              <Image
+                src="/images/brand/clw-logo.png"
+                alt="CLW Marketplace"
+                fill
+                className="object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-200"
+                priority
+              />
+            </div>
+            <div>
+              <p className="text-gold-500 font-bold text-xl tracking-widest uppercase">CLW</p>
+              <p className="text-cool-gray-500 text-xs tracking-[0.2em] uppercase">Brand Owner Portal</p>
+            </div>
+          </Link>
         </div>
 
-        <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-2xl p-8 border border-gold-500">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Card */}
+        <div className="bg-charcoal-900 border border-charcoal-700 rounded-3xl shadow-2xl overflow-hidden">
+          <div className="h-1 w-full bg-linear-to-r from-gold-700 via-gold-500 to-gold-700" />
+            <div className="p-8">
+          <h1 className="text-2xl font-bold text-white mb-1 text-center">👑 Sign In</h1>
+          <p className="text-cool-gray-500 text-sm text-center mb-7">Access your brand management portal</p>
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-sm text-red-800 dark:text-red-400">⚠️ {error}</p>
+              <div className="bg-red-900/20 border border-red-700/40 rounded-xl p-3">
+                <p className="text-sm text-red-400">⚠️ {error}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
+              <label className="block text-sm font-semibold text-cool-gray-300 mb-2">
                 Brand Email
               </label>
               <input
@@ -91,12 +111,12 @@ export default function BrandLoginPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="admin@brandname.com"
                 required
-                className="w-full px-4 py-3 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500"
+                className="w-full px-4 py-3 bg-charcoal-800 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-transparent outline-none placeholder:text-cool-gray-600"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
+              <label className="block text-sm font-semibold text-cool-gray-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -106,12 +126,12 @@ export default function BrandLoginPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Enter your password"
                   required
-                  className="w-full px-4 py-3 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 pr-12"
+                  className="w-full px-4 py-3 bg-charcoal-800 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-transparent outline-none placeholder:text-cool-gray-600 pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-600 dark:text-cool-gray-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-cool-gray-500 hover:text-cool-gray-300"
                 >
                   {showPassword ? '👁️' : '👁️‍🗨️'}
                 </button>
@@ -119,7 +139,7 @@ export default function BrandLoginPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <Link href="/auth/brand/forgot-password" className="text-sm text-gold-600 hover:text-gold-700 font-semibold">
+              <Link href="/auth/brand/forgot-password" className="text-sm text-gold-500 hover:text-gold-400 font-semibold">
                 Forgot password?
               </Link>
             </div>
@@ -127,33 +147,38 @@ export default function BrandLoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gold-600 text-white font-bold rounded-lg hover:bg-gold-700 transition-colors disabled:opacity-50"
+              className="w-full py-3.5 bg-linear-to-r from-gold-700 to-gold-500 hover:from-gold-600 hover:to-gold-400 text-charcoal-950 font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-gold-900/30"
             >
               {isLoading ? '🔄 Signing in...' : 'Sign In to Brand Portal'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+          <div className="mt-5 border-t border-charcoal-800 pt-5 text-center">
+            <p className="text-sm text-cool-gray-500">
               Don&apos;t have a brand account?{' '}
-              <Link href="/auth/brand/signup" className="text-gold-600 hover:text-gold-700 font-semibold">
+              <Link href="/auth/brand/signup" className="text-gold-500 hover:text-gold-400 font-semibold">
                 Apply now
               </Link>
             </p>
           </div>
-        </div>
+          </div>{/* /p-8 */}
+        </div>{/* /card */}
 
         <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-gold-200">
-            <Link href="/auth/customer/login" className="hover:text-white font-semibold">
+          <p className="text-sm text-cool-gray-600">
+            <Link href="/auth/customer/login" className="hover:text-cool-gray-400 transition-colors">
               ← Customer Login
             </Link>
             {' | '}
-            <Link href="/auth/vendor/login" className="hover:text-white font-semibold">
+            <Link href="/auth/vendor/login" className="hover:text-cool-gray-400 transition-colors">
               Vendor Login
             </Link>
           </p>
         </div>
+
+        <p className="mt-6 text-center text-xs text-cool-gray-700">
+          © {new Date().getFullYear()} CLW · Certified Luxury World
+        </p>
       </div>
     </div>
   );

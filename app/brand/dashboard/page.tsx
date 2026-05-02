@@ -78,25 +78,25 @@ export default function BrandDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-linear-to-br from-gold-400 to-gold-600 rounded-xl p-6 text-white">
+          <div className="bg-linear-to-br from-gold-700 to-gold-500 rounded-xl p-6 text-charcoal-950">
             <div className="text-3xl mb-2">💰</div>
             <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-            <div className="text-sm opacity-90">Total Revenue</div>
+            <div className="text-sm font-medium opacity-80">Total Revenue</div>
           </div>
-          <div className="bg-linear-to-br from-purple-400 to-purple-600 rounded-xl p-6 text-white">
-            <div className="text-3xl mb-2">🛍️</div>
+          <div className="bg-charcoal-800 dark:bg-charcoal-900 border border-charcoal-700 rounded-xl p-6 text-white">
+            <div className="text-3xl mb-2">🛒</div>
             <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <div className="text-sm opacity-90">Products Listed</div>
+            <div className="text-sm text-cool-gray-400">Products Listed</div>
           </div>
-          <div className="bg-linear-to-br from-pink-400 to-pink-600 rounded-xl p-6 text-white">
+          <div className="bg-charcoal-800 dark:bg-charcoal-900 border border-charcoal-700 rounded-xl p-6 text-white">
             <div className="text-3xl mb-2">👥</div>
             <div className="text-2xl font-bold">{stats.followers.toLocaleString()}</div>
-            <div className="text-sm opacity-90">Followers</div>
+            <div className="text-sm text-cool-gray-400">Followers</div>
           </div>
-          <div className="bg-linear-to-br from-blue-400 to-blue-600 rounded-xl p-6 text-white">
+          <div className="bg-charcoal-800 dark:bg-charcoal-900 border border-charcoal-700 rounded-xl p-6 text-white">
             <div className="text-3xl mb-2">📊</div>
             <div className="text-2xl font-bold">{stats.engagement}%</div>
-            <div className="text-sm opacity-90">Engagement Rate</div>
+            <div className="text-sm text-cool-gray-400">Engagement Rate</div>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export default function BrandDashboard() {
                 <div className="font-bold">Add Product</div>
                 <div className="text-sm opacity-90">List new item</div>
               </Link>
-              <Link href="/brand/logistics" className="bg-linear-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white rounded-xl p-6 hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-800 dark:hover:to-blue-900 transition-all shadow-lg">
+              <Link href="/brand/logistics" className="bg-charcoal-800 dark:bg-charcoal-900 border border-charcoal-700 text-white rounded-xl p-6 hover:bg-charcoal-700 dark:hover:bg-charcoal-800 transition-all shadow-lg">
                 <div className="text-3xl mb-2">🚚</div>
                 <div className="font-bold">Logistics</div>
                 <div className="text-sm opacity-90">Manage shipping</div>
