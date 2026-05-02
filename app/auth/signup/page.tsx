@@ -4,7 +4,6 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { setAuthSession } from '@/lib/api/auth';
 
 type Role = 'customer' | 'vendor' | 'brand';
 type Step = 'role-selection' | 'form';
@@ -160,24 +159,9 @@ function SignupContent() {
         return;
       }
 
-      // Save session and redirect to role dashboard — no OTP required
+      // Redirect to email verification — session is set after OTP is confirmed
       const u = data.data.user;
-      setAuthSession(data.data.token, {
-        id: u.id,
-        email: u.email,
-        username: u.email?.split('@')[0] ?? '',
-        role: u.role,
-        fullName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
-        firstName: u.firstName,
-        lastName: u.lastName,
-        avatar: u.avatar ?? undefined,
-        isEmailVerified: u.isEmailVerified,
-      });
-      const dashPath =
-        role === 'vendor' ? '/dashboard/vendor' :
-        role === 'brand'  ? '/dashboard/brand'  :
-        '/dashboard/customer';
-      router.push(dashPath);
+      router.push(`/auth/verify-email/pending?email=${encodeURIComponent(u.email)}&role=${u.role}`);
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
     } finally {

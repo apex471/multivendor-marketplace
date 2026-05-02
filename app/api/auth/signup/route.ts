@@ -3,6 +3,7 @@ import { connectDB } from '@/backend/config/database';
 import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateSignupInput, sanitizeInput } from '@/backend/utils/validation';
+import { sendVerificationEmail } from '@/backend/utils/email';
 import {
   sendSuccess,
   sendError,
@@ -66,6 +67,25 @@ export async function POST(request: NextRequest) {
 
     await newUser.save();
 
+    // Generate 6-digit OTP and persist it (select:false fields require updateOne)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await User.updateOne(
+      { _id: newUser._id },
+      {
+        $set: {
+          emailVerificationToken: otp,
+          emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+        },
+      }
+    );
+
+    // Send verification email — non-blocking so a transient email error doesn't fail signup
+    try {
+      await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role);
+    } catch (emailErr) {
+      console.error('[Signup] Failed to send verification email:', emailErr);
+    }
+
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.role);
 
     return sendSuccess(
@@ -82,7 +102,7 @@ export async function POST(request: NextRequest) {
         token,
         requiresEmailVerification: true,
       },
-      'Account created successfully',
+      'Account created successfully. Please check your email for a verification code.',
       201
     );
   } catch (error: unknown) {

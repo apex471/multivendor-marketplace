@@ -3,6 +3,7 @@ import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateLoginInput } from '@/backend/utils/validation';
+import { sendVerificationEmail } from '@/backend/utils/email';
 import {
   sendSuccess,
   sendError,
@@ -41,6 +42,31 @@ export async function POST(request: NextRequest) {
     if (!isPasswordValid) {
       console.error(`[Login] Password mismatch for ${email}`);
       return sendError('Invalid email or password', 401);
+    }
+
+    // Block login for unverified users; automatically send a fresh OTP so they
+    // can complete verification without having to request a resend manually.
+    if (!user.isEmailVerified) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            emailVerificationToken: otp,
+            emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+          },
+        }
+      );
+      try {
+        await sendVerificationEmail(user.email, user.firstName, otp, user.role);
+      } catch (emailErr) {
+        console.error('[Login] Failed to resend verification email:', emailErr);
+      }
+      return sendError(
+        'Please verify your email before logging in. A new code has been sent to your inbox.',
+        403,
+        { requiresEmailVerification: 'true', email: user.email, role: user.role }
+      );
     }
 
     // Use updateOne instead of save() — save() triggers the pre-save hook which

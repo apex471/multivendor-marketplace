@@ -165,14 +165,14 @@ export async function sendVerificationEmail(
       <style>
         body { margin: 0; padding: 0; background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .wrapper { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
-        .header { background: linear-gradient(135deg, #7c3aed, #9333ea); padding: 36px 40px; text-align: center; }
+        .header { background: linear-gradient(135deg, #b8962e, #d4af37); padding: 36px 40px; text-align: center; }
         .header h1 { margin: 0; color: #fff; font-size: 24px; font-weight: 700; }
         .header p { margin: 6px 0 0; color: rgba(255,255,255,.75); font-size: 14px; }
         .body { padding: 36px 40px; }
         .body p { margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6; }
-        .code-box { background: #f5f3ff; border: 2px dashed #7c3aed; border-radius: 12px; padding: 28px 20px; text-align: center; margin: 24px 0; }
+        .code-box { background: #fdf9ec; border: 2px dashed #d4af37; border-radius: 12px; padding: 28px 20px; text-align: center; margin: 24px 0; }
         .code-label { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; }
-        .code { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: 14px; color: #7c3aed; font-family: 'Courier New', monospace; }
+        .code { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: 14px; color: #b8962e; font-family: 'Courier New', monospace; }
         .code-expiry { margin: 10px 0 0; font-size: 13px; color: #9ca3af; }
         .warning { background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin-top: 20px; }
         .warning p { margin: 0; font-size: 13px; color: #92400e; }
@@ -183,7 +183,7 @@ export async function sendVerificationEmail(
     <body>
       <div class="wrapper">
         <div class="header">
-          <h1>🏪 ${APP_NAME}</h1>
+          <h1>✨ ${APP_NAME}</h1>
           <p>Verify your ${roleLabel} account</p>
         </div>
         <div class="body">
