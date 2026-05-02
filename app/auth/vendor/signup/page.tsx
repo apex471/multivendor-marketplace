@@ -99,7 +99,12 @@ export default function VendorSignupPage() {
       }
 
       // Redirect to "check your inbox" page
-      router.push(`/auth/verify-email/pending?email=${encodeURIComponent(formData.email)}&role=vendor`);
+      const emailWarning = data.data?.emailWarning;
+      router.push(
+        `/auth/verify-email/pending?email=${encodeURIComponent(formData.email)}&role=vendor${
+          emailWarning ? `&emailWarning=1` : ''
+        }`
+      );
     } catch {
       setError('Network error. Please check your connection and try again.');
       setIsLoading(false);

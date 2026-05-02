@@ -25,6 +25,7 @@ function VerifyEmailPendingContent() {
   const router = useRouter();
   const email = searchParams.get('email') || '';
   const role = searchParams.get('role') || 'vendor';
+  const emailWarning = searchParams.get('emailWarning') === '1';
 
   const [codes, setCodes] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -161,6 +162,14 @@ function VerifyEmailPendingContent() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Enter verification code
               </h1>
+
+              {/* Email delivery warning */}
+              {emailWarning && (
+                <div className="mb-4 bg-amber-50 border border-amber-300 text-amber-800 rounded-xl px-4 py-3 text-sm text-left">
+                  <p className="font-semibold mb-1">⚠️ Verification email may not have been delivered</p>
+                  <p>Our email service is not fully configured. Use the <strong>Resend code</strong> button below to try again, or contact support.</p>
+                </div>
+              )}
               <p className="text-gray-500 dark:text-cool-gray-400 text-sm mb-1">
                 We sent a 6-digit code to:
               </p>

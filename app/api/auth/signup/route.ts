@@ -80,10 +80,17 @@ export async function POST(request: NextRequest) {
     );
 
     // Send verification email — non-blocking so a transient email error doesn't fail signup
+    let emailSent = false;
+    let emailError: string | undefined;
     try {
-      await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role);
+      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role);
+      emailSent = emailResult.sent;
+      emailError = emailResult.error;
+      if (!emailResult.sent) {
+        console.error('[Signup] Email delivery failed:', emailResult.error);
+      }
     } catch (emailErr) {
-      console.error('[Signup] Failed to send verification email:', emailErr);
+      console.error('[Signup] Unexpected email error:', emailErr);
     }
 
     const token = generateToken(newUser._id.toString(), newUser.email, newUser.role);
@@ -101,8 +108,14 @@ export async function POST(request: NextRequest) {
         },
         token,
         requiresEmailVerification: true,
+        emailSent,
+        ...(emailSent
+          ? {}
+          : { emailWarning: emailError || 'Verification email could not be sent. Use the resend button on the next page.' }),
       },
-      'Account created successfully. Please check your email for a verification code.',
+      emailSent
+        ? 'Account created successfully. Please check your email for a verification code.'
+        : 'Account created. We could not send the verification email — use the resend button.',
       201
     );
   } catch (error: unknown) {

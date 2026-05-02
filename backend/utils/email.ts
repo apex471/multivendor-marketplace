@@ -1,6 +1,17 @@
+import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace';
+
+/**
+ * Returned by every public send function so callers can surface
+ * delivery failures to the user instead of silently swallowing them.
+ */
+export interface EmailResult {
+  sent: boolean;
+  provider: 'resend' | 'smtp' | 'none';
+  error?: string;
+}
 
 interface EmailOptions {
   to: string;
@@ -9,82 +20,91 @@ interface EmailOptions {
   text?: string;
 }
 
-// ─── Priority 1: Resend API ───────────────────────────────────────────────────
-// Returns true on success, false on any failure (never throws).
-// Common failure: free plan requires a verified domain to send to arbitrary
-// recipients. Set RESEND_FROM_EMAIL=noreply@yourdomain.com after verifying
-// your domain at https://resend.com/domains
-async function sendViaResend(opts: EmailOptions): Promise<boolean> {
+// ─── Priority 1: Resend SDK ───────────────────────────────────────────────────
+// IMPORTANT: onboarding@resend.dev (the default from) can ONLY deliver to
+// the Resend account owner's email.  For arbitrary recipients you must:
+//   1. Verify your domain at https://resend.com/domains
+//   2. Set RESEND_FROM_EMAIL=noreply@yourdomain.com in Netlify env vars
+async function sendViaResend(opts: EmailOptions): Promise<EmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return false;
+  if (!apiKey) {
+    return { sent: false, provider: 'none', error: 'RESEND_API_KEY not set' };
+  }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+  // Fail fast — onboarding@resend.dev will 403 for any non-owner recipient.
+  if (!fromEmail || fromEmail === 'onboarding@resend.dev') {
+    return {
+      sent: false,
+      provider: 'none',
+      error:
+        'RESEND_FROM_EMAIL is not set. ' +
+        'Add RESEND_FROM_EMAIL=noreply@yourdomain.com to Netlify env vars ' +
+        'after verifying your domain at https://resend.com/domains',
+    };
+  }
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `${APP_NAME} <${fromEmail}>`,
-        to: [opts.to],
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text || '',
-      }),
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: `${APP_NAME} <${fromEmail}>`,
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text || '',
     });
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      // 403 = domain not verified (free plan restriction)
-      // 422 = can only send to own email without domain verification
-      console.error(
-        `[Email] Resend rejected (HTTP ${res.status}): ${errBody}\n` +
-        `  Fix: verify a domain at https://resend.com/domains and set\n` +
-        `  RESEND_FROM_EMAIL=noreply@yourdomain.com in Netlify env vars.`
-      );
-      return false;
+    if (error) {
+      const msg = `Resend API error: ${
+        (error as { message?: string }).message || JSON.stringify(error)
+      }`;
+      console.error(`[Email] ${msg}`);
+      return { sent: false, provider: 'none', error: msg };
     }
 
-    return true;
+    console.info(`[Email] ✅ Delivered via Resend to ${opts.to}`);
+    return { sent: true, provider: 'resend' };
   } catch (err: unknown) {
-    console.error('[Email] Resend network error:', err instanceof Error ? err.message : err);
-    return false;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Email] Resend SDK threw:', msg);
+    return { sent: false, provider: 'none', error: `Resend SDK: ${msg}` };
   }
 }
 
 // ─── Priority 2: SMTP / nodemailer ───────────────────────────────────────────
-// Works with Gmail (App Password), SendGrid SMTP, Mailgun SMTP, etc.
-// Required env vars: SMTP_HOST, SMTP_USER, SMTP_PASSWORD
-// Optional:          SMTP_PORT (default 587), SMTP_FROM_EMAIL
-function createSmtpTransporter() {
+// Works with Gmail App Password, SendGrid SMTP, Mailgun SMTP, etc.
+// Required: SMTP_HOST, SMTP_USER, SMTP_PASSWORD
+// Optional: SMTP_PORT (default 587), SMTP_FROM_EMAIL
+async function sendViaSmtp(opts: EmailOptions): Promise<EmailResult> {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
 
-  if (!host || !user || !pass || pass === 'your_app_password') {
-    return null;
+  const isPlaceholder = (v?: string) =>
+    !v || v.startsWith('your_') || v === 'your_app_password';
+
+  if (!host || isPlaceholder(user) || isPlaceholder(pass)) {
+    return {
+      sent: false,
+      provider: 'none',
+      error:
+        'SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD ' +
+        'in Netlify env vars (use a Gmail App Password for SMTP_PASSWORD).',
+    };
   }
 
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // true for port 465 (SSL), false for 587 (STARTTLS)
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false }, // Required for some hosting providers
-  });
-}
-
-async function sendViaSmtp(opts: EmailOptions): Promise<boolean> {
-  const transporter = createSmtpTransporter();
-  if (!transporter) return false;
+  const fromEmail = process.env.SMTP_FROM_EMAIL || user;
 
   try {
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+    });
     await transporter.sendMail({
       from: `"${APP_NAME}" <${fromEmail}>`,
       to: opts.to,
@@ -92,47 +112,54 @@ async function sendViaSmtp(opts: EmailOptions): Promise<boolean> {
       html: opts.html,
       text: opts.text,
     });
-    return true;
+    console.info(`[Email] ✅ Delivered via SMTP to ${opts.to}`);
+    return { sent: true, provider: 'smtp' };
   } catch (err: unknown) {
-    console.error('[Email] SMTP error:', err instanceof Error ? err.message : err);
-    return false;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Email] SMTP error:', msg);
+    return { sent: false, provider: 'none', error: `SMTP: ${msg}` };
   }
 }
 
-async function sendEmail(opts: EmailOptions): Promise<void> {
-  // ── Path 1: Resend ──
+async function sendEmail(opts: EmailOptions): Promise<EmailResult> {
+  // ── Path 1: Resend SDK ──
   if (process.env.RESEND_API_KEY) {
-    const sent = await sendViaResend(opts);
-    if (sent) {
-      console.info(`[Email] Delivered via Resend to ${opts.to}`);
-      return;
-    }
-    console.warn('[Email] Resend failed — trying SMTP fallback…');
+    const result = await sendViaResend(opts);
+    if (result.sent) return result;
+    console.warn(`[Email] Resend failed (${result.error}) — trying SMTP fallback…`);
   }
 
   // ── Path 2: SMTP ──
-  const smtpSent = await sendViaSmtp(opts);
-  if (smtpSent) {
-    console.info(`[Email] Delivered via SMTP to ${opts.to}`);
-    return;
-  }
+  const smtpResult = await sendViaSmtp(opts);
+  if (smtpResult.sent) return smtpResult;
 
-  // ── Path 3: Console fallback — ALWAYS runs if every delivery method fails ──
-  // The OTP code is extracted from the plain-text body and printed clearly.
-  // Check Netlify function logs to find the code.
+  // ── Path 3: Console fallback — last resort ──
+  // OTP is printed clearly so it can be found in Netlify function logs.
   const otpMatch = opts.text?.match(/\b(\d{6})\b/);
-  console.warn('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.warn('  📧  OTP NOT DELIVERED — all email providers failed');
+  console.warn('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.warn('  ❌  EMAIL NOT DELIVERED — all providers failed');
   console.warn(`  TO:      ${opts.to}`);
   console.warn(`  SUBJECT: ${opts.subject}`);
   if (otpMatch) {
-    console.warn(`  OTP CODE: ${otpMatch[1]}  ←←← USE THIS CODE`);
-  } else {
-    console.warn(`  BODY:     ${opts.text || '(html only)'}`);
+    console.warn(`\n  🔑  OTP CODE: ${otpMatch[1]}  ← copy from Netlify function logs`);
   }
-  console.warn('  ▸ To fix: verify a domain at resend.com/domains');
-  console.warn('  ▸ Then set RESEND_FROM_EMAIL=noreply@yourdomain.com in Netlify');
-  console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  console.warn('');
+  console.warn('  Fix → add ONE of these to Netlify Site Settings → Env Vars:');
+  console.warn('  OPTION A — Resend (recommended):');
+  console.warn('    RESEND_API_KEY    = re_xxxxxxxxxxxx');
+  console.warn('    RESEND_FROM_EMAIL = noreply@yourdomain.com  ← verified domain');
+  console.warn('  OPTION B — Gmail App Password:');
+  console.warn('    SMTP_HOST         = smtp.gmail.com');
+  console.warn('    SMTP_PORT         = 587');
+  console.warn('    SMTP_USER         = you@gmail.com');
+  console.warn('    SMTP_PASSWORD     = xxxx xxxx xxxx xxxx  ← 16-char App Password');
+  console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  return {
+    sent: false,
+    provider: 'none',
+    error: smtpResult.error || 'All email providers failed — check Netlify env vars',
+  };
 }
 
 /**
@@ -148,7 +175,7 @@ export async function sendVerificationEmail(
   firstName: string,
   code: string,
   role: string
-) {
+): Promise<EmailResult> {
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   // Always log in dev for quick testing without needing email
@@ -208,10 +235,24 @@ export async function sendVerificationEmail(
 
   const text = `Hi ${firstName},\n\nYour ${APP_NAME} ${roleLabel} verification code is:\n\n  ${code}\n\nThis code expires in 10 minutes. Never share it with anyone.\n\n${APP_NAME}`;
 
-  await sendEmail({
+  return sendEmail({
     to: email,
     subject: `${code} — your ${APP_NAME} verification code`,
     html,
     text,
+  });
+}
+
+/**
+ * Diagnostic: send a test email and return the full result.
+ * Used by POST /api/health/email so you can verify delivery config
+ * without going through the full signup flow.
+ */
+export async function sendTestEmail(to: string): Promise<EmailResult> {
+  return sendEmail({
+    to,
+    subject: `[Test] ${APP_NAME} email delivery check`,
+    html: `<div style="font-family:sans-serif;padding:24px"><h2>✅ Email delivery is working</h2><p>If you received this, <strong>${APP_NAME}</strong> can send emails successfully.</p></div>`,
+    text: `If you received this, email delivery is working correctly for ${APP_NAME}.`,
   });
 }

@@ -50,7 +50,15 @@ export async function POST(request: NextRequest) {
     user.emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await user.save();
 
-    await sendVerificationEmail(email, user.firstName, verifyToken, user.role);
+    const emailResult = await sendVerificationEmail(email, user.firstName, verifyToken, user.role);
+
+    if (!emailResult.sent) {
+      console.error('[ResendVerification] Email delivery failed:', emailResult.error);
+      return sendError(
+        'We could not send the verification email right now. Please try again in a moment.',
+        503
+      );
+    }
 
     return sendSuccess({}, 'A new verification code has been sent to your inbox.');
   } catch (error) {

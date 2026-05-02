@@ -161,7 +161,12 @@ function SignupContent() {
 
       // Redirect to email verification — session is set after OTP is confirmed
       const u = data.data.user;
-      router.push(`/auth/verify-email/pending?email=${encodeURIComponent(u.email)}&role=${u.role}`);
+      const emailWarning = data.data?.emailWarning;
+      router.push(
+        `/auth/verify-email/pending?email=${encodeURIComponent(u.email)}&role=${u.role}${
+          emailWarning ? `&emailWarning=1` : ''
+        }`
+      );
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
     } finally {

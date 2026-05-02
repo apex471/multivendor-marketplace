@@ -57,13 +57,19 @@ export async function POST(request: NextRequest) {
           },
         }
       );
+      let emailSentMsg = 'A new code has been sent to your inbox.';
       try {
-        await sendVerificationEmail(user.email, user.firstName, otp, user.role);
+        const emailResult = await sendVerificationEmail(user.email, user.firstName, otp, user.role);
+        if (!emailResult.sent) {
+          console.error('[Login] Email delivery failed:', emailResult.error);
+          emailSentMsg = 'Could not send a new code. Use the resend button on the verification page.';
+        }
       } catch (emailErr) {
-        console.error('[Login] Failed to resend verification email:', emailErr);
+        console.error('[Login] Unexpected email error:', emailErr);
+        emailSentMsg = 'Could not send a new code. Use the resend button.';
       }
       return sendError(
-        'Please verify your email before logging in. A new code has been sent to your inbox.',
+        `Please verify your email before logging in. ${emailSentMsg}`,
         403,
         { requiresEmailVerification: 'true', email: user.email, role: user.role }
       );
