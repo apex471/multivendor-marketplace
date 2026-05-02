@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const {
       name, description, category, price, salePrice,
-      costPrice, stock, images, sku, tags, variants, lowStockAlert,
+      costPrice, stock, images, videos, sku, tags, variants, lowStockAlert,
     } = body;
 
     if (!name?.trim()) {
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       costPrice:     costPrice  ? Number(costPrice)  : undefined,
       stock:         Number(stock) || 0,
       images:        Array.isArray(images) ? images : [],
+      videos:        Array.isArray(videos) ? videos : [],
       sku:           sku?.trim() || undefined,
       tags:          parseTags(tags),
       variants:      Array.isArray(variants) ? variants : [],

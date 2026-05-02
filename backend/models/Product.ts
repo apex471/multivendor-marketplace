@@ -28,6 +28,7 @@ export interface IProduct extends Document {
   reviewCount: number;
   rejectionReason?: string;
   images: string[];
+  videos: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,7 +68,8 @@ const productSchema = new Schema<IProduct>(
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0 },
     rejectionReason: { type: String },
-    images: [{ type: String }],
+    images:  [{ type: String }],
+    videos:  [{ type: String }],
   },
   { timestamps: true }
 );

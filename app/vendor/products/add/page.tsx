@@ -8,9 +8,12 @@ import Footer from '../../../../components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_FILE_SIZE  = 5 * 1024 * 1024;  // 5 MB — matches server limit
-const MAX_IMAGES     = 10;
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/ogg', 'video/x-msvideo', 'video/mpeg'];
+const MAX_IMAGE_SIZE = 5   * 1024 * 1024;  //   5 MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;  // 100 MB
+const MAX_IMAGES = 10;
+const MAX_VIDEOS = 3;
 
 const CATEGORIES = [
   'Dresses', 'Tops', 'Bottoms', 'Outerwear',
@@ -27,28 +30,30 @@ interface ProductVariant {
 }
 
 type UploadStatus = 'uploading' | 'done' | 'error';
+type MediaKind    = 'image' | 'video';
 
 interface UploadSlot {
-  /** Local object-URL used only for preview while uploading */
-  previewUrl: string;
-  /** Cloudinary URL populated on success */
-  remoteUrl:  string | null;
+  previewUrl: string;       // blob URL for immediate preview
+  remoteUrl:  string | null; // Cloudinary URL on success
   status:     UploadStatus;
   error:      string | null;
   abortKey:   string;
+  kind:       MediaKind;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AddProductPage() {
-  const router       = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const abortMap     = useRef<Map<string, AbortController>>(new Map());
+  const router          = useRouter();
+  const imageInputRef   = useRef<HTMLInputElement>(null);
+  const videoInputRef   = useRef<HTMLInputElement>(null);
+  const abortMap        = useRef<Map<string, AbortController>>(new Map());
 
-  const [activeTab,   setActiveTab]   = useState<'basic' | 'images' | 'variants' | 'pricing' | 'inventory'>('basic');
+  const [activeTab,   setActiveTab]   = useState<'basic' | 'media' | 'variants' | 'pricing' | 'inventory'>('basic');
   const [isSaving,    setIsSaving]    = useState(false);
   const [formError,   setFormError]   = useState('');
-  const [isDragOver,  setIsDragOver]  = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imageDragOver, setImageDragOver] = useState(false);
+  const [videoDragOver, setVideoDragOver] = useState(false);
+  const [mediaError,  setMediaError]  = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '', description: '', category: '', tags: '',
@@ -69,14 +74,15 @@ export default function AddProductPage() {
     return () => { map.forEach(ctrl => ctrl.abort()); };
   }, []);
 
-  // Derived: only successfully uploaded remote URLs
-  const uploadedImages: string[] = slots
-    .filter(s => s.status === 'done' && s.remoteUrl)
-    .map(s => s.remoteUrl as string);
+  // Derived slices
+  const imageSlots   = slots.filter(s => s.kind === 'image');
+  const videoSlots   = slots.filter(s => s.kind === 'video');
+  const uploadedImgs = imageSlots.filter(s => s.status === 'done' && s.remoteUrl).map(s => s.remoteUrl as string);
+  const uploadedVids = videoSlots.filter(s => s.status === 'done' && s.remoteUrl).map(s => s.remoteUrl as string);
+  const isUploading  = slots.some(s => s.status === 'uploading');
+  const mediaBadge   = slots.length || undefined;
 
-  const isUploading = slots.some(s => s.status === 'uploading');
-
-  // ── Upload a single File ───────────────────────────────────────────────────
+  // ── Upload a single file ──────────────────────────────────────────────────
   const uploadFile = useCallback(async (file: File, abortKey: string) => {
     const token = getAuthToken();
     if (!token) { router.push('/auth/vendor/login'); return; }
@@ -97,9 +103,8 @@ export default function AddProductPage() {
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        const msg = json.error ?? `Server error ${res.status}`;
         setSlots(prev => prev.map(s =>
-          s.abortKey === abortKey ? { ...s, status: 'error', error: msg } : s
+          s.abortKey === abortKey ? { ...s, status: 'error', error: json.error ?? `Server error ${res.status}` } : s
         ));
         return;
       }
@@ -111,82 +116,86 @@ export default function AddProductPage() {
       ));
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : 'Upload failed';
       setSlots(prev => prev.map(s =>
-        s.abortKey === abortKey ? { ...s, status: 'error', error: msg } : s
+        s.abortKey === abortKey ? { ...s, status: 'error', error: err instanceof Error ? err.message : 'Upload failed' } : s
       ));
     } finally {
       abortMap.current.delete(abortKey);
     }
   }, [router]);
 
-  // ── Validate and enqueue files ────────────────────────────────────────────
-  const processFiles = useCallback((fileList: FileList | File[]) => {
-    setUploadError(null);
-    const files = Array.from(fileList);
+  // ── Validate and enqueue files of a given kind ────────────────────────────
+  const processFiles = useCallback((fileList: FileList | File[], kind: MediaKind) => {
+    setMediaError(null);
 
-    if (slots.length >= MAX_IMAGES) {
-      setUploadError(`Maximum of ${MAX_IMAGES} images allowed.`);
+    const acceptedTypes = kind === 'image' ? ACCEPTED_IMAGE_TYPES : ACCEPTED_VIDEO_TYPES;
+    const maxSize       = kind === 'image' ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+    const maxCount      = kind === 'image' ? MAX_IMAGES : MAX_VIDEOS;
+    const currentCount  = kind === 'image' ? slots.filter(s => s.kind === 'image').length : slots.filter(s => s.kind === 'video').length;
+
+    if (currentCount >= maxCount) {
+      setMediaError(`Maximum of ${maxCount} ${kind}s allowed.`);
       return;
     }
 
-    const remaining = MAX_IMAGES - slots.length;
+    const remaining = maxCount - currentCount;
+    const files     = Array.from(fileList);
     const accepted: File[]   = [];
     const rejected: string[] = [];
 
     for (const file of files.slice(0, remaining)) {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        rejected.push(`"${file.name}" — unsupported type (use JPEG, PNG, WebP, or GIF)`);
+      if (!acceptedTypes.includes(file.type)) {
+        rejected.push(`"${file.name}" — unsupported format`);
         continue;
       }
-      if (file.size > MAX_FILE_SIZE) {
-        rejected.push(`"${file.name}" — exceeds 5 MB`);
+      if (file.size > maxSize) {
+        rejected.push(`"${file.name}" — exceeds ${kind === 'video' ? '100 MB' : '5 MB'} limit`);
         continue;
       }
       accepted.push(file);
     }
 
-    if (rejected.length) setUploadError(rejected.join('\n'));
+    if (rejected.length) setMediaError(rejected.join('\n'));
     if (!accepted.length) return;
 
-    // Create optimistic preview slots before upload starts
     const newSlots: UploadSlot[] = accepted.map(file => ({
       previewUrl: URL.createObjectURL(file),
       remoteUrl:  null,
       status:     'uploading',
       error:      null,
-      abortKey:   `${file.name}-${Date.now()}-${Math.random()}`,
+      kind,
+      abortKey:   `${kind}-${file.name}-${Date.now()}-${Math.random()}`,
     }));
 
     setSlots(prev => [...prev, ...newSlots]);
     newSlots.forEach((slot, i) => uploadFile(accepted[i], slot.abortKey));
 
-    // Reset input so the same file can be re-selected after removal
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [slots.length, uploadFile]);
+    if (kind === 'image' && imageInputRef.current) imageInputRef.current.value = '';
+    if (kind === 'video' && videoInputRef.current) videoInputRef.current.value = '';
+  }, [slots, uploadFile]);
 
-  // ── Input & drag handlers ─────────────────────────────────────────────────
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) processFiles(e.target.files);
-  };
-
-  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true);  };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); };
-  const handleDrop      = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files);
-  };
-
-  // ── Remove a slot — cancels if still in-flight, revokes blob URL ──────────
-  const removeSlot = (index: number) => {
+  // ── Remove a slot ─────────────────────────────────────────────────────────
+  const removeSlot = useCallback((abortKey: string) => {
     setSlots(prev => {
-      const slot = prev[index];
+      const slot = prev.find(s => s.abortKey === abortKey);
+      if (!slot) return prev;
       abortMap.current.get(slot.abortKey)?.abort();
       if (slot.previewUrl.startsWith('blob:')) URL.revokeObjectURL(slot.previewUrl);
-      return prev.filter((_, i) => i !== index);
+      return prev.filter(s => s.abortKey !== abortKey);
     });
-    setPrimaryIndex(prev => Math.max(0, prev > index ? prev - 1 : prev === index ? 0 : prev));
+    setPrimaryIndex(prev => Math.max(0, prev - 1 < 0 ? 0 : prev));
+  }, []);
+
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+  const imageDragHandlers = {
+    onDragOver:  (e: React.DragEvent) => { e.preventDefault(); setImageDragOver(true);  },
+    onDragLeave: (e: React.DragEvent) => { e.preventDefault(); setImageDragOver(false); },
+    onDrop:      (e: React.DragEvent) => { e.preventDefault(); setImageDragOver(false); if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files, 'image'); },
+  };
+  const videoDragHandlers = {
+    onDragOver:  (e: React.DragEvent) => { e.preventDefault(); setVideoDragOver(true);  },
+    onDragLeave: (e: React.DragEvent) => { e.preventDefault(); setVideoDragOver(false); },
+    onDrop:      (e: React.DragEvent) => { e.preventDefault(); setVideoDragOver(false); if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files, 'video'); },
   };
 
   // ── Variants ──────────────────────────────────────────────────────────────
@@ -200,31 +209,23 @@ export default function AddProductPage() {
   const updateVariant = (id: string, field: keyof ProductVariant, value: string | number) =>
     setVariants(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (isDraft: boolean) => {
     setFormError('');
-    if (!formData.name.trim())    { setFormError('Product name is required.');   return; }
-    if (!formData.category)        { setFormError('Please select a category.');   return; }
+    if (!formData.name.trim())    { setFormError('Product name is required.');  return; }
+    if (!formData.category)        { setFormError('Please select a category.');  return; }
     if (!formData.regularPrice || parseFloat(formData.regularPrice) <= 0) {
       setFormError('Please enter a valid price.');
       return;
     }
-    if (isUploading) {
-      setFormError('Please wait for all images to finish uploading.');
-      return;
-    }
-    if (slots.filter(s => s.status === 'error').length > 0 && uploadedImages.length === 0 && !isDraft) {
-      setFormError('All image uploads failed. Remove failed images or add new ones before publishing.');
-      return;
-    }
+    if (isUploading) { setFormError('Please wait for all uploads to finish.'); return; }
 
     const token = getAuthToken();
     if (!token) { router.push('/auth/vendor/login'); return; }
 
-    // Ensure primary image is first in the array
-    const safeIdx    = primaryIndex < uploadedImages.length ? primaryIndex : 0;
-    const orderedImages = uploadedImages.length > 0
-      ? [uploadedImages[safeIdx], ...uploadedImages.filter((_, i) => i !== safeIdx)]
+    const safeIdx       = primaryIndex < uploadedImgs.length ? primaryIndex : 0;
+    const orderedImages = uploadedImgs.length > 0
+      ? [uploadedImgs[safeIdx], ...uploadedImgs.filter((_, i) => i !== safeIdx)]
       : [];
 
     setIsSaving(true);
@@ -244,6 +245,7 @@ export default function AddProductPage() {
           stock:         parseInt(formData.stock         || '0', 10),
           lowStockAlert: parseInt(formData.lowStockAlert || '5',  10),
           images:        orderedImages,
+          videos:        uploadedVids,
           variants,
           status:        isDraft ? 'draft' : 'pending',
         }),
@@ -265,9 +267,72 @@ export default function AddProductPage() {
           / parseFloat(formData.regularPrice) * 100).toFixed(1)
       : null;
 
-  // ── Shared CSS helpers ────────────────────────────────────────────────────
   const inputCls = 'w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500 dark:focus:ring-gold-600 transition';
   const labelCls = 'block text-sm font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-2';
+
+  // ── Reusable slot grid ────────────────────────────────────────────────────
+  const SlotGrid = ({ kind }: { kind: MediaKind }) => {
+    const kindSlots = slots.filter(s => s.kind === kind);
+    if (kindSlots.length === 0) return null;
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {kindSlots.map((slot, idx) => (
+          <div key={slot.abortKey} className="relative group">
+            <div className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-colors ${
+              slot.status === 'error' ? 'border-red-500'
+              : kind === 'image' && idx === primaryIndex && slot.status === 'done' ? 'border-gold-500'
+              : 'border-cool-gray-300 dark:border-charcoal-700'
+            }`}>
+              {kind === 'image' ? (
+                <Image src={slot.remoteUrl ?? slot.previewUrl} alt={`Image ${idx + 1}`} fill unoptimized={slot.status !== 'done'}
+                  className={`object-cover transition-opacity duration-200 ${slot.status === 'uploading' ? 'opacity-40' : ''}`} />
+              ) : (
+                <video src={slot.remoteUrl ?? slot.previewUrl} muted playsInline
+                  className={`w-full h-full object-cover transition-opacity ${slot.status === 'uploading' ? 'opacity-40' : ''}`}
+                  onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
+                  onMouseLeave={e => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0; }} />
+              )}
+              {slot.status === 'uploading' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/25">
+                  <svg className="animate-spin h-8 w-8 text-white drop-shadow" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  <span className="text-white text-xs mt-1.5 font-semibold drop-shadow">Uploading…</span>
+                </div>
+              )}
+              {slot.status === 'error' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/70 p-2 text-center">
+                  <span className="text-2xl">❌</span>
+                  <span className="text-white text-xs mt-1 leading-snug">{slot.error}</span>
+                </div>
+              )}
+              {kind === 'image' && idx === primaryIndex && slot.status === 'done' && (
+                <div className="absolute top-2 left-2 bg-gold-600 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow-md">Primary</div>
+              )}
+              {kind === 'video' && slot.status === 'done' && (
+                <div className="absolute top-2 left-2 bg-charcoal-900/70 text-white text-xs px-2 py-0.5 rounded-full font-semibold">🎬 Video</div>
+              )}
+              {slot.status === 'uploading' && (
+                <button onClick={() => removeSlot(slot.abortKey)} title="Cancel"
+                  className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black">✕</button>
+              )}
+            </div>
+            {slot.status !== 'uploading' && (
+              <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2 p-2">
+                {kind === 'image' && slot.status === 'done' && idx !== primaryIndex && (
+                  <button onClick={() => setPrimaryIndex(slots.filter(s => s.kind === 'image').indexOf(slot))}
+                    className="w-full px-2 py-1.5 bg-gold-500 hover:bg-gold-400 text-charcoal-950 rounded-lg text-xs font-bold transition-colors">★ Set Primary</button>
+                )}
+                <button onClick={() => removeSlot(slot.abortKey)}
+                  className="w-full px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors">🗑 Remove</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -285,11 +350,11 @@ export default function AddProductPage() {
             <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4 sticky top-4">
               <nav className="space-y-2">
                 {([
-                  { id: 'basic',     label: 'Basic Info', icon: '📝' },
-                  { id: 'images',    label: 'Images',     icon: '🖼️', badge: slots.length || undefined },
-                  { id: 'variants',  label: 'Variants',   icon: '🎨' },
-                  { id: 'pricing',   label: 'Pricing',    icon: '💰' },
-                  { id: 'inventory', label: 'Inventory',  icon: '📦' },
+                  { id: 'basic',     label: 'Basic Info',      icon: '📝' },
+                  { id: 'media',     label: 'Photos & Videos', icon: '🎬', badge: mediaBadge },
+                  { id: 'variants',  label: 'Variants',        icon: '🎨' },
+                  { id: 'pricing',   label: 'Pricing',         icon: '💰' },
+                  { id: 'inventory', label: 'Inventory',       icon: '📦' },
                 ] as { id: string; label: string; icon: string; badge?: number }[]).map(tab => (
                   <button
                     key={tab.id}
@@ -303,9 +368,7 @@ export default function AddProductPage() {
                     <span className="text-xl">{tab.icon}</span>
                     <span className="font-semibold flex-1">{tab.label}</span>
                     {tab.badge !== undefined && (
-                      <span className="ml-auto text-xs bg-gold-600 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                        {tab.badge}
-                      </span>
+                      <span className="ml-auto text-xs bg-gold-600 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">{tab.badge}</span>
                     )}
                   </button>
                 ))}
@@ -317,7 +380,7 @@ export default function AddProductPage() {
           <div className="lg:col-span-3">
             <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6">
 
-              {/* Basic Info */}
+              {/* ── Basic Info ── */}
               {activeTab === 'basic' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Basic Information</h2>
@@ -352,171 +415,95 @@ export default function AddProductPage() {
                 </div>
               )}
 
-              {/* Images */}
-              {activeTab === 'images' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Product Images</h2>
-                    <span className="text-sm text-cool-gray-500 dark:text-cool-gray-400">
-                      {slots.length}/{MAX_IMAGES}
-                    </span>
-                  </div>
+              {/* ── Photos & Videos ── */}
+              {activeTab === 'media' && (
+                <div className="space-y-8">
+                  <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Photos &amp; Videos</h2>
 
-                  {/* Drop zone */}
-                  {slots.length < MAX_IMAGES && (
-                    <div
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
-                      aria-label="Upload product images"
-                      className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
-                        isDragOver
-                          ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10'
-                          : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400 dark:hover:border-gold-600 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700/40'
-                      }`}
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept={ACCEPTED_TYPES.join(',')}
-                        onChange={handleFileInputChange}
-                        className="hidden"
-                        aria-hidden="true"
-                      />
-                      <div className="text-5xl mb-3">{isDragOver ? '📂' : '📸'}</div>
-                      <p className="font-semibold text-charcoal-900 dark:text-white mb-1">
-                        {isDragOver ? 'Drop images here' : 'Click or drag & drop images'}
-                      </p>
-                      <p className="text-sm text-charcoal-500 dark:text-cool-gray-500">
-                        JPEG, PNG, WebP, GIF · max 5 MB each · up to {MAX_IMAGES} images
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Validation error banner */}
-                  {uploadError && (
+                  {mediaError && (
                     <div className="flex items-start gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm whitespace-pre-line">
                       <span className="mt-0.5">⚠️</span>
-                      <span className="flex-1">{uploadError}</span>
-                      <button onClick={() => setUploadError(null)} aria-label="Dismiss" className="font-bold hover:opacity-70">✕</button>
+                      <span className="flex-1">{mediaError}</span>
+                      <button onClick={() => setMediaError(null)} className="font-bold hover:opacity-70">✕</button>
                     </div>
                   )}
 
-                  {/* Image grid */}
-                  {slots.length > 0 && (
-                    <>
-                      <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400">
-                        Hover an image to set it as <span className="text-gold-500 font-semibold">Primary</span> or remove it. Primary image appears first in listings.
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {slots.map((slot, index) => (
-                          <div key={slot.abortKey} className="relative group">
-                            {/* Thumbnail frame */}
-                            <div className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-colors ${
-                              slot.status === 'error'
-                                ? 'border-red-500'
-                                : index === primaryIndex && slot.status === 'done'
-                                ? 'border-gold-500'
-                                : 'border-cool-gray-300 dark:border-charcoal-700'
-                            }`}>
-                              <Image
-                                src={slot.remoteUrl ?? slot.previewUrl}
-                                alt={`Product image ${index + 1}`}
-                                fill
-                                unoptimized={slot.status !== 'done'}
-                                className={`object-cover transition-opacity duration-200 ${slot.status === 'uploading' ? 'opacity-40' : 'opacity-100'}`}
-                              />
-
-                              {/* Uploading spinner */}
-                              {slot.status === 'uploading' && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
-                                  <svg className="animate-spin h-8 w-8 text-white drop-shadow" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                                  </svg>
-                                  <span className="text-white text-xs mt-1.5 font-semibold drop-shadow">Uploading…</span>
-                                </div>
-                              )}
-
-                              {/* Error overlay */}
-                              {slot.status === 'error' && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/70 p-2 text-center">
-                                  <span className="text-2xl">❌</span>
-                                  <span className="text-white text-xs mt-1 leading-snug line-clamp-3">{slot.error}</span>
-                                </div>
-                              )}
-
-                              {/* Primary badge */}
-                              {index === primaryIndex && slot.status === 'done' && (
-                                <div className="absolute top-2 left-2 bg-gold-600 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow-md">
-                                  Primary
-                                </div>
-                              )}
-
-                              {/* Cancel button visible during upload */}
-                              {slot.status === 'uploading' && (
-                                <button
-                                  onClick={() => removeSlot(index)}
-                                  title="Cancel upload"
-                                  className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Hover actions (done or error) */}
-                            {slot.status !== 'uploading' && (
-                              <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-2 p-2">
-                                {slot.status === 'done' && index !== primaryIndex && (
-                                  <button
-                                    onClick={() => setPrimaryIndex(index)}
-                                    className="w-full px-2 py-1.5 bg-gold-500 hover:bg-gold-400 text-charcoal-950 rounded-lg text-xs font-bold transition-colors"
-                                  >
-                                    ★ Set Primary
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => removeSlot(index)}
-                                  className="w-full px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors"
-                                >
-                                  🗑 Remove
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                  {/* Images section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-charcoal-900 dark:text-white">Product Images</h3>
+                        <p className="text-xs text-cool-gray-500 mt-0.5">JPEG, PNG, WebP, GIF · max 5 MB · up to {MAX_IMAGES}</p>
                       </div>
-
-                      {/* Status summary pills */}
+                      <span className="text-sm text-cool-gray-500">{imageSlots.length}/{MAX_IMAGES}</span>
+                    </div>
+                    {imageSlots.length < MAX_IMAGES && (
+                      <div {...imageDragHandlers} onClick={() => imageInputRef.current?.click()} role="button" tabIndex={0}
+                        onKeyDown={e => e.key === 'Enter' && imageInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+                          imageDragOver ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10'
+                            : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400 dark:hover:border-gold-600 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700/40'
+                        }`}>
+                        <input ref={imageInputRef} type="file" multiple accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                          onChange={e => { if (e.target.files?.length) processFiles(e.target.files, 'image'); }} className="hidden" />
+                        <div className="text-4xl mb-2">{imageDragOver ? '📂' : '📸'}</div>
+                        <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
+                          {imageDragOver ? 'Drop images here' : 'Click or drag & drop images'}
+                        </p>
+                      </div>
+                    )}
+                    <SlotGrid kind="image" />
+                    {imageSlots.length > 0 && (
                       <div className="flex flex-wrap gap-2 text-xs">
-                        {uploadedImages.length > 0 && (
-                          <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
-                            ✓ {uploadedImages.length} ready
-                          </span>
-                        )}
-                        {slots.filter(s => s.status === 'uploading').length > 0 && (
-                          <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full animate-pulse">
-                            ↑ {slots.filter(s => s.status === 'uploading').length} uploading
-                          </span>
-                        )}
-                        {slots.filter(s => s.status === 'error').length > 0 && (
-                          <span className="px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
-                            ✗ {slots.filter(s => s.status === 'error').length} failed — remove and retry
-                          </span>
-                        )}
+                        {uploadedImgs.length > 0 && <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">✓ {uploadedImgs.length} ready</span>}
+                        {imageSlots.filter(s => s.status === 'uploading').length > 0 && <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full animate-pulse">↑ {imageSlots.filter(s => s.status === 'uploading').length} uploading</span>}
+                        {imageSlots.filter(s => s.status === 'error').length > 0 && <span className="px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">✗ {imageSlots.filter(s => s.status === 'error').length} failed</span>}
                       </div>
-                    </>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="border-t border-cool-gray-200 dark:border-charcoal-700" />
+
+                  {/* Videos section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-charcoal-900 dark:text-white">Product Videos</h3>
+                        <p className="text-xs text-cool-gray-500 mt-0.5">MP4, WebM, MOV, OGG · max 100 MB · up to {MAX_VIDEOS}</p>
+                      </div>
+                      <span className="text-sm text-cool-gray-500">{videoSlots.length}/{MAX_VIDEOS}</span>
+                    </div>
+                    <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-lg text-blue-700 dark:text-blue-300 text-xs">
+                      💡 Short product demo videos (15–60 s) significantly boost conversion. Videos are processed by Cloudinary after upload.
+                    </div>
+                    {videoSlots.length < MAX_VIDEOS && (
+                      <div {...videoDragHandlers} onClick={() => videoInputRef.current?.click()} role="button" tabIndex={0}
+                        onKeyDown={e => e.key === 'Enter' && videoInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-gold-500 ${
+                          videoDragOver ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10'
+                            : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400 dark:hover:border-gold-600 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700/40'
+                        }`}>
+                        <input ref={videoInputRef} type="file" multiple accept={ACCEPTED_VIDEO_TYPES.join(',')}
+                          onChange={e => { if (e.target.files?.length) processFiles(e.target.files, 'video'); }} className="hidden" />
+                        <div className="text-4xl mb-2">{videoDragOver ? '📂' : '🎬'}</div>
+                        <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
+                          {videoDragOver ? 'Drop videos here' : 'Click or drag & drop videos'}
+                        </p>
+                      </div>
+                    )}
+                    <SlotGrid kind="video" />
+                    {videoSlots.length > 0 && (
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {uploadedVids.length > 0 && <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">✓ {uploadedVids.length} ready</span>}
+                        {videoSlots.filter(s => s.status === 'uploading').length > 0 && <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full animate-pulse">↑ {videoSlots.filter(s => s.status === 'uploading').length} uploading — large files may take a moment</span>}
+                        {videoSlots.filter(s => s.status === 'error').length > 0 && <span className="px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">✗ {videoSlots.filter(s => s.status === 'error').length} failed</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Variants */}
+              {/* ── Variants ── */}
               {activeTab === 'variants' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -559,7 +546,7 @@ export default function AddProductPage() {
                 </div>
               )}
 
-              {/* Pricing */}
+              {/* ── Pricing ── */}
               {activeTab === 'pricing' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Pricing</h2>
@@ -597,7 +584,7 @@ export default function AddProductPage() {
                 </div>
               )}
 
-              {/* Inventory */}
+              {/* ── Inventory ── */}
               {activeTab === 'inventory' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Inventory</h2>
@@ -628,7 +615,7 @@ export default function AddProductPage() {
               )}
             </div>
 
-            {/* Action Buttons */}
+            {/* ── Action Buttons ── */}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
               <button
                 onClick={() => router.push('/vendor/products')}
@@ -644,7 +631,7 @@ export default function AddProductPage() {
                   </div>
                 )}
                 {isUploading && (
-                  <span className="text-sm text-blue-600 dark:text-blue-400 animate-pulse">↑ Uploading images…</span>
+                  <span className="text-sm text-blue-600 dark:text-blue-400 animate-pulse">↑ Uploading media…</span>
                 )}
                 <button
                   onClick={() => handleSubmit(true)}

@@ -23,21 +23,24 @@ function configure() {
   cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret, secure: true });
 }
 
-const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
 ]);
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_VIDEO_TYPES = new Set([
+  'video/mp4', 'video/webm', 'video/quicktime', 'video/ogg',
+  'video/x-msvideo', 'video/mpeg',
+]);
+
+const MAX_IMAGE_BYTES = 5  * 1024 * 1024;  //   5 MB
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * POST /api/upload
  * Accepts multipart/form-data with a single `file` field.
+ * Supports images (≤5 MB) and videos (≤100 MB).
  * Requires Bearer token (any authenticated user).
- * Returns { url, publicId, width, height }.
+ * Returns { url, publicId, mediaType, width?, height?, duration? }.
  */
 export async function POST(request: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -53,32 +56,54 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    if (!file) return sendError('No file provided', 400);
 
-    if (!file)                            return sendError('No file provided', 400);
-    if (!ALLOWED_TYPES.has(file.type))    return sendError('Invalid file type. Allowed: JPEG, PNG, WebP, GIF', 400);
-    if (file.size > MAX_BYTES)            return sendError('File too large. Maximum size is 5 MB', 400);
+    const isImage = ALLOWED_IMAGE_TYPES.has(file.type);
+    const isVideo = ALLOWED_VIDEO_TYPES.has(file.type);
 
-    // Web File → Node Buffer
+    if (!isImage && !isVideo) {
+      return sendError(
+        'Unsupported file type. Images: JPEG, PNG, WebP, GIF. Videos: MP4, WebM, MOV, OGG, AVI.',
+        400
+      );
+    }
+
+    const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+    if (file.size > maxBytes) {
+      return sendError(
+        `File too large. Maximum size: ${isVideo ? '100 MB for videos' : '5 MB for images'}.`,
+        400
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Stream-upload to Cloudinary
     const result = await new Promise<{
       secure_url: string;
       public_id: string;
-      width: number;
-      height: number;
+      resource_type: string;
+      width?: number;
+      height?: number;
+      duration?: number;
     }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: 'clw-marketplace/products',
-          resource_type: 'image',
-          transformation: [
-            { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
-          ],
+          folder:        'clw-marketplace/products',
+          resource_type: isVideo ? 'video' : 'image',
+          ...(isImage && {
+            transformation: [
+              { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
+            ],
+          }),
+          ...(isVideo && {
+            eager: [{ format: 'mp4', quality: 'auto' }],
+            eager_async: true,
+          }),
         },
-        (error, result) => {
-          if (error || !result) reject(error ?? new Error('Upload returned empty result'));
-          else resolve(result as { secure_url: string; public_id: string; width: number; height: number });
+        (error, res) => {
+          if (error || !res) reject(error ?? new Error('Upload returned empty result'));
+          else resolve(res as typeof result extends Promise<infer T> ? T : never);
         }
       );
       stream.end(buffer);
@@ -86,17 +111,19 @@ export async function POST(request: NextRequest) {
 
     return sendSuccess(
       {
-        url:      result.secure_url,
-        publicId: result.public_id,
-        width:    result.width,
-        height:   result.height,
+        url:       result.secure_url,
+        publicId:  result.public_id,
+        mediaType: isVideo ? 'video' : 'image',
+        ...(result.width    !== undefined && { width:    result.width }),
+        ...(result.height   !== undefined && { height:   result.height }),
+        ...(result.duration !== undefined && { duration: result.duration }),
       },
-      'Image uploaded successfully'
+      `${isVideo ? 'Video' : 'Image'} uploaded successfully`
     );
   } catch (err: unknown) {
     console.error('[Upload] Error:', err);
     return sendServerError(
-      err instanceof Error ? err.message : 'Failed to upload image'
+      err instanceof Error ? err.message : 'Upload failed'
     );
   }
 }
