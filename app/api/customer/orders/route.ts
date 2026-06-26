@@ -1,37 +1,25 @@
 import { NextRequest } from 'next/server';
+import { Order } from '@/backend/models/Order';
+import { verifyToken } from '@/backend/utils/jwt';
 import {
   sendSuccess,
   sendError,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
-import { connectDB } from '@/backend/config/database';
-import { Order } from '@/backend/models/Order';
-import { verifyToken } from '@/backend/utils/jwt';
 
-/**
- * GET /api/customer/orders
- * Authenticated — returns the logged-in customer's order history.
- */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return sendError('Authentication required', 401);
-  }
+  if (!authHeader?.startsWith('Bearer ')) return sendError('Authentication required', 401);
 
   const payload = verifyToken(authHeader.slice(7));
   if (!payload) return sendError('Invalid or expired token', 401);
 
   try {
-    await connectDB();
-
-    // Query by customerId (ObjectId) if present, else fall back to email
     const query = payload.userId
       ? { customerId: payload.userId }
       : { customerEmail: payload.email.toLowerCase() };
 
-    const orders = await Order.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
+    const orders = await Order.find(query, { orderBy: 'createdAt', orderDir: 'desc' });
 
     const normalized = orders.map(o => ({
       id:        o.orderId,
@@ -39,7 +27,7 @@ export async function GET(request: NextRequest) {
       status:    o.status,
       total:     o.total,
       itemCount: o.items.length,
-      items: o.items.slice(0, 4).map((i: { productId?: string; name: string; image?: string; quantity: number }, idx: number) => ({
+      items: o.items.slice(0, 4).map((i, idx) => ({
         id:       i.productId ?? `item-${idx}`,
         name:     i.name,
         image:    i.image || null,

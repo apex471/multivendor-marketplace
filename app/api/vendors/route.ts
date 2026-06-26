@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
-import { Product } from '@/backend/models/Product';
+import { db } from '@/backend/config/firebase';
 import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter';
 
 /**
@@ -13,61 +12,63 @@ import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter'
  */
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const sp       = new URL(request.url).searchParams;
     const page     = Math.max(1,  parseInt(sp.get('page')   || '1'));
     const limit    = Math.min(48, parseInt(sp.get('limit')  || '24'));
     const search   = sp.get('search')   || '';
     const sortBy   = sp.get('sort')     || 'newest';
 
-    const filter: Record<string, unknown> = {
+    const skip = (page - 1) * limit;
+
+    let allVendors = await User.find({
       role:              'vendor',
       applicationStatus: 'approved',
       isActive:          true,
-    };
+    });
 
     if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName:  { $regex: search, $options: 'i' } },
-        { bio:       { $regex: search, $options: 'i' } },
-      ];
+      const lower = search.toLowerCase();
+      allVendors = allVendors.filter(v =>
+        v.firstName.toLowerCase().includes(lower) ||
+        (v.lastName && v.lastName.toLowerCase().includes(lower)) ||
+        (v.bio && v.bio.toLowerCase().includes(lower))
+      );
     }
 
-    const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
-      newest:  { createdAt: -1 },
-      oldest:  { createdAt:  1 },
-      name:    { firstName:  1 },
-    };
-    const sort = SORT_MAP[sortBy] ?? SORT_MAP.newest;
+    if (sortBy === 'oldest') {
+      allVendors.sort((a, b) => (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0));
+    } else if (sortBy === 'name') {
+      allVendors.sort((a, b) => a.firstName.localeCompare(b.firstName));
+    } else {
+      // newest
+      allVendors.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+    }
 
-    const skip = (page - 1) * limit;
-
-    const [vendors, total] = await Promise.all([
-      User.find(filter)
-        .select('firstName lastName avatar bio createdAt _id')
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      User.countDocuments(filter),
-    ]);
+    const total = allVendors.length;
+    const paginated = allVendors.slice(skip, skip + limit);
 
     // Attach product counts for each vendor
-    const vendorIds = vendors.map((v) => String((v as { _id: unknown })._id));
-    const productCounts = await Product.aggregate<{ _id: string; count: number }>([
-      { $match: { vendorId: { $in: vendorIds }, status: 'active' } },
-      { $group: { _id: '$vendorId', count: { $sum: 1 } } },
-    ]);
-    const countMap = new Map(productCounts.map((p) => [p._id, p.count]));
+    const vendorIds = paginated.map(v => v.id!).filter(Boolean);
+    const countMap = new Map<string, number>();
+    
+    if (vendorIds.length > 0) {
+      const snap = await db.collection('products')
+        .where('status', '==', 'active')
+        .where('vendorId', 'in', vendorIds)
+        .get();
+      snap.docs.forEach(d => {
+        const vId = d.data().vendorId;
+        if (vId) {
+          countMap.set(vId, (countMap.get(vId) ?? 0) + 1);
+        }
+      });
+    }
 
-    const enriched = vendors.map((v) => {
-      const vendor = v as { _id: unknown; firstName: string; lastName: string; avatar?: string; bio?: string; createdAt: Date };
-      const id = String(vendor._id);
+    const enriched = paginated.map((vendor) => {
+      const id = vendor.id!;
       return {
         id,
-        name:     `${vendor.firstName} ${vendor.lastName}`,
+        name:     `${vendor.firstName} ${vendor.lastName ?? ''}`.trim(),
         avatar:   vendor.avatar || null,
         bio:      vendor.bio    || '',
         products: countMap.get(id) || 0,

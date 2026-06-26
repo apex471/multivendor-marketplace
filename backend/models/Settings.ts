@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { db, docToObject } from '@/backend/config/firebase';
 
-export interface ISettings extends Document {
+export interface ISettings {
+  id?: string;
   platformName: string;
   platformEmail: string;
   supportEmail: string;
@@ -14,26 +15,42 @@ export interface ISettings extends Document {
   freeShippingThreshold: number;
   defaultShippingCost: number;
   internationalShipping: boolean;
+  updatedAt?: Date;
 }
 
-const settingsSchema = new Schema<ISettings>(
-  {
-    platformName: { type: String, default: 'CLW Marketplace' },
-    platformEmail: { type: String, default: 'admin@clw.com' },
-    supportEmail: { type: String, default: 'support@clw.com' },
-    maintenanceMode: { type: Boolean, default: false },
-    allowNewVendors: { type: Boolean, default: true },
-    allowNewBrands: { type: Boolean, default: true },
-    requireEmailVerification: { type: Boolean, default: false },
-    commissionRate: { type: Number, default: 10, min: 0, max: 100 },
-    escrowDuration: { type: Number, default: 7, min: 1 },
-    minWithdrawal: { type: Number, default: 50, min: 0 },
-    freeShippingThreshold: { type: Number, default: 100, min: 0 },
-    defaultShippingCost: { type: Number, default: 9.99, min: 0 },
-    internationalShipping: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
+const SETTINGS_DOC = 'settings/singleton';
 
-export const Settings =
-  mongoose.models.Settings || mongoose.model<ISettings>('Settings', settingsSchema);
+const DEFAULTS: Omit<ISettings, 'id' | 'updatedAt'> = {
+  platformName: 'CLW Marketplace',
+  platformEmail: 'platform@clwmarketplace.com',
+  supportEmail: 'support@clwmarketplace.com',
+  maintenanceMode: false,
+  allowNewVendors: true,
+  allowNewBrands: true,
+  requireEmailVerification: true,
+  commissionRate: 10,
+  escrowDuration: 7,
+  minWithdrawal: 50,
+  freeShippingThreshold: 100,
+  defaultShippingCost: 9.99,
+  internationalShipping: false,
+};
+
+export const Settings = {
+  async findOne(): Promise<ISettings & { id: string }> {
+    const snap = await db.doc(SETTINGS_DOC).get();
+    if (!snap.exists) {
+      // Create singleton on first access
+      const data = { ...DEFAULTS, updatedAt: new Date() };
+      await db.doc(SETTINGS_DOC).set(data);
+      return { id: 'singleton', ...data };
+    }
+    return docToObject<ISettings>(snap)!;
+  },
+
+  async updateOne(updates: Partial<ISettings>): Promise<ISettings & { id: string }> {
+    const data = { ...updates, updatedAt: new Date() };
+    await db.doc(SETTINGS_DOC).set(data, { merge: true });
+    return this.findOne();
+  },
+};

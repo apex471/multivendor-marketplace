@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
 import { Comment } from '@/backend/models/Comment';
 import { User } from '@/backend/models/User';
@@ -20,29 +19,32 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    await connectDB();
-
     const sp    = new URL(req.url).searchParams;
     const page  = Math.max(1, parseInt(sp.get('page') ?? '1'));
     const limit = Math.min(50, parseInt(sp.get('limit') ?? '20'));
     const skip  = (page - 1) * limit;
 
-    const post = await Post.findById(id).select('_id').lean();
+    const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
-    const [comments, total] = await Promise.all([
-      Comment.find({ postId: id, parentId: { $exists: false } })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Comment.countDocuments({ postId: id, parentId: { $exists: false } }),
-    ]);
+    // Fetch all comments for the post and filter top-level ones in-memory
+    const allComments = await Comment.find({ postId: id });
+    const topLevel = allComments.filter(c => !(c as any).parentId);
+    
+    // Sort by createdAt desc
+    topLevel.sort((a, b) => {
+      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bd - ad;
+    });
+
+    const total = topLevel.length;
+    const paginated = topLevel.slice(skip, skip + limit);
 
     return sendSuccess({
-      comments: comments.map(c => ({
-        id:           String(c._id),
-        text:         c.text,
+      comments: paginated.map(c => ({
+        id:           String(c.id),
+        text:         c.content,
         authorId:     String(c.authorId),
         authorName:   c.authorName,
         authorAvatar: c.authorAvatar ?? null,
@@ -72,13 +74,11 @@ export async function POST(
     const { text, parentId } = await req.json();
     if (!text?.trim()) return sendError('Comment text is required');
 
-    await connectDB();
-
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
     // Fetch commenter info
-    const user = await User.findById(payload.userId).select('firstName lastName avatar').lean();
+    const user = await User.findById(payload.userId);
     const authorName = user
       ? `${user.firstName} ${user.lastName ?? ''}`.trim()
       : 'User';
@@ -89,12 +89,12 @@ export async function POST(
       authorId:    payload.userId,
       authorName,
       authorAvatar: user?.avatar ?? undefined,
-      text:         text.trim(),
+      content:      text.trim(),
       ...(parentId ? { parentId } : {}),
-    });
+    } as any);
 
+    await Post.increment(id, 'comments', 1);
     post.comments = post.comments + 1;
-    await post.save();
 
     // Send notification to post author (non-blocking)
     if (String(post.authorId) !== payload.userId) {
@@ -106,13 +106,14 @@ export async function POST(
         actorAvatar: user?.avatar ?? undefined,
         text:        `${authorName} commented on your post`,
         link:        `/post/${id}`,
+        isRead:      false,
       }).catch(() => {});
     }
 
     return sendSuccess(
       {
-        id:           String(comment._id),
-        text:         comment.text,
+        id:           String(comment.id),
+        text:         comment.content,
         authorId:     String(comment.authorId),
         authorName:   comment.authorName,
         authorAvatar: comment.authorAvatar ?? null,
@@ -127,4 +128,3 @@ export async function POST(
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
-

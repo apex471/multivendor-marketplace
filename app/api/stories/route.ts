@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Story } from '@/backend/models/Story';
 import { verifyToken } from '@/backend/utils/jwt';
+import { db, FieldPath, docToObject } from '@/backend/config/firebase';
 import {
   sendSuccess,
   sendError,
@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
 
     if (!mediaUrls?.length) return sendError('At least one media URL is required', 400);
 
-    await connectDB();
-
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const story = await Story.create({
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
       expiresAt,
     });
 
-    return sendSuccess({ story: { id: String(story._id), expiresAt } }, 'Story published', 201);
+    return sendSuccess({ story: { id: story.id, expiresAt } }, 'Story published', 201);
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
@@ -48,33 +46,48 @@ export async function GET(request: NextRequest) {
   const payload = authHeader?.startsWith('Bearer ') ? verifyToken(authHeader.slice(7)) : null;
 
   try {
-    await connectDB();
     const sp    = new URL(request.url).searchParams;
     const limit = Math.min(50, parseInt(sp.get('limit') ?? '20'));
 
-    const stories = await Story.find({ expiresAt: { $gt: new Date() } })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('authorId', 'firstName lastName avatar username')
-      .lean() as Record<string, unknown>[];
+    const stories = await Story.findActive(limit);
+    const authorIds = Array.from(new Set(stories.map(s => s.authorId)));
+
+    const authorMap = new Map<string, any>();
+    if (authorIds.length > 0) {
+      const chunks: string[][] = [];
+      for (let i = 0; i < authorIds.length; i += 30) {
+        chunks.push(authorIds.slice(i, i + 30));
+      }
+      for (const chunk of chunks) {
+        const snap = await db.collection('users')
+          .where(FieldPath.documentId(), 'in', chunk)
+          .get();
+        snap.docs.forEach(d => {
+          authorMap.set(d.id, docToObject<any>(d));
+        });
+      }
+    }
 
     return sendSuccess({
-      stories: stories.map(s => ({
-        id:         String(s._id),
-        mediaUrls:  s.mediaUrls,
-        filter:     s.filter,
-        duration:   s.duration,
-        viewCount:  (s.viewedBy as unknown[])?.length ?? 0,
-        viewed:     payload ? (s.viewedBy as unknown[])?.some((v) => String(v) === payload.userId) : false,
-        expiresAt:  s.expiresAt,
-        createdAt:  s.createdAt,
-        author: {
-          id:       String((s.authorId as any)?._id ?? ''),
-          username: (s.authorId as any)?.username ?? (s.authorId as any)?.firstName ?? '',
-          name:     `${(s.authorId as any)?.firstName ?? ''} ${(s.authorId as any)?.lastName ?? ''}`.trim(),
-          avatar:   (s.authorId as any)?.avatar ?? null,
-        },
-      })),
+      stories: stories.map(s => {
+        const author = authorMap.get(s.authorId);
+        return {
+          id:         s.id,
+          mediaUrls:  s.mediaUrls,
+          filter:     s.filter,
+          duration:   s.duration,
+          viewCount:  s.viewedBy?.length ?? 0,
+          viewed:     payload ? s.viewedBy?.includes(payload.userId) : false,
+          expiresAt:  s.expiresAt,
+          createdAt:  s.createdAt,
+          author: {
+            id:       s.authorId,
+            username: author?.storeName || author?.firstName || '',
+            name:     author ? `${author.firstName} ${author.lastName ?? ''}`.trim() : 'User',
+            avatar:   author?.avatar ?? null,
+          },
+        };
+      }),
     });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));

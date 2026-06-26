@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Follow } from '@/backend/models/Follow';
 import { User } from '@/backend/models/User';
 import { Notification } from '@/backend/models/Notification';
 import { verifyToken } from '@/backend/utils/jwt';
+import { db, FieldPath, docToObject } from '@/backend/config/firebase';
 import {
   sendSuccess,
   sendError,
@@ -21,8 +21,6 @@ function getPayload(req: NextRequest) {
 // Query: ?userId=xxx&type=followers|following&page=1&limit=20
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     const sp      = new URL(req.url).searchParams;
     const userId  = sp.get('userId');
     const type    = sp.get('type') ?? 'followers'; // 'followers' | 'following'
@@ -32,50 +30,61 @@ export async function GET(req: NextRequest) {
     if (!userId) return sendError('userId is required');
 
     const skip = (page - 1) * limit;
-    let userIds: string[];
-    let total: number;
+    let userIds: string[] = [];
+    let total = 0;
 
     if (type === 'following') {
-      // People this user follows
-      const [rows, count] = await Promise.all([
-        Follow.find({ followerId: userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-        Follow.countDocuments({ followerId: userId }),
-      ]);
-      userIds = rows.map(r => String(r.followingId));
-      total   = count;
+      const allFollows = await Follow.find({ followerId: userId });
+      allFollows.sort((a, b) => {
+        const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bd - ad;
+      });
+      total = allFollows.length;
+      userIds = allFollows.slice(skip, skip + limit).map(r => r.followingId);
     } else {
-      // People who follow this user
-      const [rows, count] = await Promise.all([
-        Follow.find({ followingId: userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-        Follow.countDocuments({ followingId: userId }),
-      ]);
-      userIds = rows.map(r => String(r.followerId));
-      total   = count;
+      const allFollows = await Follow.find({ followingId: userId });
+      allFollows.sort((a, b) => {
+        const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bd - ad;
+      });
+      total = allFollows.length;
+      userIds = allFollows.slice(skip, skip + limit).map(r => r.followerId);
     }
 
-    const users = await User.find({ _id: { $in: userIds } })
-      .select('firstName lastName avatar bio applicationStatus')
-      .lean();
+    const users: any[] = [];
+    if (userIds.length > 0) {
+      const chunks: string[][] = [];
+      for (let i = 0; i < userIds.length; i += 30) {
+        chunks.push(userIds.slice(i, i + 30));
+      }
+      for (const chunk of chunks) {
+        const snap = await db.collection('users')
+          .where(FieldPath.documentId(), 'in', chunk)
+          .get();
+        snap.docs.forEach(d => {
+          const u = docToObject<any>(d);
+          if (u) users.push(u);
+        });
+      }
+    }
 
     // Determine if the requesting user follows each returned user
     const payload = getPayload(req);
     let currentFollowingSet = new Set<string>();
-    if (payload) {
-      const myFollows = await Follow.find({
-        followerId: payload.userId,
-        followingId: { $in: userIds },
-      }).select('followingId').lean();
-      currentFollowingSet = new Set(myFollows.map(f => String(f.followingId)));
+    if (payload && userIds.length > 0) {
+      currentFollowingSet = await Follow.getFollowingSet(payload.userId, userIds);
     }
 
     const mapped = users.map(u => ({
-      id:          String(u._id),
-      username:    `${u.firstName}${u.lastName ?? ''}`.toLowerCase(),
+      id:          String(u.id),
+      username:    `${u.firstName}${u.lastName ?? ''}`.toLowerCase().replace(/\s/g, ''),
       fullName:    `${u.firstName} ${u.lastName ?? ''}`.trim(),
       avatar:      u.avatar ?? null,
       bio:         u.bio ?? '',
       verified:    u.applicationStatus === 'approved',
-      isFollowing: currentFollowingSet.has(String(u._id)),
+      isFollowing: currentFollowingSet.has(String(u.id)),
     }));
 
     return sendSuccess({
@@ -102,19 +111,16 @@ export async function POST(req: NextRequest) {
     if (!followingId) return sendError('followingId is required');
     if (followingId === payload.userId) return sendError('Cannot follow yourself');
 
-    await connectDB();
-
     const [actor, target] = await Promise.all([
-      User.findById(payload.userId).select('firstName lastName avatar').lean(),
-      User.findById(followingId).select('_id').lean(),
+      User.findById(payload.userId),
+      User.findById(followingId),
     ]);
     if (!target) return sendError('User not found', 404);
 
-    await Follow.findOneAndUpdate(
-      { followerId: payload.userId, followingId },
-      { followerId: payload.userId, followingId },
-      { upsert: true, new: true }
-    );
+    const existing = await Follow.findOne({ followerId: payload.userId, followingId });
+    if (!existing) {
+      await Follow.create({ followerId: payload.userId, followingId });
+    }
 
     const followerCount = await Follow.countDocuments({ followingId });
 
@@ -129,6 +135,7 @@ export async function POST(req: NextRequest) {
         actorAvatar: actor.avatar,
         text:        `${actorName} started following you`,
         link:        `/profile/${actorName.toLowerCase().replace(/\s+/g, '')}`,
+        isRead:      false,
       }).catch(() => {});
     }
 
@@ -147,8 +154,6 @@ export async function DELETE(req: NextRequest) {
 
     const followingId = new URL(req.url).searchParams.get('followingId');
     if (!followingId) return sendError('followingId is required');
-
-    await connectDB();
 
     await Follow.findOneAndDelete({ followerId: payload.userId, followingId });
 

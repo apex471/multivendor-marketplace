@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Product } from '@/backend/models/Product';
 import {
@@ -15,31 +14,21 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    await connectDB();
+    const vendor = await User.findById(id);
 
-    const vendor = await User.findOne({
-      _id:               id,
-      role:              'vendor',
-      applicationStatus: 'approved',
-      isActive:          true,
-    })
-      .select('-password -emailVerificationToken -emailVerificationExpires')
-      .lean();
-
-    if (!vendor) return sendNotFound('Vendor not found');
+    if (!vendor || vendor.role !== 'vendor' || vendor.applicationStatus !== 'approved' || !vendor.isActive) {
+      return sendNotFound('Vendor not found');
+    }
 
     const products = await Product.find({
-      vendorId: vendor._id,
+      vendorId: vendor.id,
       status:   'active',
-    })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+    }, { orderBy: 'createdAt', orderDir: 'desc', limit: 50 });
 
     return sendSuccess({
       vendor: {
-        id:          vendor._id,
-        name:        `${vendor.firstName} ${vendor.lastName}`.trim(),
+        id:          vendor.id,
+        name:        `${vendor.firstName} ${vendor.lastName ?? ''}`.trim(),
         firstName:   vendor.firstName,
         lastName:    vendor.lastName,
         email:       vendor.email,
@@ -50,7 +39,7 @@ export async function GET(
         productCount: products.length,
       },
       products: products.map(p => ({
-        id:          p._id,
+        id:          p.id,
         name:        p.name,
         price:       p.salePrice && p.salePrice < p.price ? p.salePrice : p.price,
         oldPrice:    p.salePrice && p.salePrice < p.price ? p.price : undefined,

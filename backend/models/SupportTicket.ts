@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { db, docToObject } from '@/backend/config/firebase';
 
 export interface TicketResponse {
   from: 'customer' | 'admin';
@@ -7,9 +7,10 @@ export interface TicketResponse {
   timestamp: Date;
 }
 
-export interface ISupportTicket extends Document {
+export interface ISupportTicket {
+  id?: string;
   ticketNumber: string;
-  customerId: mongoose.Types.ObjectId;
+  customerId: string;
   customerName: string;
   customerEmail: string;
   subject: string;
@@ -18,53 +19,64 @@ export interface ISupportTicket extends Document {
   status: 'open' | 'in-progress' | 'resolved' | 'closed';
   category: 'payment' | 'order' | 'product' | 'account' | 'other';
   responses: TicketResponse[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const responseSchema = new Schema<TicketResponse>(
-  {
-    from: { type: String, enum: ['customer', 'admin'], required: true },
-    authorName: { type: String, required: true },
-    message: { type: String, required: true },
-    timestamp: { type: Date, default: Date.now },
+const TICKETS = 'supportTickets';
+
+export const SupportTicket = {
+  async create(data: Omit<ISupportTicket, 'id' | 'createdAt' | 'updatedAt'>): Promise<ISupportTicket & { id: string }> {
+    const now = new Date();
+    const doc = {
+      ...data,
+      priority: data.priority ?? 'medium',
+      status: data.status ?? 'open',
+      category: data.category ?? 'other',
+      responses: data.responses ?? [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    const ref = await db.collection(TICKETS).add(doc);
+    return { id: ref.id, ...doc };
   },
-  { _id: false }
-);
 
-const supportTicketSchema = new Schema<ISupportTicket>(
-  {
-    ticketNumber: { type: String, required: true, unique: true },
-    customerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    customerName: { type: String, required: true },
-    customerEmail: { type: String, required: true },
-    subject: { type: String, required: true },
-    message: { type: String, required: true },
-    priority: {
-      type: String,
-      enum: ['low', 'medium', 'high', 'urgent'],
-      default: 'medium',
-    },
-    status: {
-      type: String,
-      enum: ['open', 'in-progress', 'resolved', 'closed'],
-      default: 'open',
-    },
-    category: {
-      type: String,
-      enum: ['payment', 'order', 'product', 'account', 'other'],
-      default: 'other',
-    },
-    responses: [responseSchema],
+  async findById(id: string): Promise<(ISupportTicket & { id: string }) | null> {
+    const snap = await db.collection(TICKETS).doc(id).get();
+    return snap.exists ? docToObject<ISupportTicket>(snap) : null;
   },
-  { timestamps: true }
-);
 
-supportTicketSchema.index({ status: 1, createdAt: -1 });
-supportTicketSchema.index({ priority: 1 });
-supportTicketSchema.index({ customerId: 1 });
-supportTicketSchema.index({ ticketNumber: 1 }, { unique: true });
+  async find(filter: Record<string, unknown> = {}, opts?: { limit?: number; skip?: number; orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(ISupportTicket & { id: string })[]> {
+    let query = db.collection(TICKETS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+    const snap = await query.get();
+    let results = snap.docs.map(d => docToObject<ISupportTicket>(d)!);
+    if (opts?.skip) results = results.slice(opts.skip);
+    return results;
+  },
 
-export const SupportTicket =
-  mongoose.models.SupportTicket ||
-  mongoose.model<ISupportTicket>('SupportTicket', supportTicketSchema);
+  async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
+    let query = db.collection(TICKETS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.count().get();
+    return snap.data().count;
+  },
+
+  async updateOne(id: string, updates: Partial<ISupportTicket>): Promise<void> {
+    await db.collection(TICKETS).doc(id).update({ ...updates, updatedAt: new Date() });
+  },
+
+  async addResponse(id: string, response: TicketResponse): Promise<void> {
+    const { FieldValue } = await import('firebase-admin/firestore');
+    await db.collection(TICKETS).doc(id).update({
+      responses: FieldValue.arrayUnion(response),
+      updatedAt: new Date(),
+    });
+  },
+};

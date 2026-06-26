@@ -1,121 +1,45 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Transaction } from '@/backend/models/Transaction';
-import { SupportTicket } from '@/backend/models/SupportTicket';
 import { Order as OrderModel } from '@/backend/models/Order';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
+import { db, docToObject } from '@/backend/config/firebase';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
+// GET /api/admin/stats
 export async function GET(request: NextRequest) {
   const { error } = await verifyAdminAuth(request);
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-
-    // Run all DB aggregations in parallel for speed
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    const [
-      totalCustomers,
-      totalVendors,
-      totalBrands,
-      totalLogistics,
-      totalAdmins,
-      pendingApprovals,
-      suspendedAccounts,
-      newUsersToday,
-      newUsersThisMonth,
-      newUsersLastMonth,
-      totalUsers,
-      transactionStats,
-      monthlyTransactions,
-      pendingEscrow,
-      openTickets,
-      // Courier breakdown: group orders by courier.id to get order counts per courier
-      courierBreakdown,
-    ] = await Promise.all([
-      User.countDocuments({ role: 'customer', isActive: true }),
-      User.countDocuments({ role: 'vendor', applicationStatus: 'approved', isActive: true }),
-      User.countDocuments({ role: 'brand', applicationStatus: 'approved', isActive: true }),
-      User.countDocuments({ role: 'logistics', applicationStatus: 'approved', isActive: true }),
-      User.countDocuments({ role: 'admin' }),
-      User.countDocuments({
-        role: { $in: ['vendor', 'brand', 'logistics'] },
-        applicationStatus: 'pending',
-      }),
-      User.countDocuments({ isActive: false }),
-      User.countDocuments({ createdAt: { $gte: today } }),
-      User.countDocuments({ createdAt: { $gte: thisMonthStart } }),
-      User.countDocuments({ createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
-      User.countDocuments({}),
-      // Transaction aggregation
-      Transaction.aggregate([
-        { $match: { status: 'completed' } },
-        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
-      ]),
-      Transaction.aggregate([
-        { $match: { status: 'completed', createdAt: { $gte: thisMonthStart } } },
-        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
-      ]),
-      Transaction.aggregate([
-        { $match: { type: 'order_payment', status: 'pending' } },
-        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
-      ]),
-      SupportTicket.countDocuments({ status: { $in: ['open', 'in-progress'] } }),
-      OrderModel.aggregate([
-        { $match: { 'courier.id': { $exists: true } } },
-        {
-          $group: {
-            _id:   '$courier.id',
-            name:  { $first: '$courier.name' },
-            icon:  { $first: '$courier.icon' },
-            price: { $first: '$courier.price' },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { count: -1 } },
-      ]),
+    // Fetch all collections in parallel
+    const [allUsers, allTxs, allTickets, allOrders] = await Promise.all([
+      User.find({}),
+      Transaction.find({}),
+      db.collection('supportTickets').get().then(snap => snap.docs.map(d => docToObject<any>(d)!)),
+      OrderModel.find({}),
     ]);
 
-    // 7-day user signup trend
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    const signupTrend = await User.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-    ]);
+    // Compute User stats
+    const totalCustomers = allUsers.filter(u => u.role === 'customer' && u.isActive).length;
+    const totalVendors = allUsers.filter(u => u.role === 'vendor' && u.applicationStatus === 'approved' && u.isActive).length;
+    const totalBrands = allUsers.filter(u => u.role === 'brand' && u.applicationStatus === 'approved' && u.isActive).length;
+    const totalLogistics = allUsers.filter(u => u.role === 'logistics' && u.applicationStatus === 'approved' && u.isActive).length;
+    const totalAdmins = allUsers.filter(u => u.role === 'admin').length;
+    const pendingApprovals = allUsers.filter(u => ['vendor', 'brand', 'logistics'].includes(u.role) && u.applicationStatus === 'pending').length;
+    const suspendedAccounts = allUsers.filter(u => !u.isActive).length;
+    const newUsersToday = allUsers.filter(u => u.createdAt && u.createdAt >= today).length;
+    const newUsersThisMonth = allUsers.filter(u => u.createdAt && u.createdAt >= thisMonthStart).length;
+    const newUsersLastMonth = allUsers.filter(u => u.createdAt && u.createdAt >= lastMonthStart && u.createdAt <= lastMonthEnd).length;
+    const totalUsers = allUsers.length;
 
-    // Build 7-day array with zeros for missing days
-    const trendMap = new Map<string, number>();
-    signupTrend.forEach((d) => {
-      const key = `${d._id.year}-${String(d._id.month).padStart(2, '0')}-${String(d._id.day).padStart(2, '0')}`;
-      trendMap.set(key, d.count);
-    });
-    const weeklySignups: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      weeklySignups.push({ date: key, count: trendMap.get(key) || 0 });
-    }
-
-    // Compute user growth %
+    // Compute growth
     const userGrowthPct =
       newUsersLastMonth > 0
         ? Math.round(((newUsersThisMonth - newUsersLastMonth) / newUsersLastMonth) * 100)
@@ -123,12 +47,53 @@ export async function GET(request: NextRequest) {
         ? 100
         : 0;
 
-    const totalRevenue = transactionStats[0]?.total || 0;
-    const totalTransactionCount = transactionStats[0]?.count || 0;
-    const monthRevenue = monthlyTransactions[0]?.total || 0;
-    const monthTransactionCount = monthlyTransactions[0]?.count || 0;
-    const pendingEscrowAmount = pendingEscrow[0]?.total || 0;
-    const pendingEscrowCount = pendingEscrow[0]?.count || 0;
+    // Compute Financial stats
+    const completedTxs = allTxs.filter(t => t.status === 'completed');
+    const totalRevenue = completedTxs.reduce((sum, t) => sum + t.amount, 0);
+    const totalTransactionCount = completedTxs.length;
+
+    const monthTxs = completedTxs.filter(t => t.createdAt && t.createdAt >= thisMonthStart);
+    const monthRevenue = monthTxs.reduce((sum, t) => sum + t.amount, 0);
+    const monthTransactionCount = monthTxs.length;
+
+    const pendingEscrows = allTxs.filter(t => t.type === 'order_payment' && t.status === 'pending');
+    const pendingEscrowAmount = pendingEscrows.reduce((sum, t) => sum + t.amount, 0);
+    const pendingEscrowCount = pendingEscrows.length;
+
+    // Support ticket stats
+    const openTickets = allTickets.filter(t => ['open', 'in-progress'].includes(t.status)).length;
+
+    // Weekly signups (7 days)
+    const weeklySignups: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const count = allUsers.filter(u => {
+        if (!u.createdAt) return false;
+        const uDate = new Date(u.createdAt).toISOString().slice(0, 10);
+        return uDate === key;
+      }).length;
+      weeklySignups.push({ date: key, count });
+    }
+
+    // Courier breakdown
+    const courierMap = new Map<string, { id: string; name: string; icon: string; price: number; count: number }>();
+    allOrders.forEach(o => {
+      if (o.courier && o.courier.id) {
+        const current = courierMap.get(o.courier.id) ?? {
+          id:    o.courier.id,
+          name:  o.courier.name ?? o.courier.id,
+          icon:  o.courier.icon ?? '📦',
+          price: o.courier.price ?? 0,
+          count: 0,
+        };
+        current.count += 1;
+        courierMap.set(o.courier.id, current);
+      }
+    });
+    const courierBreakdown = Array.from(courierMap.values())
+      .sort((a, b) => b.count - a.count);
 
     return sendSuccess({
       users: {
@@ -155,18 +120,11 @@ export async function GET(request: NextRequest) {
         monthTransactions: monthTransactionCount,
         pendingEscrow: pendingEscrowAmount,
         pendingEscrowCount,
-        // Commission is 10% of total revenue (platform rate)
         commissionEarned: Math.round(totalRevenue * 0.1),
       },
       charts: {
         weeklySignups,
-        courierBreakdown: courierBreakdown.map((c: { _id: string; name: string; icon?: string; price: number; count: number }) => ({
-          id:    c._id,
-          name:  c.name  || c._id,
-          icon:  c.icon  || '📦',
-          price: c.price ?? 0,
-          count: c.count,
-        })),
+        courierBreakdown,
       },
     });
   } catch (error) {

@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sanitizeInput } from '@/backend/utils/validation';
@@ -25,7 +24,6 @@ export async function PUT(request: NextRequest) {
     if (!decoded) return sendUnauthorized('Invalid or expired token');
 
     const body = await request.json().catch(() => ({}));
-    await connectDB();
 
     const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar'];
     const updateData: Record<string, unknown> = {};
@@ -39,28 +37,24 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const user = await User.findByIdAndUpdate(decoded.userId, updateData, {
-      new: true,
-      runValidators: true,
-    });
-
+    const user = await User.findById(decoded.userId);
     if (!user) return sendNotFound('User not found');
 
-    return sendSuccess(
-      {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-          avatar: user.avatar || null,
-          bio: user.bio || null,
-          phoneNumber: user.phoneNumber || null,
-        },
+    await User.updateOne(decoded.userId, updateData);
+    const updated = await User.findById(decoded.userId);
+
+    return sendSuccess({
+      user: {
+        id: updated!.id,
+        firstName: updated!.firstName,
+        lastName: updated!.lastName,
+        email: updated!.email,
+        role: updated!.role,
+        avatar: updated!.avatar || null,
+        bio: updated!.bio || null,
+        phoneNumber: updated!.phoneNumber || null,
       },
-      'Profile updated successfully'
-    );
+    }, 'Profile updated successfully');
   } catch (error) {
     console.error('Profile route error:', error);
     return sendServerError('An error occurred while updating profile');

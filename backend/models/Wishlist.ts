@@ -1,21 +1,65 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { db, docToObject } from '@/backend/config/firebase';
 
-export interface IWishlist extends Document {
-  userId:    mongoose.Types.ObjectId;
-  productId: mongoose.Types.ObjectId;
-  createdAt: Date;
+export interface IWishlist {
+  id?: string;
+  userId: string;
+  productId: string;
+  createdAt?: Date;
 }
 
-const wishlistSchema = new Schema<IWishlist>(
-  {
-    userId:    { type: Schema.Types.ObjectId, ref: 'User',    required: true },
-    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+const WISHLIST = 'wishlists';
+
+export const Wishlist = {
+  async create(data: Omit<IWishlist, 'id' | 'createdAt'>): Promise<IWishlist & { id: string }> {
+    const now = new Date();
+    const doc = { ...data, createdAt: now };
+    const ref = await db.collection(WISHLIST).add(doc);
+    return { id: ref.id, ...doc };
   },
-  { timestamps: true }
-);
 
-wishlistSchema.index({ userId: 1, productId: 1 }, { unique: true });
-wishlistSchema.index({ userId: 1, createdAt: -1 });
+  async findOne(filter: Record<string, unknown>): Promise<(IWishlist & { id: string }) | null> {
+    let query = db.collection(WISHLIST) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.limit(1).get();
+    return snap.empty ? null : docToObject<IWishlist>(snap.docs[0]);
+  },
 
-export const Wishlist =
-  mongoose.models.Wishlist || mongoose.model<IWishlist>('Wishlist', wishlistSchema);
+  async find(filter: Record<string, unknown> = {}, opts?: { orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(IWishlist & { id: string })[]> {
+    let query = db.collection(WISHLIST) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+    const snap = await query.get();
+    return snap.docs.map(d => docToObject<IWishlist>(d)!);
+  },
+
+  // Upsert: create if not exists
+  async upsert(userId: string, productId: string): Promise<IWishlist & { id: string }> {
+    const existing = await this.findOne({ userId, productId });
+    if (existing) return existing;
+    return this.create({ userId, productId });
+  },
+
+  async findOneAndDelete(filter: Record<string, unknown>): Promise<void> {
+    let query = db.collection(WISHLIST) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.limit(1).get();
+    if (!snap.empty) await snap.docs[0].ref.delete();
+  },
+
+  async deleteMany(filter: Record<string, unknown>): Promise<void> {
+    let query = db.collection(WISHLIST) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  },
+};

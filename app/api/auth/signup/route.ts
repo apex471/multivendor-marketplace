@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateSignupInput, sanitizeInput } from '@/backend/utils/validation';
@@ -15,7 +14,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
 
-    // Validate input
     const validation = validateSignupInput(body);
     if (!validation.isValid) {
       return sendValidationError('Validation failed', validation.errors);
@@ -34,20 +32,14 @@ export async function POST(request: NextRequest) {
     const businessCity: string | undefined = body.businessCity || undefined;
     const businessState: string | undefined = body.businessState || undefined;
 
-    await connectDB();
-
-    // Check for existing account
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return sendError('User with this email already exists', 409, {
-        email: 'Email is already registered',
-      });
+    // Check if email already exists
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return sendError('User with this email already exists', 409, { email: 'Email is already registered' });
     }
 
-    // Create and persist user. Password is hashed by the pre-save hook.
-    // OTP email verification is disabled until a custom domain is configured
-    // in Resend (free plan restricts delivery to arbitrary recipients).
-    const newUser = new User({
+    // Create user
+    const newUser = await User.create({
       firstName,
       lastName,
       email,
@@ -63,42 +55,33 @@ export async function POST(request: NextRequest) {
       ...(businessState ? { businessState } : {}),
       applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
       isEmailVerified: false,
+      isPhoneVerified: false,
+      isActive: true,
     });
 
-    await newUser.save();
-
-    // Generate 6-digit OTP and persist it (select:false fields require updateOne)
+    // Generate and save OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await User.updateOne(
-      { _id: newUser._id },
-      {
-        $set: {
-          emailVerificationToken: otp,
-          emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 min
-        },
-      }
-    );
+    await User.updateOne(newUser.id!, {
+      emailVerificationToken: otp,
+      emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+    });
 
-    // Send verification email — non-blocking so a transient email error doesn't fail signup
     let emailSent = false;
     let emailError: string | undefined;
     try {
-      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role);
+      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role as UserRole);
       emailSent = emailResult.sent;
       emailError = emailResult.error;
-      if (!emailResult.sent) {
-        console.error('[Signup] Email delivery failed:', emailResult.error);
-      }
     } catch (emailErr) {
       console.error('[Signup] Unexpected email error:', emailErr);
     }
 
-    const token = generateToken(newUser._id.toString(), newUser.email, newUser.role);
+    const token = generateToken(newUser.id!, newUser.email, newUser.role);
 
     return sendSuccess(
       {
         user: {
-          id: newUser._id,
+          id: newUser.id,
           firstName: newUser.firstName,
           lastName: newUser.lastName,
           email: newUser.email,
@@ -109,9 +92,7 @@ export async function POST(request: NextRequest) {
         token,
         requiresEmailVerification: true,
         emailSent,
-        ...(emailSent
-          ? {}
-          : { emailWarning: emailError || 'Verification email could not be sent. Use the resend button on the next page.' }),
+        ...(emailSent ? {} : { emailWarning: emailError || 'Verification email could not be sent.' }),
       },
       emailSent
         ? 'Account created successfully. Please check your email for a verification code.'
@@ -121,17 +102,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const err = error as Error;
     console.error('[Signup] Route error:', err?.message || error);
-
-    if (err?.message?.includes('MONGODB_URI')) {
-      return sendError('Database not configured. Set MONGODB_URI in environment variables.', 503);
-    }
-    if (err?.message?.includes('connect') || err?.message?.includes('ENOTFOUND') || err?.message?.includes('timed out')) {
-      return sendError('Cannot connect to database. Check MONGODB_URI in environment variables.', 503);
-    }
-    if (err?.message?.includes('duplicate key') || err?.message?.includes('E11000')) {
-      return sendError('User with this email already exists', 409, { email: 'Email is already registered' });
-    }
-
     return sendServerError(`Signup error: ${err?.message || 'Unknown error'}`);
   }
 }

@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
@@ -22,15 +21,13 @@ export async function POST(
     const payload = verifyToken(token);
     if (!payload) return sendUnauthorized('Invalid token');
 
-    await connectDB();
-
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
-    post.shares = (post.shares ?? 0) + 1;
-    await post.save();
+    await Post.increment(id, 'shares', 1);
+    const updatedPostShares = (post.shares ?? 0) + 1;
 
-    return sendSuccess({ shares: post.shares }, 'Post shared');
+    return sendSuccess({ shares: updatedPostShares }, 'Post shared');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }

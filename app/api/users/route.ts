@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Follow } from '@/backend/models/Follow';
 import { verifyToken } from '@/backend/utils/jwt';
@@ -10,8 +9,6 @@ import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter'
 // When no q is provided, returns suggested users (by follower count desc)
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     const sp    = new URL(req.url).searchParams;
     const q     = sp.get('q')?.trim() ?? '';
     const page  = Math.max(1,  parseInt(sp.get('page')  || '1'));
@@ -26,56 +23,60 @@ export async function GET(req: NextRequest) {
       if (tok) currentUserId = tok.userId;
     }
 
-    const filter: Record<string, unknown> = { isActive: true };
-    if (q) {
-      filter['$or'] = [
-        { firstName: { $regex: q, $options: 'i' } },
-        { lastName:  { $regex: q, $options: 'i' } },
-      ];
-    }
-
+    let allUsers = await User.find({ isActive: true });
+    
     // Exclude self
     if (currentUserId) {
-      filter['_id'] = { $ne: currentUserId };
+      allUsers = allUsers.filter(u => u.id !== currentUserId);
     }
 
-    const [users, total] = await Promise.all([
-      User.find(filter)
-        .select('firstName lastName avatar bio applicationStatus createdAt')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      User.countDocuments(filter),
-    ]);
+    // Filter by search query if provided
+    if (q) {
+      const queryLower = q.toLowerCase();
+      allUsers = allUsers.filter(u => 
+        u.firstName.toLowerCase().includes(queryLower) || 
+        (u.lastName && u.lastName.toLowerCase().includes(queryLower))
+      );
+    }
 
-    // Bulk follower counts
-    const userIds = users.map(u => u._id);
-    const followerCounts = await Follow.aggregate([
-      { $match: { followingId: { $in: userIds } } },
-      { $group: { _id: '$followingId', count: { $sum: 1 } } },
-    ]);
-    const followerMap = new Map(followerCounts.map(f => [String(f._id), f.count as number]));
+    const userIds = allUsers.map(u => u.id!).filter(Boolean);
+    const followerMap = await Follow.getFollowerCounts(userIds);
+
+    if (!q) {
+      // Suggested users: sort by follower count desc
+      allUsers.sort((a, b) => {
+        const aCount = followerMap.get(a.id!) ?? 0;
+        const bCount = followerMap.get(b.id!) ?? 0;
+        return bCount - aCount;
+      });
+    } else {
+      // Search results: sort by createdAt desc
+      allUsers.sort((a, b) => {
+        const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bd - ad;
+      });
+    }
+
+    const total = allUsers.length;
+    const paginatedUsers = allUsers.slice(skip, skip + limit);
 
     // Bulk isFollowing for current user
     let followingSet = new Set<string>();
-    if (currentUserId) {
-      const follows = await Follow.find({
-        followerId: currentUserId,
-        followingId: { $in: userIds },
-      }).select('followingId').lean();
-      followingSet = new Set(follows.map(f => String(f.followingId)));
+    if (currentUserId && paginatedUsers.length > 0) {
+      const paginatedUserIds = paginatedUsers.map(u => u.id!).filter(Boolean);
+      followingSet = await Follow.getFollowingSet(currentUserId, paginatedUserIds);
     }
 
-    const mapped = users.map(u => ({
-      id:          String(u._id),
-      username:    `${u.firstName}${u.lastName ?? ''}`.toLowerCase(),
+    const mapped = paginatedUsers.map(u => ({
+      id:          String(u.id),
+      username:    `${u.firstName}${u.lastName ?? ''}`.toLowerCase().replace(/\s/g, ''),
       fullName:    `${u.firstName} ${u.lastName ?? ''}`.trim(),
       avatar:      u.avatar ?? null,
       bio:         u.bio ?? '',
       verified:    u.applicationStatus === 'approved',
-      followers:   followerMap.get(String(u._id)) ?? 0,
-      isFollowing: followingSet.has(String(u._id)),
+      followers:   followerMap.get(String(u.id)) ?? 0,
+      isFollowing: followingSet.has(String(u.id)),
     }));
 
     return sendSuccess({

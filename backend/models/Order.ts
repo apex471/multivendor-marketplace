@@ -1,6 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
-
-// ─── Sub-document interfaces ─────────────────────────────────────────────────
+import { db, docToObject } from '@/backend/config/firebase';
 
 export interface IOrderItem {
   productId?: string;
@@ -34,24 +32,19 @@ export interface IOrderCourier {
   tracking?: string;
 }
 
-// ─── Main document interface ─────────────────────────────────────────────────
-
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
-export interface IOrder extends Document {
+export interface IOrder {
+  id?: string;
   orderId: string;
-  customerId?: mongoose.Types.ObjectId;
+  customerId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
   items: IOrderItem[];
   shippingAddress: IShippingAddress;
-  paymentMethod: {
-    type: string;
-    cardLast4?: string;
-    cardHolder?: string;
-  };
+  paymentMethod: { type: string; cardLast4?: string; cardHolder?: string };
   courier: IOrderCourier;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -62,109 +55,86 @@ export interface IOrder extends Document {
   total: number;
   couponCode?: string;
   trackingNumber?: string;
-  // Logistics driver fields (mirrored from in-memory store)
   assignedDriverId?: string;
   assignedDriverName?: string;
   acceptedAt?: Date;
   pickedUpAt?: Date;
   deliveredAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-// ─── Sub-document schemas ─────────────────────────────────────────────────────
+const ORDERS = 'orders';
 
-const orderItemSchema = new Schema<IOrderItem>(
-  {
-    productId: { type: String },
-    name:      { type: String, required: true },
-    price:     { type: Number, required: true, min: 0 },
-    quantity:  { type: Number, required: true, min: 1 },
-    image:     { type: String, default: '' },
-    vendor:    { type: String, default: '' },
-    size:      { type: String },
-    color:     { type: String },
+export const Order = {
+  async create(data: Omit<IOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<IOrder & { id: string }> {
+    const now = new Date();
+    const doc = {
+      ...data,
+      status: data.status ?? 'pending',
+      paymentStatus: data.paymentStatus ?? 'pending',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const ref = await db.collection(ORDERS).add(doc);
+    return { id: ref.id, ...doc };
   },
-  { _id: false }
-);
 
-const shippingAddressSchema = new Schema<IShippingAddress>(
-  {
-    fullName:     { type: String, required: true },
-    phone:        { type: String },
-    addressLine1: { type: String, required: true },
-    addressLine2: { type: String },
-    city:         { type: String, required: true },
-    state:        { type: String, required: true },
-    zipCode:      { type: String, required: true },
-    country:      { type: String, default: 'United States' },
+  async findById(id: string): Promise<(IOrder & { id: string }) | null> {
+    // Try Firestore doc ID first
+    const snap = await db.collection(ORDERS).doc(id).get();
+    if (snap.exists) return docToObject<IOrder>(snap);
+    // Fall back to orderId field
+    return this.findOne({ orderId: id });
   },
-  { _id: false }
-);
 
-// ─── Main schema ──────────────────────────────────────────────────────────────
-
-const orderSchema = new Schema<IOrder>(
-  {
-    orderId: {
-      type:     String,
-      required: true,
-      unique:   true,
-      index:    true,
-    },
-    customerId: {
-      type: Schema.Types.ObjectId,
-      ref:  'User',
-    },
-    customerName:  { type: String, required: true },
-    customerEmail: { type: String, required: true, lowercase: true, trim: true },
-    customerPhone: { type: String },
-    items:         { type: [orderItemSchema], required: true },
-    shippingAddress: { type: shippingAddressSchema, required: true },
-    paymentMethod: {
-      type:      { type: String, default: 'mock' },
-      cardLast4: { type: String },
-      cardHolder: { type: String },
-    },
-    courier: {
-      id:       { type: String, required: true },
-      name:     { type: String, required: true },
-      icon:     { type: String, default: '📦' },
-      price:    { type: Number, default: 0 },
-      eta:      { type: String },
-      carrier:  { type: String },
-      tracking: { type: String },
-    },
-    status: {
-      type:    String,
-      enum:    ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-      default: 'pending',
-    },
-    paymentStatus: {
-      type:    String,
-      enum:    ['pending', 'paid', 'failed', 'refunded'],
-      default: 'paid',
-    },
-    subtotal:     { type: Number, required: true, min: 0 },
-    shippingCost: { type: Number, default: 0, min: 0 },
-    tax:          { type: Number, default: 0, min: 0 },
-    discount:     { type: Number, default: 0, min: 0 },
-    total:        { type: Number, required: true, min: 0 },
-    couponCode:   { type: String },
-    trackingNumber: { type: String },
-    assignedDriverId:   { type: String },
-    assignedDriverName: { type: String },
-    acceptedAt:   { type: Date },
-    pickedUpAt:   { type: Date },
-    deliveredAt:  { type: Date },
+  async findOne(filter: Record<string, unknown>): Promise<(IOrder & { id: string }) | null> {
+    let query = db.collection(ORDERS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.limit(1).get();
+    if (snap.empty) return null;
+    return docToObject<IOrder>(snap.docs[0]);
   },
-  { timestamps: true }
-);
 
-// Indexes for common query patterns
-orderSchema.index({ customerEmail: 1, createdAt: -1 });
-orderSchema.index({ customerId: 1, createdAt: -1 });
-orderSchema.index({ status: 1, createdAt: -1 });
+  async find(filter: Record<string, unknown> = {}, opts?: { limit?: number; skip?: number; orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(IOrder & { id: string })[]> {
+    let query = db.collection(ORDERS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+    const snap = await query.get();
+    let results = snap.docs.map(d => docToObject<IOrder>(d)!);
+    if (opts?.skip) results = results.slice(opts.skip);
+    return results;
+  },
 
-export const Order =
-  mongoose.models.Order ?? mongoose.model<IOrder>('Order', orderSchema);
+  async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
+    let query = db.collection(ORDERS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.count().get();
+    return snap.data().count;
+  },
+
+  async updateOne(id: string, updates: Partial<IOrder>): Promise<void> {
+    // Try Firestore doc ID first
+    const snap = await db.collection(ORDERS).doc(id).get();
+    if (snap.exists) {
+      await db.collection(ORDERS).doc(id).update({ ...updates, updatedAt: new Date() });
+      return;
+    }
+    // Fall back to orderId field
+    const q = await db.collection(ORDERS).where('orderId', '==', id).limit(1).get();
+    if (!q.empty) {
+      await q.docs[0].ref.update({ ...updates, updatedAt: new Date() });
+    }
+  },
+
+  async findByOrderId(orderId: string): Promise<(IOrder & { id: string }) | null> {
+    return this.findOne({ orderId });
+  },
+};

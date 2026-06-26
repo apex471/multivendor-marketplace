@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { SupportTicket } from '@/backend/models/SupportTicket';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
@@ -10,41 +9,45 @@ export async function GET(request: NextRequest) {
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'open';
     const priority = searchParams.get('priority');
     const search = searchParams.get('search');
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(50, parseInt(searchParams.get('limit') || '20'));
-
-    const filter: Record<string, unknown> = {};
-    if (status !== 'all') filter.status = status;
-    if (priority && priority !== 'all') filter.priority = priority;
-    if (search) {
-      filter.$or = [
-        { ticketNumber: { $regex: search, $options: 'i' } },
-        { subject: { $regex: search, $options: 'i' } },
-        { customerName: { $regex: search, $options: 'i' } },
-        { customerEmail: { $regex: search, $options: 'i' } },
-      ];
-    }
-
     const skip = (page - 1) * limit;
 
-    const [tickets, total, openCount, inProgressCount, resolvedCount, closedCount] =
-      await Promise.all([
-        SupportTicket.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-        SupportTicket.countDocuments(filter),
-        SupportTicket.countDocuments({ status: 'open' }),
-        SupportTicket.countDocuments({ status: 'in-progress' }),
-        SupportTicket.countDocuments({ status: 'resolved' }),
-        SupportTicket.countDocuments({ status: 'closed' }),
-      ]);
+    const allTicketsTotal = await SupportTicket.find({});
+
+    let filtered = [...allTicketsTotal];
+    if (status !== 'all') {
+      filtered = filtered.filter(t => t.status === status);
+    }
+    if (priority && priority !== 'all') {
+      filtered = filtered.filter(t => t.priority === priority);
+    }
+    if (search) {
+      const lower = search.toLowerCase();
+      filtered = filtered.filter(t =>
+        t.ticketNumber.toLowerCase().includes(lower) ||
+        t.subject.toLowerCase().includes(lower) ||
+        t.customerName.toLowerCase().includes(lower) ||
+        t.customerEmail.toLowerCase().includes(lower)
+      );
+    }
+
+    filtered.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+
+    const total = filtered.length;
+    const paginated = filtered.slice(skip, skip + limit);
+
+    const openCount = allTicketsTotal.filter(t => t.status === 'open').length;
+    const inProgressCount = allTicketsTotal.filter(t => t.status === 'in-progress').length;
+    const resolvedCount = allTicketsTotal.filter(t => t.status === 'resolved').length;
+    const closedCount = allTicketsTotal.filter(t => t.status === 'closed').length;
 
     return sendSuccess({
-      tickets,
+      tickets: paginated,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       counts: { open: openCount, inProgress: inProgressCount, resolved: resolvedCount, closed: closedCount },
     });
@@ -60,7 +63,6 @@ export async function PATCH(request: NextRequest) {
   if (authError) return sendError(authError, 401);
 
   try {
-    await connectDB();
     const body = await request.json().catch(() => ({}));
     const { ticketId, status, reply } = body;
 
@@ -69,22 +71,27 @@ export async function PATCH(request: NextRequest) {
     const ticket = await SupportTicket.findById(ticketId);
     if (!ticket) return sendError('Ticket not found', 404);
 
+    const updates: Partial<any> = {};
     if (status && ['open', 'in-progress', 'resolved', 'closed'].includes(status)) {
-      ticket.status = status;
+      updates.status = status;
     }
+
     if (reply?.trim()) {
-      ticket.responses.push({
-        from: 'admin',
+      const newResponse = {
+        from: 'admin' as const,
         authorName: 'Admin Support',
         message: reply.trim(),
         timestamp: new Date(),
-      });
+      };
+      await SupportTicket.addResponse(ticketId, newResponse);
     }
 
-    await ticket.save();
+    if (Object.keys(updates).length > 0) {
+      await SupportTicket.updateOne(ticketId, updates);
+    }
 
     return sendSuccess(
-      { ticketId: ticket._id, status: ticket.status },
+      { ticketId, status: updates.status ?? ticket.status },
       'Ticket updated successfully'
     );
   } catch (err) {

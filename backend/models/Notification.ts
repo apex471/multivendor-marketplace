@@ -1,40 +1,63 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { db, docToObject } from '@/backend/config/firebase';
 
-export interface INotification extends Document {
-  recipientId: mongoose.Types.ObjectId;
-  type: 'like' | 'comment' | 'follow' | 'mention' | 'order' | 'product' | 'system';
-  actorId?: mongoose.Types.ObjectId;
+export interface INotification {
+  id?: string;
+  recipientId: string;
+  type: 'follow' | 'like' | 'comment' | 'order' | 'system' | 'approval';
+  actorId?: string;
   actorName?: string;
   actorAvatar?: string;
   text: string;
   link?: string;
   image?: string;
   isRead: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
 }
 
-const notificationSchema = new Schema<INotification>(
-  {
-    recipientId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: {
-      type: String,
-      enum: ['like', 'comment', 'follow', 'mention', 'order', 'product', 'system'],
-      required: true,
-    },
-    actorId:     { type: Schema.Types.ObjectId, ref: 'User' },
-    actorName:   { type: String },
-    actorAvatar: { type: String },
-    text:        { type: String, required: true },
-    link:        { type: String },
-    image:       { type: String },
-    isRead:      { type: Boolean, default: false },
+const NOTIFICATIONS = 'notifications';
+
+export const Notification = {
+  async create(data: Omit<INotification, 'id' | 'createdAt'>): Promise<INotification & { id: string }> {
+    const now = new Date();
+    const doc = { ...data, isRead: data.isRead ?? false, createdAt: now };
+    const ref = await db.collection(NOTIFICATIONS).add(doc);
+    return { id: ref.id, ...doc };
   },
-  { timestamps: true }
-);
 
-notificationSchema.index({ recipientId: 1, createdAt: -1 });
+  async find(filter: Record<string, unknown> = {}, opts?: { limit?: number; skip?: number; orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(INotification & { id: string })[]> {
+    let query = db.collection(NOTIFICATIONS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+    const snap = await query.get();
+    let results = snap.docs.map(d => docToObject<INotification>(d)!);
+    if (opts?.skip) results = results.slice(opts.skip);
+    return results;
+  },
 
-export const Notification =
-  mongoose.models.Notification ||
-  mongoose.model<INotification>('Notification', notificationSchema);
+  async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
+    let query = db.collection(NOTIFICATIONS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined && v !== null) query = query.where(k, '==', v);
+    }
+    const snap = await query.count().get();
+    return snap.data().count;
+  },
+
+  async updateOne(id: string, updates: Partial<INotification>): Promise<void> {
+    await db.collection(NOTIFICATIONS).doc(id).update(updates as Record<string, unknown>);
+  },
+
+  async updateMany(filter: Record<string, unknown>, updates: Partial<INotification>): Promise<void> {
+    let query = db.collection(NOTIFICATIONS) as FirebaseFirestore.Query;
+    for (const [k, v] of Object.entries(filter)) {
+      if (v !== undefined) query = query.where(k, '==', v);
+    }
+    const snap = await query.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, updates as Record<string, unknown>));
+    await batch.commit();
+  },
+};

@@ -1,15 +1,8 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Product } from '@/backend/models/Product';
 import { verifyVendorAuth } from '@/backend/utils/vendorAuth';
-import {
-  sendSuccess,
-  sendError,
-  sendNotFound,
-  sendServerError,
-} from '@/backend/utils/responseAppRouter';
+import { sendSuccess, sendError, sendNotFound, sendServerError } from '@/backend/utils/responseAppRouter';
 
-// ── GET /api/vendor/products/[id] ─────────────────────────────────────────────
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,17 +12,14 @@ export async function GET(
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-    const product = await Product.findOne({ _id: id, vendorId: userId }).lean();
-    if (!product) return sendNotFound('Product not found');
+    const product = await Product.findById(id, { includesCostPrice: true });
+    if (!product || product.vendorId !== userId) return sendNotFound('Product not found');
     return sendSuccess({ product });
   } catch (err) {
-    console.error('[Vendor Products] GET/:id error:', err);
-    return sendServerError('Failed to load product');
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
-// ── PATCH /api/vendor/products/[id] ──────────────────────────────────────────
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,36 +29,30 @@ export async function PATCH(
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-    const product = await Product.findOne({ _id: id, vendorId: userId });
-    if (!product) return sendNotFound('Product not found');
+    const product = await Product.findById(id, { includesCostPrice: true });
+    if (!product || product.vendorId !== userId) return sendNotFound('Product not found');
 
     const body = await request.json().catch(() => ({}));
+    const EDITABLE = ['name', 'description', 'category', 'price', 'salePrice', 'costPrice', 'stock', 'images', 'sku', 'tags', 'variants', 'lowStockAlert'] as const;
 
-    const EDITABLE = [
-      'name', 'description', 'category', 'price', 'salePrice',
-      'costPrice', 'stock', 'images', 'sku', 'tags', 'variants', 'lowStockAlert',
-    ] as const;
-
+    const updates: Record<string, unknown> = {};
     for (const field of EDITABLE) {
-      if (body[field] !== undefined) product.set(field, body[field]);
+      if (body[field] !== undefined) updates[field] = body[field];
     }
-
-    // If previously rejected, automatically re-submit for review
+    // Re-submit for review if previously rejected
     if (product.status === 'rejected') {
-      product.status = 'pending';
-      product.rejectionReason = undefined;
+      updates.status = 'pending';
+      updates.rejectionReason = '';
     }
 
-    await product.save();
-    return sendSuccess({ product }, 'Product updated successfully');
+    await Product.updateOne(id, updates);
+    const updated = await Product.findById(id, { includesCostPrice: true });
+    return sendSuccess({ product: updated }, 'Product updated successfully');
   } catch (err) {
-    console.error('[Vendor Products] PATCH/:id error:', err);
-    return sendServerError('Failed to update product');
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
-// ── DELETE /api/vendor/products/[id] ─────────────────────────────────────────
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -78,12 +62,11 @@ export async function DELETE(
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-    const product = await Product.findOneAndDelete({ _id: id, vendorId: userId });
-    if (!product) return sendNotFound('Product not found');
+    const product = await Product.findById(id);
+    if (!product || product.vendorId !== userId) return sendNotFound('Product not found');
+    await Product.findByIdAndDelete(id);
     return sendSuccess(null, 'Product deleted successfully');
   } catch (err) {
-    console.error('[Vendor Products] DELETE/:id error:', err);
-    return sendServerError('Failed to delete product');
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

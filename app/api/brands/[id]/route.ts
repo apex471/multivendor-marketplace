@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Product } from '@/backend/models/Product';
 import {
@@ -15,31 +14,21 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    await connectDB();
+    const brand = await User.findById(id);
 
-    const brand = await User.findOne({
-      _id:               id,
-      role:              'brand',
-      applicationStatus: 'approved',
-      isActive:          true,
-    })
-      .select('-password -emailVerificationToken -emailVerificationExpires')
-      .lean();
-
-    if (!brand) return sendNotFound('Brand not found');
+    if (!brand || brand.role !== 'brand' || brand.applicationStatus !== 'approved' || !brand.isActive) {
+      return sendNotFound('Brand not found');
+    }
 
     const products = await Product.find({
-      vendorId: brand._id,
+      vendorId: brand.id,
       status:   'active',
-    })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+    }, { orderBy: 'createdAt', orderDir: 'desc', limit: 50 });
 
     return sendSuccess({
       brand: {
-        id:          brand._id,
-        name:        `${brand.firstName} ${brand.lastName}`.trim(),
+        id:          brand.id,
+        name:        `${brand.firstName} ${brand.lastName ?? ''}`.trim(),
         firstName:   brand.firstName,
         lastName:    brand.lastName,
         email:       brand.email,
@@ -49,7 +38,7 @@ export async function GET(
         productCount: products.length,
       },
       products: products.map(p => ({
-        id:          p._id,
+        id:          p.id,
         name:        p.name,
         price:       p.salePrice && p.salePrice < p.price ? p.salePrice : p.price,
         oldPrice:    p.salePrice && p.salePrice < p.price ? p.price : undefined,

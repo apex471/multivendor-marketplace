@@ -1,25 +1,11 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
-import { User } from '@/backend/models/User';
+import { User, IUserAddress } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
   sendSuccess,
   sendError,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
-
-interface AddressEntry {
-  id:           string;
-  fullName:     string;
-  phone:        string;
-  addressLine1: string;
-  addressLine2?: string;
-  city:         string;
-  state:        string;
-  zipCode:      string;
-  country:      string;
-  isDefault:    boolean;
-}
 
 // GET /api/users/me/addresses
 export async function GET(request: NextRequest) {
@@ -29,8 +15,7 @@ export async function GET(request: NextRequest) {
   if (!payload) return sendError('Invalid token', 401);
 
   try {
-    await connectDB();
-    const user = await User.findById(payload.userId).select('addresses').lean() as { addresses?: unknown[] } | null;
+    const user = await User.findById(payload.userId);
     return sendSuccess({ addresses: user?.addresses ?? [] });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
@@ -45,23 +30,22 @@ export async function POST(request: NextRequest) {
   if (!payload) return sendError('Invalid token', 401);
 
   try {
-    const body = await request.json() as Partial<AddressEntry>;
+    const body = await request.json() as Partial<IUserAddress>;
     if (!body.fullName || !body.addressLine1 || !body.city || !body.zipCode) {
       return sendError('fullName, addressLine1, city, and zipCode are required', 400);
     }
 
-    await connectDB();
-    const user = await User.findById(payload.userId) as (import('mongoose').Document & { addresses?: Array<Record<string,unknown>>; save(): Promise<unknown> }) | null;
+    const user = await User.findById(payload.userId);
     if (!user) return sendError('User not found', 404);
 
-    if (!user.addresses) user.addresses = [];
+    const addresses = user.addresses ? [...user.addresses] : [];
 
     // If isDefault, demote others
     if (body.isDefault) {
-      user.addresses!.forEach((a: Record<string, unknown>) => { a.isDefault = false; });
+      addresses.forEach((a) => { a.isDefault = false; });
     }
 
-    const newAddress = {
+    const newAddress: IUserAddress = {
       id:           Date.now().toString(),
       fullName:     body.fullName,
       phone:        body.phone ?? '',
@@ -71,11 +55,11 @@ export async function POST(request: NextRequest) {
       state:        body.state ?? '',
       zipCode:      body.zipCode,
       country:      body.country ?? 'United States',
-      isDefault:    body.isDefault ?? user.addresses.length === 0,
+      isDefault:    body.isDefault ?? addresses.length === 0,
     };
 
-    user.addresses.push(newAddress);
-    await user.save();
+    addresses.push(newAddress);
+    await User.updateOne(payload.userId, { addresses });
 
     return sendSuccess({ address: newAddress }, 'Address saved', 201);
   } catch (err) {
@@ -94,11 +78,11 @@ export async function DELETE(request: NextRequest) {
   if (!addressId) return sendError('id param required', 400);
 
   try {
-    await connectDB();
-    await User.updateOne(
-      { _id: payload.userId },
-      { $pull: { addresses: { id: addressId } } as Record<string, unknown> }
-    );
+    const user = await User.findById(payload.userId);
+    if (user) {
+      const addresses = (user.addresses || []).filter(a => a.id !== addressId);
+      await User.updateOne(payload.userId, { addresses });
+    }
     return sendSuccess({}, 'Address removed');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));

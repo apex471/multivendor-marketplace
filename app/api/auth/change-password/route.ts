@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
@@ -34,33 +33,23 @@ export async function POST(request: NextRequest) {
         ...(body.confirmPassword ? {} : { confirmPassword: 'Confirm password is required' }),
       });
     }
-
     if (body.newPassword !== body.confirmPassword) {
-      return sendValidationError('Passwords do not match', {
-        confirmPassword: 'New passwords do not match',
-      });
+      return sendValidationError('Passwords do not match', { confirmPassword: 'New passwords do not match' });
     }
-
     if (body.newPassword.length < 6) {
-      return sendValidationError('Password too short', {
-        newPassword: 'Password must be at least 6 characters',
-      });
+      return sendValidationError('Password too short', { newPassword: 'Password must be at least 6 characters' });
     }
 
-    await connectDB();
-
-    const user = await User.findById(decoded.userId).select('+password');
+    const user = await User.findById(decoded.userId);
     if (!user) return sendNotFound('User not found');
 
-    const isPasswordValid = await user.comparePassword(body.currentPassword);
+    const isPasswordValid = await User.comparePassword(decoded.userId, body.currentPassword);
     if (!isPasswordValid) {
-      return sendError('Current password is incorrect', 401, {
-        currentPassword: 'Current password is incorrect',
-      });
+      return sendError('Current password is incorrect', 401, { currentPassword: 'Current password is incorrect' });
     }
 
-    user.password = body.newPassword;
-    await user.save();
+    // updateOne hashes the password automatically
+    await User.updateOne(decoded.userId, { password: body.newPassword });
 
     return sendSuccess(null, 'Password changed successfully');
   } catch (error) {

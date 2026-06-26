@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Conversation } from '@/backend/models/Conversation';
 import { Message } from '@/backend/models/Message';
 import { verifyToken } from '@/backend/utils/jwt';
@@ -9,9 +8,6 @@ import {
   sendNotFound,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
-
-type ConvoDoc = { _id: unknown; participants: unknown[]; unreadCounts?: Record<string, number> };
-type MsgDoc  = { _id: unknown; text: string; senderId: unknown; read: boolean; createdAt: Date };
 
 // GET /api/messages/[id] — fetch messages in a conversation
 export async function GET(
@@ -25,8 +21,7 @@ export async function GET(
   if (!payload) return sendError('Invalid token', 401);
 
   try {
-    await connectDB();
-    const convo = await Conversation.findById(id).lean() as ConvoDoc | null;
+    const convo = await Conversation.findById(id);
     if (!convo) return sendNotFound('Conversation not found');
 
     const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
@@ -37,29 +32,37 @@ export async function GET(
     const limit  = Math.min(50, parseInt(sp.get('limit') ?? '30'));
     const skip   = (page - 1) * limit;
 
-    const messages = await Message.find({ conversationId: id })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean() as MsgDoc[];
+    const allMessages = await Message.find({ conversationId: id });
+    allMessages.sort((a, b) => {
+      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bd - ad; // desc
+    });
 
-    // Mark messages as read
-    await Message.updateMany(
-      { conversationId: id, senderId: { $ne: payload.userId }, read: false },
-      { $set: { read: true } }
-    );
+    const paginated = allMessages.slice(skip, skip + limit);
+
+    // Mark messages as read (senderId is the other participant)
+    const otherId = convo.participants.find((p) => p !== payload.userId);
+    if (otherId) {
+      await Message.updateMany(
+        { conversationId: id, senderId: otherId, read: false },
+        { read: true }
+      );
+    }
 
     // Reset unread count for this user
-    await Conversation.updateOne(
-      { _id: id },
-      { $set: { [`unreadCounts.${payload.userId}`]: 0 } }
-    );
+    const unreadCounts = { ...(convo.unreadCounts || {}) };
+    unreadCounts[payload.userId] = 0;
+    await Conversation.updateOne(id, { unreadCounts });
+
+    // Return in chronological order
+    const list = [...paginated].reverse();
 
     return sendSuccess({
-      messages: messages.reverse().map(m => ({
-        id:        String(m._id),
+      messages: list.map(m => ({
+        id:        m.id,
         text:      m.text,
-        senderId:  String(m.senderId),
+        senderId:  m.senderId,
         read:      m.read,
         createdAt: m.createdAt,
       })),
@@ -85,8 +88,7 @@ export async function POST(
     const { text } = await request.json();
     if (!text?.trim()) return sendError('Message text is required', 400);
 
-    await connectDB();
-    const convo = await Conversation.findById(id).lean() as ConvoDoc | null;
+    const convo = await Conversation.findById(id);
     if (!convo) return sendNotFound('Conversation not found');
 
     const isParticipant = convo.participants.some((p) => String(p) === payload.userId);
@@ -96,26 +98,27 @@ export async function POST(
       conversationId: id,
       senderId:       payload.userId,
       text:           text.trim(),
+      read:           false,
     });
 
     // Increment unread counts for other participants
-    await Conversation.updateOne(
-      { _id: id },
-      {
-        lastMessage:   text.trim(),
-        lastMessageAt: new Date(),
-        lastSenderId:  payload.userId,
-        $inc: Object.fromEntries(
-          convo.participants
-            .filter((p) => String(p) !== payload.userId)
-            .map((p) => [`unreadCounts.${String(p)}`, 1])
-        ),
+    const unreadCounts = { ...(convo.unreadCounts || {}) };
+    convo.participants.forEach((p) => {
+      if (p !== payload.userId) {
+        unreadCounts[p] = (unreadCounts[p] ?? 0) + 1;
       }
-    );
+    });
+
+    await Conversation.updateOne(id, {
+      lastMessage:   text.trim(),
+      lastMessageAt: new Date(),
+      lastSenderId:  payload.userId,
+      unreadCounts,
+    });
 
     return sendSuccess({
       message: {
-        id:        String(message._id),
+        id:        message.id,
         text:      message.text,
         senderId:  payload.userId,
         read:      false,

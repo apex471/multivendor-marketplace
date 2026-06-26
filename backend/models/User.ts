@@ -1,15 +1,30 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { db, docToObject, snapToObject } from '@/backend/config/firebase';
+import { FieldValue } from 'firebase-admin/firestore';
 import bcrypt from 'bcryptjs';
 
 export enum UserRole {
-  CUSTOMER = 'customer',
-  VENDOR = 'vendor',
-  BRAND = 'brand',
-  ADMIN = 'admin',
+  CUSTOMER  = 'customer',
+  VENDOR    = 'vendor',
+  BRAND     = 'brand',
+  ADMIN     = 'admin',
   LOGISTICS = 'logistics',
 }
 
-export interface IUser extends Document {
+export interface IUserAddress {
+  id: string;
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  isDefault: boolean;
+}
+
+export interface IUser {
+  id?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -29,175 +44,192 @@ export interface IUser extends Document {
   applicationNotes?: string;
   suspensionReason?: string;
   lastLogin?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  addresses?: Array<{
-    id: string;
-    fullName: string;
-    phone: string;
-    addressLine1: string;
-    addressLine2?: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-    isDefault: boolean;
-  }>;
+  addresses?: IUserAddress[];
   coordinates?: { lat: number; lng: number };
-  comparePassword(password: string): Promise<boolean>;
+  storeName?: string;
+  businessDescription?: string;
+  website?: string;
+  taxId?: string;
+  socialLinks?: Record<string, string>;
+  businessCity?: string;
+  businessState?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const userSchema = new Schema<IUser>(
-  {
-    firstName: {
-      type: String,
-      required: [true, 'Please provide a first name'],
-      trim: true,
-      minlength: [2, 'First name must be at least 2 characters'],
-      maxlength: [50, 'First name must not exceed 50 characters'],
-    },
-    lastName: {
-      type: String,
-      required: [true, 'Please provide a last name'],
-      trim: true,
-      minlength: [2, 'Last name must be at least 2 characters'],
-      maxlength: [50, 'Last name must not exceed 50 characters'],
-    },
-    email: {
-      type: String,
-      required: [true, 'Please provide an email address'],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        'Please provide a valid email address',
-      ],
-    },
-    password: {
-      type: String,
-      required: [true, 'Please provide a password'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // Don't return password by default
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
-      match: [
-        /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/,
-        'Please provide a valid phone number',
-      ],
-    },
-    role: {
-      type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.CUSTOMER,
-      required: true,
-    },
-    applicationStatus: {
-      type: String,
-      enum: ['none', 'pending', 'approved', 'rejected'],
-      default: 'pending',
-    },
-    applicationNotes: {
-      type: String,
-      maxlength: 500,
-    },
-    suspensionReason: {
-      type: String,
-      maxlength: 500,
-    },
-    avatar: {
-      type: String,
-    },
-    bio: {
-      type: String,
-      maxlength: [500, 'Bio must not exceed 500 characters'],
-    },
-    googleId: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-    oauthProvider: {
-      type: String,
-      enum: ['google', 'github', 'facebook'],
-    },
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isPhoneVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    emailVerificationToken: {
-      type: String,
-      select: false,
-    },
-    emailVerificationExpires: {
-      type: Date,
-      select: false,
-    },
-    lastLogin: {
-      type: Date,
-      default: null,
-    },
-    addresses: [
-      {
-        id: { type: String },
-        fullName: { type: String },
-        phone: { type: String },
-        addressLine1: { type: String },
-        addressLine2: { type: String },
-        city: { type: String },
-        state: { type: String },
-        zipCode: { type: String },
-        country: { type: String },
-        isDefault: { type: Boolean, default: false },
-      }
-    ],
-    coordinates: {
-      lat: { type: Number },
-      lng: { type: Number },
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const USERS = 'users';
 
-// Hash password before saving
-userSchema.pre('save', async function (this: any) {
-  if (!this.isModified('password')) return;
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-});
+export const User = {
+  // ── Create ────────────────────────────────────────────────────────────────
+  async create(data: Omit<IUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<IUser & { id: string }> {
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(data.password, salt);
 
-// Method to compare password
-userSchema.methods.comparePassword = async function (
-  password: string
-): Promise<boolean> {
-  try {
-    return await bcrypt.compare(password, this.password);
-  } catch (error) {
-    throw new Error('Error comparing passwords');
-  }
-};
-
-// Auto-set applicationStatus on pre-save based on role
-userSchema.pre('save', function (this: any) {
-  if (this.isNew && this.applicationStatus === 'pending') {
-    // Customers and admins are auto-approved
-    if (this.role === 'customer' || this.role === 'admin') {
-      this.applicationStatus = 'approved';
+    // Auto-approve customers and admins
+    let applicationStatus = data.applicationStatus ?? 'pending';
+    if (data.role === UserRole.CUSTOMER || data.role === UserRole.ADMIN) {
+      applicationStatus = 'approved';
     }
-  }
-});
 
-export const User =
-  mongoose.models.User || mongoose.model<IUser>('User', userSchema);
+    const now = new Date();
+    const doc: Record<string, unknown> = {
+      ...data,
+      password: hashed,
+      applicationStatus,
+      isEmailVerified: data.isEmailVerified ?? false,
+      isPhoneVerified: data.isPhoneVerified ?? false,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const ref = await db.collection(USERS).add(doc);
+    return { id: ref.id, ...doc } as IUser & { id: string };
+  },
+
+  // ── Find by ID ────────────────────────────────────────────────────────────
+  async findById(id: string, options?: { includePassword?: boolean; includeVerification?: boolean }): Promise<(IUser & { id: string }) | null> {
+    const snap = await db.collection(USERS).doc(id).get();
+    if (!snap.exists) return null;
+        const user = docToObject<IUser>(snap)!;
+    if (!options?.includePassword) delete (user as any).password;
+    if (!options?.includeVerification) {
+      delete (user as any).emailVerificationToken;
+      delete (user as any).emailVerificationExpires;
+    }
+    return user;
+  },
+
+  // ── Find one by field ─────────────────────────────────────────────────────
+  async findOne(filter: Partial<IUser & { $or?: object[] }>, options?: { includePassword?: boolean; includeVerification?: boolean }): Promise<(IUser & { id: string }) | null> {
+    let query = db.collection(USERS) as FirebaseFirestore.Query;
+
+    // Handle simple equality filters
+    for (const [key, value] of Object.entries(filter)) {
+      if (key === '$or') continue;
+      query = query.where(key, '==', value);
+    }
+
+    const snap = await query.limit(1).get();
+    if (snap.empty) {
+      // If we have $or filters, try them one by one
+      if ((filter as any).$or) {
+        const orFilters = (filter as any).$or as Array<Record<string, unknown>>;
+        for (const orFilter of orFilters) {
+          for (const [k, v] of Object.entries(orFilter)) {
+            const s = await db.collection(USERS).where(k, '==', v).limit(1).get();
+            if (!s.empty) {
+              const u = docToObject<IUser>(s.docs[0])!;
+              if (!options?.includePassword) delete (u as any).password;
+              if (!options?.includeVerification) {
+                delete (u as any).emailVerificationToken;
+                delete (u as any).emailVerificationExpires;
+              }
+              return u;
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    const user = docToObject<IUser>(snap.docs[0])!;
+    if (!options?.includePassword) delete (user as any).password;
+    if (!options?.includeVerification) {
+      delete (user as any).emailVerificationToken;
+      delete (user as any).emailVerificationExpires;
+    }
+    return user;
+  },
+
+  // ── Find many ────────────────────────────────────────────────────────────
+  async find(filter: Record<string, unknown> = {}, opts?: { limit?: number; skip?: number; orderBy?: string; orderDir?: 'asc' | 'desc'; select?: string[] }): Promise<(IUser & { id: string })[]> {
+    let query = db.collection(USERS) as FirebaseFirestore.Query;
+
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== undefined && value !== null) {
+        query = query.where(key, '==', value);
+      }
+    }
+
+    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+    if (opts?.limit)   query = query.limit(opts.limit);
+
+    const snap = await query.get();
+    let results = snap.docs.map(d => docToObject<IUser>(d)!);
+
+    // Handle skip manually (Firestore doesn't have native skip for security)
+    if (opts?.skip) results = results.slice(opts.skip);
+
+    // Remove sensitive fields
+    return results.map(u => {
+      delete (u as any).password;
+      delete (u as any).emailVerificationToken;
+      delete (u as any).emailVerificationExpires;
+      return u;
+    });
+  },
+
+  // ── Count ────────────────────────────────────────────────────────────────
+  async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
+    let query = db.collection(USERS) as FirebaseFirestore.Query;
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== undefined && value !== null) {
+        query = query.where(key, '==', value);
+      }
+    }
+    const snap = await query.count().get();
+    return snap.data().count;
+  },
+
+  // ── Update one ────────────────────────────────────────────────────────────
+  async updateOne(id: string, updates: Partial<IUser>): Promise<void> {
+    const data: Record<string, unknown> = { ...updates, updatedAt: new Date() };
+    // Hash password if being updated
+    if (data.password) {
+      const salt = await bcrypt.genSalt(10);
+      data.password = await bcrypt.hash(data.password as string, salt);
+    }
+    await db.collection(USERS).doc(id).update(data);
+  },
+
+  // ── Update many ─────────────────────────────────────────────────────────
+  async updateMany(filter: Record<string, unknown>, updates: Partial<IUser>): Promise<number> {
+    let query = db.collection(USERS) as FirebaseFirestore.Query;
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== undefined) query = query.where(key, '==', value);
+    }
+    const snap = await query.get();
+    const batch = db.batch();
+    const data = { ...updates, updatedAt: new Date() };
+    snap.docs.forEach(d => batch.update(d.ref, data as Record<string, unknown>));
+    await batch.commit();
+    return snap.docs.length;
+  },
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+  async findByIdAndDelete(id: string): Promise<(IUser & { id: string }) | null> {
+    const snap = await db.collection(USERS).doc(id).get();
+    if (!snap.exists) return null;
+    const user = docToObject<IUser>(snap)!;
+    await db.collection(USERS).doc(id).delete();
+    return user;
+  },
+
+  // ── Compare password ──────────────────────────────────────────────────────
+  async comparePassword(userId: string, plainPassword: string): Promise<boolean> {
+    const snap = await db.collection(USERS).doc(userId).get();
+    if (!snap.exists) return false;
+    const data = snap.data()!;
+    return bcrypt.compare(plainPassword, data.password as string);
+  },
+
+  // ── Increment field ───────────────────────────────────────────────────────
+  async increment(id: string, field: string, amount = 1): Promise<void> {
+    await db.collection(USERS).doc(id).update({
+      [field]: FieldValue.increment(amount),
+      updatedAt: new Date(),
+    });
+  },
+};

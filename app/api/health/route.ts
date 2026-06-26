@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { verifyToken } from '@/backend/utils/jwt';
+import { db } from '@/backend/config/firebase';
 
-/**
- * GET /api/health
- * Diagnostic endpoint — checks env vars and DB connectivity.
- * In production this requires a valid admin Bearer token to prevent
- * information disclosure to unauthenticated parties.
- */
+// GET /api/health
+// Diagnostic endpoint — checks env vars and DB connectivity.
 export async function GET(req: NextRequest) {
   // In production, require admin auth to prevent info leakage
   if (process.env.NODE_ENV === 'production') {
@@ -21,18 +17,20 @@ export async function GET(req: NextRequest) {
   const checks: Record<string, string> = {};
 
   // ── Env var checks ─────────────────────────────────────────────────────────
-  checks.MONGODB_URI = process.env.MONGODB_URI ? '✅ set' : '❌ MISSING';
+  checks.FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID ? '✅ set' : '❌ MISSING';
+  checks.FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL ? '✅ set' : '❌ MISSING';
+  checks.FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY ? '✅ set' : '❌ MISSING';
   checks.JWT_SECRET = process.env.JWT_SECRET ? '✅ set' : '❌ MISSING';
   checks.JWT_EXPIRE = process.env.JWT_EXPIRE || '⚠️ not set (default: 7d)';
   checks.RESEND_API_KEY = process.env.RESEND_API_KEY ? '✅ set' : '⚠️ not set (emails go to console only)';
-  checks.SMTP_HOST = process.env.SMTP_HOST ? `✅ ${process.env.SMTP_HOST}` : '⚠️ not set';
   checks.NODE_ENV = process.env.NODE_ENV || 'not set';
 
   // ── DB connectivity check ──────────────────────────────────────────────────
   let dbStatus = '';
   let dbError = '';
   try {
-    await connectDB();
+    // Try querying a dummy collection to verify connection to Firestore
+    await db.collection('_health_check').limit(1).get();
     dbStatus = '✅ connected';
   } catch (err: unknown) {
     dbStatus = '❌ failed';
@@ -40,7 +38,9 @@ export async function GET(req: NextRequest) {
   }
 
   const allCriticalOk =
-    checks.MONGODB_URI.startsWith('✅') &&
+    checks.FIREBASE_PROJECT_ID.startsWith('✅') &&
+    checks.FIREBASE_CLIENT_EMAIL.startsWith('✅') &&
+    checks.FIREBASE_PRIVATE_KEY.startsWith('✅') &&
     checks.JWT_SECRET.startsWith('✅') &&
     dbStatus.startsWith('✅');
 

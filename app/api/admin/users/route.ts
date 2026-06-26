@@ -1,67 +1,41 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-// GET /api/admin/users - Paginated user list with filters
 export async function GET(request: NextRequest) {
   const { error } = await verifyAdminAuth(request);
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
+    const sp     = new URL(request.url).searchParams;
+    const page   = Math.max(1,  parseInt(sp.get('page')  || '1'));
+    const limit  = Math.min(50, parseInt(sp.get('limit') || '20'));
+    const role   = sp.get('role')   || '';
+    const status = sp.get('status') || '';
+    const search = sp.get('search') || '';
 
-    const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(50, parseInt(searchParams.get('limit') || '20'));
-    const role = searchParams.get('role') || 'all';
-    const status = searchParams.get('status') || 'all'; // active | suspended | all
-    const search = searchParams.get('search') || '';
-    const applicationStatus = searchParams.get('applicationStatus') || 'all';
-
-    // Build filter
     const filter: Record<string, unknown> = {};
+    if (role && role !== 'all')   filter.role = role;
+    if (status && status !== 'all') filter.isActive = status === 'active';
 
-    if (role !== 'all') filter.role = role;
-
-    if (status === 'active') filter.isActive = true;
-    else if (status === 'suspended') filter.isActive = false;
-
-    if (applicationStatus !== 'all') filter.applicationStatus = applicationStatus;
+    let users = await User.find(filter, { orderBy: 'createdAt', orderDir: 'desc', limit: 2000 });
 
     if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-      ];
+      const q = search.toLowerCase();
+      users = users.filter(u =>
+        u.firstName?.toLowerCase().includes(q) ||
+        u.lastName?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(q)
+      );
     }
 
-    const skip = (page - 1) * limit;
-    const [users, total] = await Promise.all([
-      User.find(filter)
-        .select('-password -googleId')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      User.countDocuments(filter),
-    ]);
+    const total = users.length;
+    const paged = users.slice((page - 1) * limit, page * limit);
 
-    return sendSuccess({
-      users,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
-    });
-  } catch (error) {
-    console.error('Admin users GET error:', error);
-    return sendServerError('Failed to fetch users');
+    return sendSuccess({ users: paged, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

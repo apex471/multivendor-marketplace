@@ -1,84 +1,53 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-// GET /api/admin/approvals - List pending applications
 export async function GET(request: NextRequest) {
   const { error } = await verifyAdminAuth(request);
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
+    const sp     = new URL(request.url).searchParams;
+    const type   = sp.get('type')   || 'all';
+    const status = sp.get('status') || 'pending';
+    const page   = Math.max(1,  parseInt(sp.get('page')  || '1'));
+    const limit  = Math.min(50, parseInt(sp.get('limit') || '20'));
 
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') || 'all'; // vendor | brand | logistics | all
-    const status = searchParams.get('status') || 'pending';
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(50, parseInt(searchParams.get('limit') || '20'));
+    // Fetch all non-customer roles
+    const allNonCustomer = await User.find({}, { orderBy: 'createdAt', orderDir: 'desc', limit: 2000 });
+    let applications = allNonCustomer.filter(u =>
+      ['vendor', 'brand', 'logistics'].includes(u.role)
+    );
 
-    const filter: Record<string, unknown> = {
-      role: { $in: ['vendor', 'brand', 'logistics'] },
-    };
-    if (status !== 'all') filter.applicationStatus = status;
-    if (type !== 'all') filter.role = type;
+    if (type !== 'all') applications = applications.filter(u => u.role === type);
+    if (status !== 'all') applications = applications.filter(u => u.applicationStatus === status);
 
-    const skip = (page - 1) * limit;
-    const [applications, total] = await Promise.all([
-      User.find(filter)
-        .select('-password -googleId')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      User.countDocuments(filter),
-    ]);
+    const total = applications.length;
+    const paged = applications.slice((page - 1) * limit, page * limit);
 
-    // Count by role for tab badges
-    const [pendingVendors, pendingBrands, pendingLogistics] = await Promise.all([
-      User.countDocuments({ role: 'vendor', applicationStatus: 'pending' }),
-      User.countDocuments({ role: 'brand', applicationStatus: 'pending' }),
-      User.countDocuments({ role: 'logistics', applicationStatus: 'pending' }),
-    ]);
+    const pendingVendors   = allNonCustomer.filter(u => u.role === 'vendor'    && u.applicationStatus === 'pending').length;
+    const pendingBrands    = allNonCustomer.filter(u => u.role === 'brand'     && u.applicationStatus === 'pending').length;
+    const pendingLogistics = allNonCustomer.filter(u => u.role === 'logistics' && u.applicationStatus === 'pending').length;
 
     return sendSuccess({
-      applications,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
-      counts: {
-        vendors: pendingVendors,
-        brands: pendingBrands,
-        logistics: pendingLogistics,
-        total: pendingVendors + pendingBrands + pendingLogistics,
-      },
+      applications: paged,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNext: page * limit < total, hasPrev: page > 1 },
+      counts: { vendors: pendingVendors, brands: pendingBrands, logistics: pendingLogistics, total: pendingVendors + pendingBrands + pendingLogistics },
     });
-  } catch (error) {
-    console.error('Admin approvals GET error:', error);
-    return sendServerError('Failed to fetch applications');
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
-// POST /api/admin/approvals - Approve or reject an application
 export async function POST(request: NextRequest) {
-  const { error: authError } = await verifyAdminAuth(request);
-  if (authError) return sendError(authError, 401);
+  const { error } = await verifyAdminAuth(request);
+  if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-    const body = await request.json().catch(() => ({}));
-    const { userId, action, notes } = body;
-
+    const { userId, action, notes } = await request.json().catch(() => ({}));
     if (!userId) return sendError('userId is required', 400);
-    if (!['approve', 'reject'].includes(action)) {
-      return sendError('action must be "approve" or "reject"', 400);
-    }
+    if (!['approve', 'reject'].includes(action)) return sendError('action must be "approve" or "reject"', 400);
 
     const user = await User.findById(userId);
     if (!user) return sendError('User not found', 404);
@@ -86,23 +55,15 @@ export async function POST(request: NextRequest) {
       return sendError('Only vendor, brand, or logistics accounts can be approved', 400);
     }
 
-    user.applicationStatus = action === 'approve' ? 'approved' : 'rejected';
-    user.applicationNotes = notes || (action === 'reject' ? 'Application rejected by administrator' : undefined);
-    if (action === 'approve') user.isActive = true;
+    const updates: Record<string, unknown> = {
+      applicationStatus: action === 'approve' ? 'approved' : 'rejected',
+      applicationNotes: notes || (action === 'reject' ? 'Application rejected by administrator' : undefined),
+    };
+    if (action === 'approve') updates.isActive = true;
 
-    await user.save();
-
-    return sendSuccess(
-      {
-        userId: user._id,
-        role: user.role,
-        applicationStatus: user.applicationStatus,
-        applicationNotes: user.applicationNotes,
-      },
-      `Application ${action === 'approve' ? 'approved' : 'rejected'} successfully`
-    );
-  } catch (error) {
-    console.error('Admin approvals POST error:', error);
-    return sendServerError('Failed to process application');
+    await User.updateOne(userId, updates);
+    return sendSuccess({ userId, role: user.role, ...updates }, `Application ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

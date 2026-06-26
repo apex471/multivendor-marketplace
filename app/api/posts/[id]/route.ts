@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
 import { PostLike } from '@/backend/models/PostLike';
 import { User } from '@/backend/models/User';
@@ -17,9 +16,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    await connectDB();
-
-    const post = await Post.findById(id).lean();
+    const post = await Post.findById(id);
     if (!post || post.status !== 'published' || post.privacy !== 'public') {
       return sendNotFound('Post not found');
     }
@@ -30,19 +27,17 @@ export async function GET(
     if (authHeader?.startsWith('Bearer ')) {
       const tok = verifyToken(authHeader.slice(7));
       if (tok) {
-        const existingLike = await PostLike.findOne({ postId: id, userId: tok.userId }).lean();
+        const existingLike = await PostLike.findOne({ postId: id, userId: tok.userId });
         liked = !!existingLike;
       }
     }
 
     // Fetch author info
-    const author = await User.findById(post.authorId)
-      .select('firstName lastName avatar role applicationStatus')
-      .lean();
+    const author = await User.findById(post.authorId);
 
     return sendSuccess({
       post: {
-        id:        post._id,
+        id:        post.id,
         content:   post.content,
         images:    post.images ?? [],
         product:   post.product ?? null,
@@ -54,7 +49,7 @@ export async function GET(
         createdAt: post.createdAt,
         author: author
           ? {
-              id:       author._id,
+              id:       author.id,
               name:     `${author.firstName} ${author.lastName}`.trim(),
               username: `${author.firstName}${author.lastName}`.toLowerCase().replace(/\s/g, ''),
               avatar:   author.avatar ?? null,

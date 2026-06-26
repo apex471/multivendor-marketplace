@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Settings } from '@/backend/models/Settings';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
@@ -17,15 +16,7 @@ export async function GET(request: NextRequest) {
   if (error) return sendError(error, 401);
 
   try {
-    await connectDB();
-
-    // Upsert the singleton document on first access
-    let settings = await Settings.findOne().lean();
-    if (!settings) {
-      const doc = await Settings.create({});
-      settings = doc.toObject();
-    }
-
+    const settings = await Settings.findOne();
     return sendSuccess(settings);
   } catch (err) {
     console.error('Admin settings GET error:', err);
@@ -39,7 +30,6 @@ export async function PUT(request: NextRequest) {
   if (authError) return sendError(authError, 401);
 
   try {
-    await connectDB();
     const body = await request.json().catch(() => ({}));
 
     const update: Record<string, unknown> = {};
@@ -51,11 +41,7 @@ export async function PUT(request: NextRequest) {
       return sendError('No valid fields provided', 400);
     }
 
-    const settings = await Settings.findOneAndUpdate(
-      {},
-      { $set: update },
-      { new: true, upsert: true, runValidators: true }
-    ).lean();
+    const settings = await Settings.updateOne(update);
 
     return sendSuccess(settings, 'Settings saved successfully');
   } catch (err) {

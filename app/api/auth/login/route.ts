@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
-import { User } from '@/backend/models/User';
+import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateLoginInput } from '@/backend/utils/validation';
 import { sendVerificationEmail } from '@/backend/utils/email';
@@ -15,7 +14,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
 
-    // Validate input
     const validation = validateLoginInput(body);
     if (!validation.isValid) {
       return sendValidationError('Validation failed', validation.errors);
@@ -24,89 +22,56 @@ export async function POST(request: NextRequest) {
     const email: string = body.email.toLowerCase().trim();
     const password: string = body.password;
 
-    await connectDB();
+    // Find user by email (include password for comparison)
+    const userSnap = await User.findOne({ email }, { includePassword: true });
+    if (!userSnap) return sendError('Invalid email or password', 401);
 
-    // Find user with password field (excluded by default)
-    const user = await User.findOne({ email }).select('+password');
-
-    if (!user) {
-      // Same error for both "not found" and "wrong password" to prevent email enumeration
-      return sendError('Invalid email or password', 401);
-    }
-
-    if (!user.isActive) {
+    if (!userSnap.isActive) {
       return sendError('Your account has been deactivated. Please contact support.', 403);
     }
 
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await User.comparePassword(userSnap.id!, password);
     if (!isPasswordValid) {
-      console.error(`[Login] Password mismatch for ${email}`);
       return sendError('Invalid email or password', 401);
     }
 
-    // Block login for unverified users; automatically send a fresh OTP so they
-    // can complete verification without having to request a resend manually.
-    if (!user.isEmailVerified) {
+    if (!userSnap.isEmailVerified) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      await User.updateOne(
-        { _id: user._id },
-        {
-          $set: {
-            emailVerificationToken: otp,
-            emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
-          },
-        }
-      );
+      await User.updateOne(userSnap.id!, {
+        emailVerificationToken: otp,
+        emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+      });
       let emailSentMsg = 'A new code has been sent to your inbox.';
       try {
-        const emailResult = await sendVerificationEmail(user.email, user.firstName, otp, user.role);
-        if (!emailResult.sent) {
-          console.error('[Login] Email delivery failed:', emailResult.error);
-          emailSentMsg = 'Could not send a new code. Use the resend button on the verification page.';
-        }
-      } catch (emailErr) {
-        console.error('[Login] Unexpected email error:', emailErr);
-        emailSentMsg = 'Could not send a new code. Use the resend button.';
-      }
+        const emailResult = await sendVerificationEmail(userSnap.email, userSnap.firstName, otp, userSnap.role as UserRole);
+        if (!emailResult.sent) emailSentMsg = 'Could not send a new code. Use the resend button.';
+      } catch { /* non-blocking */ }
       return sendError(
         `Please verify your email before logging in. ${emailSentMsg}`,
         403,
-        { requiresEmailVerification: 'true', email: user.email, role: user.role }
+        { requiresEmailVerification: 'true', email: userSnap.email, role: userSnap.role }
       );
     }
 
-    // Use updateOne instead of save() — save() triggers the pre-save hook which
-    // would re-hash the already-hashed password, breaking every subsequent login.
-    await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
+    await User.updateOne(userSnap.id!, { lastLogin: new Date() });
 
-    const token = generateToken(user._id.toString(), user.email, user.role);
+    const token = generateToken(userSnap.id!, userSnap.email, userSnap.role);
 
-    return sendSuccess(
-      {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-          avatar: user.avatar || null,
-          isEmailVerified: user.isEmailVerified,
-        },
-        token,
+    return sendSuccess({
+      user: {
+        id: userSnap.id,
+        firstName: userSnap.firstName,
+        lastName: userSnap.lastName,
+        email: userSnap.email,
+        role: userSnap.role,
+        avatar: userSnap.avatar || null,
+        isEmailVerified: userSnap.isEmailVerified,
       },
-      'Login successful'
-    );
+      token,
+    }, 'Login successful');
   } catch (error: unknown) {
     const err = error as Error;
     console.error('[Login] Route error:', err?.message || error);
-
-    if (err?.message?.includes('MONGODB_URI')) {
-      return sendError('Database not configured. Set MONGODB_URI in environment variables.', 503);
-    }
-    if (err?.message?.includes('connect') || err?.message?.includes('ENOTFOUND') || err?.message?.includes('timed out')) {
-      return sendError('Cannot connect to database. Check MONGODB_URI in environment variables.', 503);
-    }
-
     return sendServerError(`Login error: ${err?.message || 'Unknown error'}`);
   }
 }

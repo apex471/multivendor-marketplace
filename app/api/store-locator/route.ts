@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
-import { Product } from '@/backend/models/Product';
+import { db, docToObject } from '@/backend/config/firebase';
 import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter';
 
 /**
@@ -17,8 +16,6 @@ import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter'
  */
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const sp     = new URL(request.url).searchParams;
     const type   = sp.get('type')   || 'all';
     const search = sp.get('search') || '';
@@ -30,46 +27,67 @@ export async function GET(request: NextRequest) {
       type === 'brand'  ? ['brand']  :
       ['vendor', 'brand'];
 
-    const filter: Record<string, unknown> = {
-      role:              { $in: roleFilter },
-      applicationStatus: 'approved',
+    let allUsers = await User.find({
       isActive:          true,
-    };
+      applicationStatus: 'approved',
+    });
+
+    // Filter by role
+    allUsers = allUsers.filter(u => roleFilter.includes(u.role));
 
     if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName:  { $regex: search, $options: 'i' } },
-        { bio:       { $regex: search, $options: 'i' } },
-      ];
+      const lower = search.toLowerCase();
+      allUsers = allUsers.filter(u =>
+        u.firstName.toLowerCase().includes(lower) ||
+        (u.lastName && u.lastName.toLowerCase().includes(lower)) ||
+        (u.bio && u.bio.toLowerCase().includes(lower))
+      );
     }
 
     // If city provided, search addresses array
     if (city && city !== 'all') {
-      filter['addresses.city'] = { $regex: `^${city}$`, $options: 'i' };
+      const lowerCity = city.toLowerCase();
+      allUsers = allUsers.filter(u =>
+        u.addresses?.some(a => a.city.toLowerCase() === lowerCity)
+      );
     }
 
-    const users = await User.find(filter)
-      .select('firstName lastName role avatar bio phoneNumber addresses coordinates createdAt')
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+    // Sort by newest
+    allUsers.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
 
-    // Bulk product counts
-    const userIds = users.map(u => u._id);
-    const productCounts = await Product.aggregate([
-      { $match: { vendorId: { $in: userIds }, status: 'active' } },
-      { $group: { _id: '$vendorId', count: { $sum: 1 }, categories: { $addToSet: '$category' } } },
-    ]);
-    const countMap = new Map(productCounts.map(r => [String(r._id), { count: r.count as number, categories: r.categories as string[] }]));
+    const paginated = allUsers.slice(0, limit);
 
-    const stores = users.map(u => {
-      const defaultAddress = u.addresses?.find((a: { isDefault: boolean }) => a.isDefault) ?? u.addresses?.[0];
-      const productInfo = countMap.get(String(u._id));
+    // Bulk product counts & categories
+    const userIds = paginated.map(u => u.id!).filter(Boolean);
+    const countMap = new Map<string, { count: number; categories: string[] }>();
+    
+    if (userIds.length > 0) {
+      const snap = await db.collection('products')
+        .where('status', '==', 'active')
+        .where('vendorId', 'in', userIds)
+        .get();
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const vId = data.vendorId;
+        const cat = data.category as string;
+        if (vId) {
+          const info = countMap.get(vId) ?? { count: 0, categories: [] };
+          info.count += 1;
+          if (cat && !info.categories.includes(cat)) {
+            info.categories.push(cat);
+          }
+          countMap.set(vId, info);
+        }
+      });
+    }
+
+    const stores = paginated.map(u => {
+      const defaultAddress = u.addresses?.find((a: any) => a.isDefault) ?? u.addresses?.[0];
+      const productInfo = countMap.get(String(u.id));
 
       return {
-        id:       String(u._id),
-        name:     `${u.firstName} ${u.lastName}`.trim(),
+        id:       String(u.id),
+        name:     `${u.firstName} ${u.lastName ?? ''}`.trim(),
         type:     u.role as 'vendor' | 'brand',
         category: productInfo?.categories?.[0] ?? (u.role === 'brand' ? 'Brand' : 'General'),
         address:  defaultAddress?.addressLine1 ?? '',

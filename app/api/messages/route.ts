@@ -1,17 +1,12 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Conversation } from '@/backend/models/Conversation';
 import { verifyToken } from '@/backend/utils/jwt';
+import { db, FieldPath, docToObject } from '@/backend/config/firebase';
 import {
   sendSuccess,
   sendError,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
-
-type ConvoWithParticipants = {
-  _id: unknown; lastMessage?: string; lastMessageAt?: Date; unreadCounts?: Record<string, number>;
-  participants: Array<{ _id: unknown; firstName?: string; lastName?: string; avatar?: string; username?: string; role?: string }>;
-};
 
 // GET /api/messages — list all conversations for authenticated user
 export async function GET(request: NextRequest) {
@@ -21,29 +16,40 @@ export async function GET(request: NextRequest) {
   if (!payload) return sendError('Invalid token', 401);
 
   try {
-    await connectDB();
+    const conversations = await Conversation.findByParticipant(payload.userId, { orderBy: 'lastMessageAt', orderDir: 'desc', limit: 50 });
 
-    const conversations = await Conversation.find({ participants: payload.userId })
-      .sort({ lastMessageAt: -1 })
-      .limit(50)
-      .populate('participants', 'firstName lastName avatar username role')
-      .lean() as ConvoWithParticipants[];
+    const participantIds = Array.from(new Set(conversations.flatMap(c => c.participants)));
+    const userMap = new Map<string, any>();
+
+    if (participantIds.length > 0) {
+      const chunks: string[][] = [];
+      for (let i = 0; i < participantIds.length; i += 30) {
+        chunks.push(participantIds.slice(i, i + 30));
+      }
+      for (const chunk of chunks) {
+        const snap = await db.collection('users')
+          .where(FieldPath.documentId(), 'in', chunk)
+          .get();
+        snap.docs.forEach(d => {
+          userMap.set(d.id, docToObject<any>(d));
+        });
+      }
+    }
 
     return sendSuccess({
       conversations: conversations.map(c => {
-        const other = c.participants.find((p) => String(p._id) !== payload.userId);
-        const unread = c.unreadCounts instanceof Map
-          ? (c.unreadCounts.get(payload.userId) ?? 0)
-          : (c.unreadCounts?.[payload.userId] ?? 0);
+        const otherId = c.participants.find(p => p !== payload.userId);
+        const other = otherId ? userMap.get(otherId) : null;
+        const unread = c.unreadCounts?.[payload.userId] ?? 0;
         return {
-          id:            String(c._id),
+          id:            c.id,
           lastMessage:   c.lastMessage,
           lastMessageAt: c.lastMessageAt,
           unread:        unread,
           other: other ? {
-            id:       String(other._id),
+            id:       other.id,
             name:     `${other.firstName ?? ''} ${other.lastName ?? ''}`.trim(),
-            username: other.username ?? other.firstName ?? '',
+            username: other.storeName || other.firstName || '',
             avatar:   other.avatar ?? null,
             role:     other.role,
           } : null,
@@ -67,12 +73,8 @@ export async function POST(request: NextRequest) {
     if (!recipientId) return sendError('recipientId is required', 400);
     if (recipientId === payload.userId) return sendError('Cannot message yourself', 400);
 
-    await connectDB();
-
     // Find existing conversation between the two users
-    let convo = await Conversation.findOne({
-      participants: { $all: [payload.userId, recipientId], $size: 2 },
-    }).lean() as ConvoWithParticipants | null;
+    let convo = await Conversation.findByParticipants(payload.userId, recipientId);
 
     if (!convo) {
       convo = await Conversation.create({
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return sendSuccess({ conversationId: String((convo as NonNullable<typeof convo>)._id) }, 'Conversation ready', 200);
+    return sendSuccess({ conversationId: convo.id }, 'Conversation ready', 200);
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }

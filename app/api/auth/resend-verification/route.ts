@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User, UserRole } from '@/backend/models/User';
 import { sendVerificationEmail } from '@/backend/utils/email';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-const RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,49 +14,34 @@ export async function POST(request: NextRequest) {
       return sendError('A valid email address is required.', 400);
     }
 
-    await connectDB();
+    const user = await User.findOne({ email }, { includeVerification: true });
 
-    const user = await User.findOne({ email }).select(
-      '+emailVerificationToken +emailVerificationExpires'
-    );
-
-    // Always return success to prevent email enumeration
     if (!user) {
       return sendSuccess({}, 'If that email exists, a new verification code has been sent.');
     }
-
     if (user.isEmailVerified) {
       return sendError('This email address is already verified.', 400);
     }
 
     const rolesRequiringVerification = [UserRole.CUSTOMER, UserRole.VENDOR, UserRole.BRAND, UserRole.LOGISTICS];
-    if (!rolesRequiringVerification.includes(user.role)) {
+    if (!rolesRequiringVerification.includes(user.role as UserRole)) {
       return sendError('Email verification is not required for this account type.', 400);
     }
 
-    // Enforce cooldown: if a code exists and was issued less than 1 min ago, reject
-    const verificationExpires = (user as { emailVerificationExpires?: Date }).emailVerificationExpires;
-    if (
-      verificationExpires &&
-      verificationExpires > new Date(Date.now() + 10 * 60 * 1000 - RESEND_COOLDOWN_MS)
-    ) {
+    const verificationExpires = user.emailVerificationExpires;
+    if (verificationExpires && verificationExpires > new Date(Date.now() + 10 * 60 * 1000 - RESEND_COOLDOWN_MS)) {
       return sendError('Please wait 1 minute before requesting another code.', 429);
     }
 
-    // Generate fresh 6-digit OTP
-    const verifyToken = Math.floor(100000 + Math.random() * 900000).toString();
-    user.emailVerificationToken = verifyToken;
-    user.emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    await user.save();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await User.updateOne(user.id!, {
+      emailVerificationToken: otp,
+      emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+    });
 
-    const emailResult = await sendVerificationEmail(email, user.firstName, verifyToken, user.role);
-
+    const emailResult = await sendVerificationEmail(email, user.firstName, otp, user.role as UserRole);
     if (!emailResult.sent) {
-      console.error('[ResendVerification] Email delivery failed:', emailResult.error);
-      return sendError(
-        'We could not send the verification email right now. Please try again in a moment.',
-        503
-      );
+      return sendError('We could not send the verification email right now. Please try again.', 503);
     }
 
     return sendSuccess({}, 'A new verification code has been sent to your inbox.');

@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { User } from '@/backend/models/User';
 import { Post } from '@/backend/models/Post';
 import { Follow } from '@/backend/models/Follow';
@@ -18,34 +17,26 @@ export async function GET(
   { params }: { params: Promise<{ username: string }> }
 ) {
   try {
-    await connectDB();
-
     const { username } = await params;
 
-    // Try _id first (MongoDB ObjectId 24-char hex)
-    let user = null;
-    if (/^[a-f\d]{24}$/i.test(username)) {
-      user = await User.findById(username)
-        .select('-password -emailVerificationToken -emailVerificationExpires')
-        .lean();
-    }
+    // Try _id first
+    let user = await User.findById(username);
 
-    // Fall back: search by firstName match
+    // Fall back: search by username comparison in memory
     if (!user) {
-      user = await User.findOne({ firstName: { $regex: `^${username}`, $options: 'i' } })
-        .select('-password -emailVerificationToken -emailVerificationExpires')
-        .lean();
+      const allUsers = await User.find({ isActive: true });
+      user = allUsers.find(u => {
+        const uName = `${u.firstName}${u.lastName ?? ''}`.toLowerCase().replace(/\s/g, '');
+        return uName === username.toLowerCase() || u.firstName.toLowerCase() === username.toLowerCase();
+      }) || null;
     }
 
     if (!user || !user.isActive) return sendNotFound('User not found');
 
-    const userId = user._id;
+    const userId = user.id!;
 
     const [posts, followerCount, followingCount] = await Promise.all([
-      Post.find({ authorId: userId, status: 'published', privacy: 'public' })
-        .sort({ createdAt: -1 })
-        .limit(12)
-        .lean(),
+      Post.find({ authorId: userId, status: 'published', privacy: 'public' }, { limit: 12, orderBy: 'createdAt', orderDir: 'desc' }),
       Follow.countDocuments({ followingId: userId }),
       Follow.countDocuments({ followerId: userId }),
     ]);
@@ -68,7 +59,7 @@ export async function GET(
     return sendSuccess({
       user: {
         id:          userId,
-        username:    `${user.firstName}${user.lastName ?? ''}`.toLowerCase(),
+        username:    `${user.firstName}${user.lastName ?? ''}`.toLowerCase().replace(/\s/g, ''),
         fullName:    `${user.firstName} ${user.lastName ?? ''}`.trim(),
         firstName:   user.firstName,
         lastName:    user.lastName,
@@ -85,7 +76,7 @@ export async function GET(
         isFollowing,
       },
       posts: posts.map(p => ({
-        id:       p._id,
+        id:       p.id,
         image:    p.images?.[0] ?? null,
         content:  p.content,
         likes:    p.likes,

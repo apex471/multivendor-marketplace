@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Product } from '@/backend/models/Product';
 import { Transaction } from '@/backend/models/Transaction';
 import { verifyToken } from '@/backend/utils/jwt';
@@ -14,52 +13,41 @@ export async function GET(request: NextRequest) {
   if (!decoded) return sendError('Invalid token', 401);
 
   try {
-    await connectDB();
-    const brand = await User.findById(decoded.userId).lean();
-    if (!brand || (brand as { role?: string }).role !== 'brand') return sendError('Access denied', 403);
+    const brand = await User.findById(decoded.userId);
+    if (!brand || brand.role !== 'brand') return sendError('Access denied', 403);
 
     const brandId = decoded.userId;
 
-    const [totalProducts, activeProducts, pendingProducts, revenueAgg, monthRevenueAgg] =
+    const [totalProducts, activeProducts, pendingProducts, completedTxs] =
       await Promise.all([
         Product.countDocuments({ vendorId: brandId }),
         Product.countDocuments({ vendorId: brandId, status: 'active' }),
         Product.countDocuments({ vendorId: brandId, status: 'pending' }),
-        Transaction.aggregate([
-          { $match: { toUser: brand._id, status: 'completed' } },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        Transaction.aggregate([
-          {
-            $match: {
-              toUser: brand._id,
-              status: 'completed',
-              createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
-            },
-          },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
+        Transaction.find({ toUser: brandId, status: 'completed' }),
       ]);
 
-    const b = brand as {
-      firstName?: string; lastName?: string; email?: string;
-      applicationStatus?: string; isActive?: boolean; createdAt?: Date;
-    };
+    const totalRevenue = completedTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthRevenue = completedTxs
+      .filter(tx => tx.createdAt && tx.createdAt >= startOfMonth)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
     return sendSuccess({
       profile: {
-        firstName: b.firstName,
-        lastName: b.lastName,
-        email: b.email,
-        applicationStatus: b.applicationStatus,
-        isActive: b.isActive,
-        createdAt: b.createdAt,
+        firstName: brand.firstName,
+        lastName: brand.lastName,
+        email: brand.email,
+        applicationStatus: brand.applicationStatus,
+        isActive: brand.isActive,
+        createdAt: brand.createdAt,
       },
       stats: {
         totalProducts,
         activeProducts,
         pendingProducts,
-        totalRevenue: revenueAgg[0]?.total ?? 0,
-        monthRevenue: monthRevenueAgg[0]?.total ?? 0,
+        totalRevenue,
+        monthRevenue,
         // Affiliate data placeholder — to be wired when affiliate model exists
         totalAffiliates: 0,
         pendingRequests: 0,

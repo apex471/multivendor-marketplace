@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Post } from '@/backend/models/Post';
 import { PostLike } from '@/backend/models/PostLike';
 import { Notification } from '@/backend/models/Notification';
@@ -24,26 +23,25 @@ export async function POST(
     const payload = verifyToken(token);
     if (!payload) return sendUnauthorized('Invalid token');
 
-    await connectDB();
-
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
     const { action } = await req.json().catch(() => ({ action: 'like' }));
 
+    let liked = false;
     if (action === 'unlike') {
-      await PostLike.findOneAndDelete({ postId: id, userId: payload.userId });
-      post.likes = Math.max(0, post.likes - 1);
+      const deleted = await PostLike.findOneAndDelete({ postId: id, userId: payload.userId });
+      if (deleted) {
+        await Post.increment(id, 'likes', -1);
+        post.likes = Math.max(0, post.likes - 1);
+      }
+      liked = false;
     } else {
-      // upsert prevents duplicate likes
-      const result = await PostLike.findOneAndUpdate(
-        { postId: id, userId: payload.userId },
-        { postId: id, userId: payload.userId },
-        { upsert: true, new: true }
-      );
-
-      // Only increment counter if this is a new like (not a duplicate)
-      if (result) {
+      // Find or create
+      const existing = await PostLike.findOne({ postId: id, userId: payload.userId });
+      if (!existing) {
+        await PostLike.create({ postId: id, userId: payload.userId });
+        await Post.increment(id, 'likes', 1);
         post.likes = post.likes + 1;
 
         // Send notification to post author (non-blocking)
@@ -54,20 +52,15 @@ export async function POST(
             actorId:     payload.userId,
             text:        'Someone liked your post',
             link:        `/post/${id}`,
+            isRead:      false,
           }).catch(() => {});
         }
       }
+      liked = true;
     }
 
-    await post.save();
-
-    return sendSuccess({ likes: post.likes, liked: action !== 'unlike' });
+    return sendSuccess({ likes: post.likes, liked });
   } catch (err) {
-    // E11000 duplicate key — already liked, just return current state
-    if (err instanceof Error && err.message.includes('E11000')) {
-      const post = await Post.findById(id).lean();
-      return sendSuccess({ likes: post?.likes ?? 0, liked: true });
-    }
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

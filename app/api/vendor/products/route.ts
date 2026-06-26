@@ -1,136 +1,85 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Product } from '@/backend/models/Product';
-import { verifyVendorAuth } from '@/backend/utils/vendorAuth';
-import {
-  sendSuccess,
-  sendError,
-  sendValidationError,
-  sendServerError,
-} from '@/backend/utils/responseAppRouter';
+import { verifyToken } from '@/backend/utils/jwt';
+import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-/**
- * GET /api/vendor/products
- * Lists the authenticated vendor's own products.
- */
+function getVendorId(req: NextRequest): string | null {
+  const auth = req.headers.get('Authorization') ?? '';
+  if (!auth.startsWith('Bearer ')) return null;
+  const p = verifyToken(auth.slice(7));
+  return p?.userId ?? null;
+}
+
 export async function GET(request: NextRequest) {
-  const { error, userId } = await verifyVendorAuth(request);
-  if (error) return sendError(error, 401);
+  const vendorId = getVendorId(request);
+  if (!vendorId) return sendError('Authentication required', 401);
 
   try {
-    await connectDB();
-
-    const sp     = new URL(request.url).searchParams;
-    const page   = Math.max(1,  parseInt(sp.get('page')   || '1'));
-    const limit  = Math.min(50, parseInt(sp.get('limit')  || '20'));
-    const status = sp.get('status') || 'all';
+    const sp = new URL(request.url).searchParams;
+    const page   = Math.max(1,  parseInt(sp.get('page')  || '1'));
+    const limit  = Math.min(50, parseInt(sp.get('limit') || '20'));
+    const status = sp.get('status') || '';
     const search = sp.get('search') || '';
 
-    const filter: Record<string, unknown> = { vendorId: userId };
-    if (status !== 'all') filter.status = status;
+    const filter: Record<string, unknown> = { vendorId };
+    if (status && status !== 'all') filter.status = status;
+
+    let products = await Product.find(filter, { orderBy: 'createdAt', orderDir: 'desc', limit: 1000, hideCostPrice: false });
+
     if (search) {
-      filter.$or = [
-        { name:     { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } },
-        { sku:      { $regex: search, $options: 'i' } },
-      ];
+      const q = search.toLowerCase();
+      products = products.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.sku?.toLowerCase().includes(q)
+      );
     }
 
-    const skip = (page - 1) * limit;
-    const [products, total, activeCount, draftCount, outOfStockCount] = await Promise.all([
-      Product.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-      Product.countDocuments(filter),
-      Product.countDocuments({ vendorId: userId, status: 'active' }),
-      Product.countDocuments({ vendorId: userId, status: 'draft' }),
-      Product.countDocuments({ vendorId: userId, status: 'out-of-stock' }),
-    ]);
+    const total = products.length;
+    const paged = products.slice((page - 1) * limit, page * limit);
 
-    return sendSuccess({
-      products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
-      statusCounts: {
-        active:     activeCount,
-        draft:      draftCount,
-        outOfStock: outOfStockCount,
-      },
-    });
+    return sendSuccess({ products: paged, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error('[Vendor Products] GET error:', err);
-    return sendServerError('Failed to load products');
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
 
-/**
- * POST /api/vendor/products
- * Creates a new product in "pending" status (requires admin approval).
- */
 export async function POST(request: NextRequest) {
-  const { error, userId, user } = await verifyVendorAuth(request);
-  if (error) return sendError(error, 401);
+  const vendorId = getVendorId(request);
+  if (!vendorId) return sendError('Authentication required', 401);
 
   try {
-    await connectDB();
-
     const body = await request.json().catch(() => ({}));
-    const {
-      name, description, category, price, salePrice,
-      costPrice, stock, images, videos, sku, tags, variants, lowStockAlert,
-    } = body;
+    const { name, description, category, price, salePrice, costPrice, stock, sku, tags, variants, images, videos, lowStockAlert } = body;
 
-    if (!name?.trim()) {
-      return sendValidationError('Validation failed', { name: 'Product name is required' });
-    }
-    if (!category?.trim()) {
-      return sendValidationError('Validation failed', { category: 'Category is required' });
-    }
-    if (price === undefined || isNaN(Number(price)) || Number(price) < 0) {
-      return sendValidationError('Validation failed', { price: 'Valid price is required' });
-    }
+    if (!name?.trim()) return sendError('Product name is required', 400);
+    if (!price || price < 0) return sendError('Valid price is required', 400);
 
-    const u = user as { firstName?: string; lastName?: string };
-    const vendorName = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
-
-    const parseTags = (raw: unknown): string[] => {
-      if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
-      if (typeof raw === 'string') return raw.split(',').map((t) => t.trim()).filter(Boolean);
-      return [];
-    };
-
-    const product = new Product({
-      name:          name.trim(),
-      description:   description?.trim() ?? '',
-      vendorId:      userId,
-      vendorName,
-      category:      category.trim(),
-      price:         Number(price),
-      salePrice:     salePrice  ? Number(salePrice)  : undefined,
-      costPrice:     costPrice  ? Number(costPrice)  : undefined,
-      stock:         Number(stock) || 0,
-      images:        Array.isArray(images) ? images : [],
-      videos:        Array.isArray(videos) ? videos : [],
-      sku:           sku?.trim() || undefined,
-      tags:          parseTags(tags),
-      variants:      Array.isArray(variants) ? variants : [],
-      lowStockAlert: Number(lowStockAlert) || 5,
-      status:        'pending',   // always requires admin approval first
+    const product = await Product.create({
+      name: name.trim(),
+      description: description?.trim() ?? '',
+      vendorId,
+      vendorName: body.vendorName ?? 'Vendor',
+      category: category ?? 'Uncategorized',
+      price: Number(price),
+      salePrice: salePrice ? Number(salePrice) : undefined,
+      costPrice: costPrice ? Number(costPrice) : undefined,
+      stock: Number(stock ?? 0),
+      sku: sku?.trim(),
+      tags: Array.isArray(tags) ? tags : [],
+      variants: Array.isArray(variants) ? variants : [],
+      images: Array.isArray(images) ? images : [],
+      videos: Array.isArray(videos) ? videos : [],
+      lowStockAlert: Number(lowStockAlert ?? 5),
+      status: 'pending',
+      featured: false,
+      salesCount: 0,
+      rating: 0,
+      reviewCount: 0,
     });
 
-    await product.save();
-
-    return sendSuccess(
-      { product },
-      'Product submitted for review. It will be visible once approved.',
-      201
-    );
+    return sendSuccess({ product }, 'Product created successfully', 201);
   } catch (err) {
-    console.error('[Vendor Products] POST error:', err);
-    return sendServerError('Failed to create product');
+    return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }

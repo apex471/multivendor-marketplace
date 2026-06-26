@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
 import { Notification } from '@/backend/models/Notification';
 import { verifyToken } from '@/backend/utils/jwt';
+import { db } from '@/backend/config/firebase';
 import {
   sendSuccess,
   sendNotFound,
@@ -25,17 +25,15 @@ export async function PATCH(
     const payload = getPayload(req);
     if (!payload) return sendUnauthorized('Authentication required');
 
-    await connectDB();
+    const docRef = db.collection('notifications').doc(id);
+    const snap = await docRef.get();
+    if (!snap.exists || snap.data()?.recipientId !== payload.userId) {
+      return sendNotFound('Notification not found');
+    }
 
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, recipientId: payload.userId },
-      { isRead: true },
-      { new: true }
-    );
+    await Notification.updateOne(id, { isRead: true });
 
-    if (!notification) return sendNotFound('Notification not found');
-
-    return sendSuccess({ id: notification._id, isRead: true });
+    return sendSuccess({ id, isRead: true });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
@@ -51,9 +49,11 @@ export async function DELETE(
     const payload = getPayload(req);
     if (!payload) return sendUnauthorized('Authentication required');
 
-    await connectDB();
-
-    await Notification.findOneAndDelete({ _id: id, recipientId: payload.userId });
+    const docRef = db.collection('notifications').doc(id);
+    const snap = await docRef.get();
+    if (snap.exists && snap.data()?.recipientId === payload.userId) {
+      await docRef.delete();
+    }
 
     return sendSuccess({ deleted: true });
   } catch (err) {
