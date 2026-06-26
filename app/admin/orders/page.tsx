@@ -44,6 +44,7 @@ export default function OrderManagementPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
   const [toast, setToast]   = useState('');
+  const [confirmRefund, setConfirmRefund] = useState<string | null>(null);
 
   const getToken  = () => typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
@@ -100,7 +101,6 @@ export default function OrderManagementPage() {
   };
 
   const handleRefund = async (orderId: string) => {
-    if (!window.confirm('Process a full refund for this order?')) return;
     try {
       await fetch('/api/admin/orders', {
         method: 'PATCH',
@@ -109,6 +109,7 @@ export default function OrderManagementPage() {
       });
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'refunded', paymentStatus: 'refunded' } : o));
       setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: 'refunded', paymentStatus: 'refunded' } : prev);
+      setConfirmRefund(null);
       showToast('✅ Refund processed');
     } catch { showToast('Failed to process refund'); }
   };
@@ -143,7 +144,7 @@ export default function OrderManagementPage() {
   const totalRevenue = orders.reduce((sum, o) => o.paymentStatus === 'paid' ? sum + o.total : sum, 0);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-charcoal-900">
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-charcoal-800 border border-gold-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium">
@@ -151,24 +152,23 @@ export default function OrderManagementPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/admin/dashboard" className="text-gold-600 hover:text-gold-700">
-                ← Back
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-charcoal-900 dark:text-white">Order Management</h1>
-                <p className="text-xs text-charcoal-600 dark:text-cool-gray-400">Manage all platform orders</p>
-              </div>
-            </div>
-          </div>
+      {/* Page Title */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Order Management</h1>
+          <p className="text-cool-gray-400 text-sm mt-1">Track and manage all platform orders</p>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={fetchOrders}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-charcoal-700 hover:bg-charcoal-600 text-white text-sm font-medium rounded-lg border border-charcoal-600 transition-colors disabled:opacity-50"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
+      </div>
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-4">
@@ -196,7 +196,7 @@ export default function OrderManagementPage() {
             <div className="text-2xl font-bold text-green-900 dark:text-green-400">{deliveredOrders}</div>
             <div className="text-xs text-green-800 dark:text-green-500">Delivered</div>
           </div>
-          <div className="bg-linear-to-br from-gold-400 to-gold-600 rounded-xl p-4 text-white">
+          <div className="bg-gradient-to-br from-gold-400 to-gold-600 rounded-xl p-4 text-white">
             <div className="text-3xl mb-2">💰</div>
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <div className="text-xs opacity-90">Total Revenue</div>
@@ -347,7 +347,6 @@ export default function OrderManagementPage() {
             </table>
           </div>
         </div>
-      </div>
 
       {/* Order Detail Modal */}
       {showModal && selectedOrder && (
@@ -527,12 +526,32 @@ export default function OrderManagementPage() {
               {selectedOrder.paymentStatus === 'paid' && selectedOrder.status !== 'refunded' && (
                 <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-4">
                   <h3 className="font-semibold text-red-600 dark:text-red-400 mb-3">⚠️ Refund Order</h3>
-                  <button
-                    onClick={() => handleRefund(selectedOrder.id)}
-                    className="w-full py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Process Refund
-                  </button>
+                  {confirmRefund === selectedOrder.id ? (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                      <p className="text-sm text-red-700 dark:text-red-300 mb-4 font-medium">Are you sure? This will fully refund ${selectedOrder.total.toFixed(2)} and cannot be undone.</p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleRefund(selectedOrder.id)}
+                          className="flex-1 py-2.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Yes, Process Refund
+                        </button>
+                        <button
+                          onClick={() => setConfirmRefund(null)}
+                          className="flex-1 py-2.5 bg-charcoal-200 dark:bg-charcoal-600 text-charcoal-800 dark:text-white font-semibold rounded-lg hover:bg-charcoal-300 dark:hover:bg-charcoal-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRefund(selectedOrder.id)}
+                      className="w-full py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Process Refund
+                    </button>
+                  )}
                 </div>
               )}
             </div>
