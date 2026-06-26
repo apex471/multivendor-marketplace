@@ -26,14 +26,25 @@ async function uploadToFirebaseStorage(
   mimeType: string,
   folder: string
 ): Promise<string> {
-  // Reuse the existing Firebase Admin app initialized in backend/config/firebase.ts
   const { getStorage } = await import('firebase-admin/storage');
   const { getApps, initializeApp, cert } = await import('firebase-admin/app');
 
   const projectId = process.env.FIREBASE_PROJECT_ID!;
-  const bucketName = `${projectId}.appspot.com`;
 
-  // Get existing app or init a new one (handles both cases safely)
+  /**
+   * Bucket name resolution (in priority order):
+   *   1. FIREBASE_STORAGE_BUCKET env var (explicit override — most reliable)
+   *   2. {projectId}.firebasestorage.app  — default for projects created after ~2024
+   *   3. {projectId}.appspot.com          — default for older projects
+   *
+   * Add FIREBASE_STORAGE_BUCKET to .env.local to pin it:
+   *   FIREBASE_STORAGE_BUCKET=certifiedluxuryworld-3dcb1.firebasestorage.app
+   */
+  const bucketName =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    `${projectId}.firebasestorage.app`;
+
+  // Reuse or create the Firebase Admin app
   let app = getApps()[0];
   if (!app) {
     app = initializeApp({
@@ -46,6 +57,8 @@ async function uploadToFirebaseStorage(
     });
   }
 
+  // Always pass the explicit bucket name — avoids 'default bucket not set' errors
+  // when the Admin app was initialized without storageBucket (e.g. by firebase.ts)
   const bucket = getStorage(app).bucket(bucketName);
   const dest   = `${folder}/${Date.now()}-${filename}`;
   const file   = bucket.file(dest);
@@ -55,6 +68,7 @@ async function uploadToFirebaseStorage(
     resumable: false,
   });
 
+  // Make the object publicly readable (required for <img src=...>)
   await file.makePublic();
 
   return `https://storage.googleapis.com/${bucketName}/${dest}`;
