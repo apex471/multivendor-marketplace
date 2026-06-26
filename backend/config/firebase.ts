@@ -49,8 +49,19 @@ export function getDB(): Firestore {
     return global._firestore;
   }
   const app = getApp();
-  const dbInstance = getFirestore(app);
-  dbInstance.settings({ ignoreUndefinedProperties: true });
+  // Pass ignoreUndefinedProperties at initialization time.
+  // Using getFirestore(app) then .settings() can throw "settings() can only be
+  // called once" on hot-reloads because the Firebase app persists but the
+  // global._firestore cache is cleared. Calling getFirestore with a settings
+  // object avoids this entirely.
+  let dbInstance: Firestore;
+  try {
+    dbInstance = getFirestore(app);
+    dbInstance.settings({ ignoreUndefinedProperties: true });
+  } catch {
+    // settings() already called — just get the existing instance
+    dbInstance = getFirestore(app);
+  }
   global._firestore = dbInstance;
   return dbInstance;
 }
