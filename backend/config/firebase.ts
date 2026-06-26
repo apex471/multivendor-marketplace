@@ -11,6 +11,7 @@ import * as admin from 'firebase-admin';
 declare global {
   // eslint-disable-next-line no-var
   var _firebaseAdmin: App | undefined;
+  var _firestore: Firestore | undefined;
 }
 
 function getApp(): App {
@@ -44,8 +45,14 @@ function getApp(): App {
 }
 
 export function getDB(): Firestore {
+  if (global._firestore) {
+    return global._firestore;
+  }
   const app = getApp();
-  return getFirestore(app);
+  const dbInstance = getFirestore(app);
+  dbInstance.settings({ ignoreUndefinedProperties: true });
+  global._firestore = dbInstance;
+  return dbInstance;
 }
 
 // Convenience alias — drop-in replacement for `await connectDB()` calls

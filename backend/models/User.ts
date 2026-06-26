@@ -59,6 +59,13 @@ export interface IUser {
 
 const USERS = 'users';
 
+/** Remove keys with undefined values — Firestore rejects them */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T;
+}
+
 export const User = {
   // ── Create ────────────────────────────────────────────────────────────────
   async create(data: Omit<IUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<IUser & { id: string }> {
@@ -73,7 +80,7 @@ export const User = {
     }
 
     const now = new Date();
-    const doc: Record<string, unknown> = {
+    const doc: Record<string, unknown> = stripUndefined({
       ...data,
       password: hashed,
       applicationStatus,
@@ -82,7 +89,7 @@ export const User = {
       isActive: data.isActive ?? true,
       createdAt: now,
       updatedAt: now,
-    };
+    });
 
     const ref = await db.collection(USERS).add(doc);
     return { id: ref.id, ...doc } as IUser & { id: string };
@@ -185,7 +192,7 @@ export const User = {
 
   // ── Update one ────────────────────────────────────────────────────────────
   async updateOne(id: string, updates: Partial<IUser>): Promise<void> {
-    const data: Record<string, unknown> = { ...updates, updatedAt: new Date() };
+    const data: Record<string, unknown> = stripUndefined({ ...updates, updatedAt: new Date() });
     // Hash password if being updated
     if (data.password) {
       const salt = await bcrypt.genSalt(10);
