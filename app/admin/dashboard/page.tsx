@@ -144,7 +144,7 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <div className="text-2xl font-bold text-white">{fmtMoney(stats?.financials.commissionEarned ?? 0)}</div>
-          <div className="text-xs text-cool-gray-400 mt-1">Platform Fees Gross (5%+5%)</div>
+          <div className="text-xs text-cool-gray-400 mt-1">Platform Fees — Seller Commission (5%)</div>
           {/* Stripe fee breakdown */}
           <div className="mt-3 pt-3 border-t border-charcoal-700 space-y-1">
             <div className="flex justify-between text-xs">

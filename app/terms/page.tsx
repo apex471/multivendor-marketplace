@@ -31,7 +31,7 @@ export default function TermsPage() {
 • Provide accurate information about their products
 • Honor all sales made through the platform
 • Comply with all applicable laws and regulations
-• Pay applicable fees and commissions (5% seller commission per sale; buyers are charged a 5% service fee)
+• Pay applicable fees and commissions (5% seller commission per sale; no fee charged to buyers)
 • Maintain adequate inventory
 • Provide customer service for their products
 • Not sell counterfeit or prohibited items`,

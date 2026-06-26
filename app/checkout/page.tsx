@@ -654,14 +654,6 @@ export default function CheckoutPage() {
                   <span className="text-charcoal-600 dark:text-cool-gray-400">Subtotal</span>
                   <span className="font-medium text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
                 </div>
-                {/* Buyer service fee */}
-                <div className="flex justify-between text-sm">
-                  <div>
-                    <span className="text-charcoal-600 dark:text-cool-gray-400">Service Fee</span>
-                    <div className="text-[10px] text-cool-gray-500 mt-0.5">5% buyer fee · funds escrow protection</div>
-                  </div>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">+${buyerServiceFee.toFixed(2)}</span>
-                </div>
                 <div className="flex justify-between text-sm">
                   <div>
                     <span className="text-charcoal-600 dark:text-cool-gray-400">Delivery</span>

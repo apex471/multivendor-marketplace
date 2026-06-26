@@ -83,7 +83,7 @@ export default function BecomeVendorPage() {
 
   const benefits = [
     { icon: '🌍', title: 'Global Reach', description: 'Access millions of luxury shoppers worldwide' },
-    { icon: '💰', title: 'Low Fees', description: 'Just 5% seller commission per sale. Buyers pay a 5% service fee. Stripe processing costs are absorbed by the platform — never passed to you.' },
+    { icon: '💰', title: 'Low Fees', description: 'Just 5% seller commission per sale — no fees charged to buyers. Stripe processing costs are absorbed by the platform and never passed to you.' },
     { icon: '📊', title: 'Analytics', description: 'Detailed insights into your sales and customers' },
     { icon: '🚀', title: 'Marketing Support', description: 'Featured placements and promotional opportunities' },
     { icon: '🔒', title: 'Secure Payments', description: 'Fast, secure payment processing' },

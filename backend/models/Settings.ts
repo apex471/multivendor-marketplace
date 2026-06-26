@@ -38,8 +38,8 @@ const DEFAULTS: Omit<ISettings, 'id' | 'updatedAt'> = {
   allowNewVendors: true,
   allowNewBrands: true,
   requireEmailVerification: true,
-  commissionRate: 10,  // legacy total (5+5)
-  buyerFeeRate: 5,
+  commissionRate: 5,   // now only seller-side (5%)
+  buyerFeeRate: 0,
   sellerFeeRate: 5,
   stripeFeeRate: 2.9,
   escrowDuration: 7,

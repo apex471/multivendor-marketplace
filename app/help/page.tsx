@@ -84,7 +84,7 @@ export default function HelpPage() {
     },
     {
       question: 'How do vendor commissions work?',
-      answer: 'CLW uses a transparent dual-fee model similar to Fiverr. Sellers pay a 5% commission deducted from their payout at escrow release. Buyers pay a 5% service fee added at checkout — this funds escrow protection and buyer guarantees. Stripe\'s 2.9% processing fee is fully absorbed by the platform and is never charged to buyers or sellers. You can view your earnings in the Vendor Dashboard under "Earnings".',
+      answer: 'CLW charges a simple 5% seller commission, deducted from your payout when escrow is released — you never pay it upfront. Buyers are not charged any service fee; they only pay the item price, shipping, and applicable tax. Stripe\'s 2.9% processing fee is fully absorbed by the platform. You can view your earnings in the Vendor Dashboard under "Earnings".',
       category: 'vendors',
     },
   ];

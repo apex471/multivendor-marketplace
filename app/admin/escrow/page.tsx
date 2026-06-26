@@ -124,8 +124,8 @@ export default function EscrowManagementPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-charcoal-900 rounded-xl p-4 text-center">
               <div className="text-xs text-cool-gray-500 uppercase mb-1">Buyer Fee</div>
-              <div className="text-2xl font-bold text-blue-400">{ps.buyerFeeRate}%</div>
-              <div className="text-[10px] text-cool-gray-600 mt-1">charged on subtotal</div>
+              <div className="text-2xl font-bold text-blue-400">0%</div>
+              <div className="text-[10px] text-cool-gray-600 mt-1">no service fee</div>
             </div>
             <div className="bg-charcoal-900 rounded-xl p-4 text-center">
               <div className="text-xs text-cool-gray-500 uppercase mb-1">Seller Fee</div>
@@ -139,7 +139,7 @@ export default function EscrowManagementPage() {
             </div>
             <div className="bg-charcoal-900 rounded-xl p-4 text-center">
               <div className="text-xs text-cool-gray-500 uppercase mb-1">Net Margin</div>
-              <div className="text-2xl font-bold text-green-400">{(ps.buyerFeeRate + ps.sellerFeeRate - ps.stripeFeeRate).toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-green-400">{Math.max(0, ps.sellerFeeRate - ps.stripeFeeRate).toFixed(1)}%</div>
               <div className="text-[10px] text-cool-gray-600 mt-1">per transaction</div>
             </div>
           </div>
@@ -237,11 +237,11 @@ export default function EscrowManagementPage() {
                       <div className="text-white font-semibold">{fmt(tx.feeBreakdown.subtotal)}</div>
                     </div>
                     <div className="bg-blue-900/30 border border-blue-800/20 rounded-lg p-2">
-                      <div className="text-blue-400">Buyer Fee (5%)</div>
-                      <div className="text-blue-300 font-semibold">+{fmt(tx.feeBreakdown.buyerServiceFee)}</div>
+                      <div className="text-blue-400">Buyer Fee (0%)</div>
+                      <div className="text-blue-300 font-semibold">{fmt(tx.feeBreakdown.buyerServiceFee)}</div>
                     </div>
                     <div className="bg-purple-900/30 border border-purple-800/20 rounded-lg p-2">
-                      <div className="text-purple-400">Seller Fee (5%)</div>
+                      <div className="text-purple-400">Seller Fee</div>
                       <div className="text-purple-300 font-semibold">−{fmt(tx.feeBreakdown.sellerFee)}</div>
                     </div>
                     <div className="bg-green-900/30 border border-green-800/20 rounded-lg p-2">
@@ -253,11 +253,11 @@ export default function EscrowManagementPage() {
                       <div className="text-white font-semibold">{tx.feeBreakdown.shipping === 0 ? 'FREE' : fmt(tx.feeBreakdown.shipping)}</div>
                     </div>
                     <div className="bg-charcoal-700 rounded-lg p-2">
-                      <div className="text-cool-gray-500">Tax (8%)</div>
+                      <div className="text-cool-gray-500">Tax</div>
                       <div className="text-white font-semibold">{fmt(tx.feeBreakdown.tax)}</div>
                     </div>
                     <div className="bg-red-900/20 border border-red-800/20 rounded-lg p-2">
-                      <div className="text-red-400">Stripe Fee (2.9%)</div>
+                      <div className="text-red-400">Stripe Fee</div>
                       <div className="text-red-300 font-semibold">−{fmt(tx.feeBreakdown.stripeFee)}</div>
                     </div>
                     <div className="bg-gold-900/30 border border-gold-800/20 rounded-lg p-2">
@@ -290,12 +290,8 @@ export default function EscrowManagementPage() {
                     <span className="text-cool-gray-400">Buyer paid</span>
                     <span className="text-white font-bold">{fmt(selected.amount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-400">Buyer service fee (5%)</span>
-                    <span className="text-blue-300">+{fmt(selected.feeBreakdown.buyerServiceFee)}</span>
-                  </div>
                   <div className="border-t border-charcoal-600 pt-2 flex justify-between">
-                    <span className="text-purple-400">Seller fee deducted (5%)</span>
+                    <span className="text-purple-400">Seller fee deducted</span>
                     <span className="text-purple-300">−{fmt(selected.feeBreakdown.sellerFee)}</span>
                   </div>
                   <div className="flex justify-between font-semibold">
@@ -303,7 +299,7 @@ export default function EscrowManagementPage() {
                     <span className="text-green-300">{fmt(selected.feeBreakdown.vendorPayout)}</span>
                   </div>
                   <div className="border-t border-charcoal-600 pt-2 flex justify-between text-xs">
-                    <span className="text-red-400">Stripe fee (2.9%) — absorbed by platform</span>
+                    <span className="text-red-400">Stripe fee — absorbed by platform</span>
                     <span className="text-red-300">−{fmt(selected.feeBreakdown.stripeFee)}</span>
                   </div>
                   <div className="flex justify-between text-xs font-semibold">

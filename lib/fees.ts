@@ -12,11 +12,11 @@
  */
 
 export const FEES = {
-  /** Stripe processing rate (2.9% + $0.30, but we budget at flat 2.9% for simplicity) */
+  /** Stripe processing rate (2.9% + $0.30, budgeted at flat 2.9%) */
   STRIPE_RATE: 0.029,
 
-  /** % charged to the buyer on top of merchandise subtotal */
-  BUYER_SERVICE_FEE_RATE: 0.05,
+  /** Buyer service fee — REMOVED. Buyers only pay subtotal + tax + shipping. */
+  BUYER_SERVICE_FEE_RATE: 0,
 
   /** % deducted from the vendor's merchandise subtotal at escrow release */
   SELLER_FEE_RATE: 0.05,
@@ -54,13 +54,13 @@ export interface FeeBreakdown {
  * @param shipping - Shipping cost
  */
 export function calculateFees(subtotal: number, shipping: number): FeeBreakdown {
-  const buyerServiceFee = round2(subtotal * FEES.BUYER_SERVICE_FEE_RATE);
+  const buyerServiceFee = 0;                                       // removed — buyers not charged
   const tax             = round2(subtotal * FEES.TAX_RATE);
-  const buyerTotal      = round2(subtotal + buyerServiceFee + shipping + tax);
+  const buyerTotal      = round2(subtotal + shipping + tax);        // no service fee
   const stripeFee       = round2(buyerTotal * FEES.STRIPE_RATE + 0.30);
   const sellerFee       = round2(subtotal * FEES.SELLER_FEE_RATE);
   const vendorPayout    = round2(subtotal - sellerFee);
-  const platformGross   = round2(buyerServiceFee + sellerFee);
+  const platformGross   = round2(sellerFee);                        // only seller-side now
   const platformNet     = round2(platformGross - stripeFee);
 
   return {
