@@ -1,12 +1,13 @@
 'use client';
 
 import { getAuthToken } from '@/lib/api/auth';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { useToast } from '@/components/common/Toast';
 
 interface Product {
   id: string;
@@ -36,6 +37,8 @@ interface BrandData {
 export default function BrandDetailPage() {
   const params = useParams();
   const brandId = params.id as string;
+  const router = useRouter();
+  const { success: toastSuccess, info: toastInfo } = useToast();
   const [activeTab, setActiveTab] = useState<'all' | 'direct' | 'affiliate'>('all');
   const [isFollowing, setIsFollowing] = useState(false);
   const [brand, setBrand] = useState<BrandData | null>(null);
@@ -89,7 +92,7 @@ export default function BrandDetailPage() {
 
   const handleFollow = async () => {
     const token = getAuthToken();
-    if (!token) { alert('Please log in to follow brands'); return; }
+    if (!token) { toastInfo('Please log in to follow brands'); router.push('/auth/login'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${brandId}` : '/api/follow';
     const opts: RequestInit = {
@@ -99,6 +102,7 @@ export default function BrandDetailPage() {
     if (!isFollowing) opts.body = JSON.stringify({ followingId: brandId });
     await fetch(url, opts);
     setIsFollowing(!isFollowing);
+    toastSuccess(isFollowing ? 'Unfollowed brand' : 'Now following brand! 🎉');
   };
 
   if (isLoading) {

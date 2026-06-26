@@ -53,6 +53,11 @@ export default function Footer() {
                   Find Vendors
                 </Link>
               </li>
+              <li>
+                <Link href="/size-guide" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
+                  Size Guide
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -75,6 +80,11 @@ export default function Footer() {
                   Stories
                 </Link>
               </li>
+              <li>
+                <Link href="/about" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
+                  About Us
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -90,6 +100,16 @@ export default function Footer() {
               <li>
                 <Link href="/contact" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
                   Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/shipping" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
+                  Shipping Info
+                </Link>
+              </li>
+              <li>
+                <Link href="/return-policy" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
+                  Return Policy
                 </Link>
               </li>
               <li>

@@ -8,6 +8,7 @@ import { CheckoutProvider } from "../contexts/CheckoutContext";
 import { LogisticsProvider } from "../contexts/LogisticsContext";
 import { CartProvider } from "../contexts/CartContext";
 import GoogleOAuthProviderWrapper from "@/components/providers/GoogleOAuthProvider";
+import { ToastProvider } from "@/components/common/Toast";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -91,7 +92,9 @@ export default function RootLayout({
                 <LocationProvider>
                   <CheckoutProvider>
                     <LogisticsProvider>
-                      {children}
+                      <ToastProvider>
+                        {children}
+                      </ToastProvider>
                     </LogisticsProvider>
                   </CheckoutProvider>
                 </LocationProvider>

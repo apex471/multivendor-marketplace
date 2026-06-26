@@ -7,6 +7,7 @@ import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
+import { useToast } from '@/components/common/Toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ApiProduct {
@@ -77,6 +78,7 @@ const FALLBACK_CAT_IDS = ['all', 'women', 'men', 'accessories', 'footwear'] as c
 
 export default function ShopPage() {
   const router = useRouter();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [priceRange,  setPriceRange]  = useState<string>('all');
@@ -155,7 +157,7 @@ export default function ShopPage() {
 
   const handleAddToWishlist = async (productId: string) => {
     const token = getAuthToken();
-    if (!token) { alert('Please log in to save items to your wishlist.'); return; }
+    if (!token) { toastInfo('Please log in to save items to your wishlist.'); router.push('/auth/login'); return; }
     try {
       const res = await fetch('/api/wishlist', {
         method: 'POST',
@@ -163,10 +165,10 @@ export default function ShopPage() {
         body: JSON.stringify({ productId }),
       });
       const json = await res.json();
-      if (res.ok) alert('Added to wishlist!');
-      else alert(json.message || 'Could not add to wishlist.');
+      if (res.ok) toastSuccess('Added to wishlist! ❤️');
+      else toastError(json.message || 'Could not add to wishlist.');
     } catch {
-      alert('Network error. Please try again.');
+      toastError('Network error. Please try again.');
     }
   };
 
@@ -320,10 +322,11 @@ export default function ShopPage() {
                       className="relative aspect-square overflow-hidden w-full touch-manipulation"
                     >
                       <Image
-                        src={product.image}
+                        src={product.image || '/images/placeholder-product.jpg'}
                         alt={product.name}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder-product.jpg'; }}
                       />
                       {product.oldPrice && (
                         <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">

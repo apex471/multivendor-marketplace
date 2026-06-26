@@ -2,16 +2,19 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCart } from '../../../contexts/CartContext';
+import { useToast } from '@/components/common/Toast';
 
 export default function VendorDetailPage() {
   const params = useParams();
   const vendorId = params.id as string;
+  const router = useRouter();
   const { addItem: addToCart } = useCart();
+  const { success: toastSuccess, info: toastInfo } = useToast();
   const [activeTab, setActiveTab] = useState<'products' | 'posts' | 'about'>('products');
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -83,7 +86,7 @@ export default function VendorDetailPage() {
 
   const handleFollow = async () => {
     const token = getAuthToken();
-    if (!token) { alert('Please log in to follow vendors'); return; }
+    if (!token) { toastInfo('Please log in to follow vendors'); router.push('/auth/login'); return; }
     const method = isFollowing ? 'DELETE' : 'POST';
     const url = isFollowing ? `/api/follow?followingId=${params.id}` : '/api/follow';
     const opts: RequestInit = {
@@ -93,6 +96,7 @@ export default function VendorDetailPage() {
     if (!isFollowing) opts.body = JSON.stringify({ followingId: params.id });
     await fetch(url, opts);
     setIsFollowing(!isFollowing);
+    toastSuccess(isFollowing ? 'Unfollowed vendor' : 'Now following vendor! 🎉');
   };
 
   if (isLoading) {

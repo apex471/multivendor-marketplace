@@ -7,6 +7,7 @@ import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/components/common/Toast';
 
 interface Review {
   id: string;
@@ -53,6 +54,7 @@ interface RelatedProduct {
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id: productId } = useParams() as { id: string };  const { addItem: addToCart } = useCart();
+  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -162,12 +164,12 @@ export default function ProductDetailPage() {
   if (!product) return null;
 
   const handleAddToCart = () => {
-    if (!selectedSize) {
-      alert('Please select a size');
+    if (!selectedSize && product.sizes.length > 0) {
+      toastWarning('Please select a size');
       return;
     }
-    if (!selectedColor) {
-      alert('Please select a color');
+    if (!selectedColor && product.colors.length > 0) {
+      toastWarning('Please select a color');
       return;
     }
     addToCart({
@@ -176,16 +178,20 @@ export default function ProductDetailPage() {
       price:     product.price,
       image:     product.images[0] ?? '/images/placeholder.jpg',
       vendor:    product.vendor.name,
-      size:      selectedSize,
-      color:     selectedColor,
+      size:      selectedSize || 'One Size',
+      color:     selectedColor || 'Default',
       quantity,
     });
-    alert(`"${product.name}" added to cart! 🛒`);
+    toastSuccess(`"${product.name}" added to cart! 🛒`);
   };
 
   const handleBuyNow = () => {
-    if (!selectedSize || !selectedColor) {
-      alert('Please select size and color');
+    if (!selectedSize && product.sizes.length > 0) {
+      toastWarning('Please select a size');
+      return;
+    }
+    if (!selectedColor && product.colors.length > 0) {
+      toastWarning('Please select a color');
       return;
     }
     handleAddToCart();

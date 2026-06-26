@@ -7,10 +7,12 @@ import Link from 'next/link';
 import { COURIERS, BADGE_STYLES, TRACKING_LABEL } from '../../lib/couriers';
 import { useCart } from '@/contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
+import { useToast } from '@/components/common/Toast';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items: cartItems, clearCart } = useCart();
+  const { warning: toastWarning } = useToast();
 
   // Auth guard — redirect unauthenticated users to login
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function CheckoutPage() {
   const handleShippingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!shippingInfo.fullName || !shippingInfo.email || !shippingInfo.address || !shippingInfo.city || !shippingInfo.zipCode) {
-      alert('Please fill in all required fields'); return;
+      toastWarning('Please fill in all required fields'); return;
     }
     setCurrentStep(2);
   };
@@ -52,7 +54,7 @@ export default function CheckoutPage() {
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiryDate || !paymentInfo.cvv) {
-      alert('Please fill in all payment details'); return;
+      toastWarning('Please fill in all payment details'); return;
     }
     setCurrentStep(4);
   };
