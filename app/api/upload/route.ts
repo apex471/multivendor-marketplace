@@ -5,42 +5,93 @@ import {
   sendSuccess,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
-import { v2 as cloudinary } from 'cloudinary';
 
-/** Configure Cloudinary at request time (not module load) to survive build. */
-function configure() {
+/** ── Cloudinary lazy-config (only when credentials exist) ───────────────── */
+function getCloudinary() {
   const name   = process.env.CLOUDINARY_CLOUD_NAME;
   const key    = process.env.CLOUDINARY_API_KEY;
   const secret = process.env.CLOUDINARY_API_SECRET;
+  if (!name || !key || !secret ||
+      name === 'your_cloud_name' || key === 'your_api_key') return null;
 
-  if (!name || !key || !secret) {
-    throw new Error(
-      'Cloudinary credentials not configured.\n' +
-      'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET ' +
-      'in Netlify → Site Settings → Environment Variables.'
-    );
-  }
+  const { v2: cloudinary } = require('cloudinary');
   cloudinary.config({ cloud_name: name, api_key: key, api_secret: secret, secure: true });
+  return cloudinary;
 }
 
-const ALLOWED_IMAGE_TYPES = new Set([
-  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
-]);
+/** ── Firebase Storage fallback ─────────────────────────────────────────── */
+async function uploadToFirebaseStorage(
+  buffer: Buffer,
+  filename: string,
+  mimeType: string,
+  folder: string
+): Promise<string> {
+  // Reuse the existing Firebase Admin app initialized in backend/config/firebase.ts
+  const { getStorage } = await import('firebase-admin/storage');
+  const { getApps, initializeApp, cert } = await import('firebase-admin/app');
 
-const ALLOWED_VIDEO_TYPES = new Set([
-  'video/mp4', 'video/webm', 'video/quicktime', 'video/ogg',
-  'video/x-msvideo', 'video/mpeg',
-]);
+  const projectId = process.env.FIREBASE_PROJECT_ID!;
+  const bucketName = `${projectId}.appspot.com`;
 
-const MAX_IMAGE_BYTES = 5  * 1024 * 1024;  //   5 MB
+  // Get existing app or init a new one (handles both cases safely)
+  let app = getApps()[0];
+  if (!app) {
+    app = initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
+        privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+      storageBucket: bucketName,
+    });
+  }
+
+  const bucket = getStorage(app).bucket(bucketName);
+  const dest   = `${folder}/${Date.now()}-${filename}`;
+  const file   = bucket.file(dest);
+
+  await file.save(buffer, {
+    metadata: { contentType: mimeType },
+    resumable: false,
+  });
+
+  await file.makePublic();
+
+  return `https://storage.googleapis.com/${bucketName}/${dest}`;
+}
+
+
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg':  'jpg',
+  'image/jpg':   'jpg',
+  'image/png':   'png',
+  'image/webp':  'webp',
+  'image/gif':   'gif',
+  // When blob is fetched from object URL, browser may send octet-stream
+  'application/octet-stream': 'jpg',
+};
+
+const ALLOWED_VIDEO_TYPES: Record<string, string> = {
+  'video/mp4':        'mp4',
+  'video/webm':       'webm',
+  'video/quicktime':  'mov',
+  'video/ogg':        'ogv',
+  'video/x-msvideo':  'avi',
+  'video/mpeg':       'mpeg',
+};
+
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;  //  15 MB (phone photos can be ~12MB)
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * POST /api/upload
- * Accepts multipart/form-data with a single `file` field.
- * Supports images (≤5 MB) and videos (≤100 MB).
- * Requires Bearer token (any authenticated user).
- * Returns { url, publicId, mediaType, width?, height?, duration? }.
+ * Accepts multipart/form-data with:
+ *   file  — the file blob
+ *   type  — optional hint: "image" | "video"  (needed when mime is octet-stream)
+ *   folder — optional: "stories" | "products" (default: "products")
+ *
+ * Upload priority: Cloudinary (if configured) → Firebase Storage (fallback)
+ * Returns { url, publicId?, mediaType, width?, height?, duration? }
  */
 export async function POST(request: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -52,18 +103,33 @@ export async function POST(request: NextRequest) {
   if (!decoded) return sendError('Invalid or expired token', 401);
 
   try {
-    configure();
-
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    const file     = formData.get('file') as File | null;
+    const typeHint = (formData.get('type') as string | null)?.toLowerCase();   // "image" or "video"
+    const folder   = (formData.get('folder') as string | null) ?? 'products';  // "stories" or "products"
+
     if (!file) return sendError('No file provided', 400);
 
-    const isImage = ALLOWED_IMAGE_TYPES.has(file.type);
-    const isVideo = ALLOWED_VIDEO_TYPES.has(file.type);
+    // ── Resolve MIME type — fall back on type hint when browser sends octet-stream ──
+    let mimeType = file.type?.toLowerCase() || 'application/octet-stream';
+
+    let isImage = mimeType in ALLOWED_IMAGE_TYPES;
+    let isVideo = mimeType in ALLOWED_VIDEO_TYPES;
+
+    // If octet-stream, use the typeHint to determine whether it's an image or video
+    if (!isImage && !isVideo && mimeType === 'application/octet-stream') {
+      if (typeHint === 'video') {
+        isVideo = true;
+        mimeType = 'video/mp4';
+      } else {
+        isImage = true;
+        mimeType = 'image/jpeg';
+      }
+    }
 
     if (!isImage && !isVideo) {
       return sendError(
-        'Unsupported file type. Images: JPEG, PNG, WebP, GIF. Videos: MP4, WebM, MOV, OGG, AVI.',
+        `Unsupported file type "${file.type}". Allowed: JPEG, PNG, WebP, GIF, MP4, WebM, MOV.`,
         400
       );
     }
@@ -71,59 +137,91 @@ export async function POST(request: NextRequest) {
     const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
     if (file.size > maxBytes) {
       return sendError(
-        `File too large. Maximum size: ${isVideo ? '100 MB for videos' : '5 MB for images'}.`,
+        `File too large. Max: ${isVideo ? '100 MB for videos' : '15 MB for images'}.`,
         400
       );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const ext    = isVideo
+      ? (ALLOWED_VIDEO_TYPES[mimeType] ?? 'mp4')
+      : (ALLOWED_IMAGE_TYPES[mimeType] ?? 'jpg');
+    const filename = `upload-${Date.now()}.${ext}`;
 
-    // Stream-upload to Cloudinary
-    const result = await new Promise<{
-      secure_url: string;
-      public_id: string;
-      resource_type: string;
-      width?: number;
-      height?: number;
-      duration?: number;
-    }>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
+    // ── Try Cloudinary first ──────────────────────────────────────────────────
+    const cloudinary = getCloudinary();
+
+    if (cloudinary) {
+      const result = await new Promise<{
+        secure_url: string;
+        public_id: string;
+        resource_type: string;
+        width?: number;
+        height?: number;
+        duration?: number;
+      }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder:        `clw-marketplace/${folder}`,
+            resource_type: isVideo ? 'video' : 'image',
+            ...(isImage && {
+              transformation: [
+                { width: 1600, height: 1600, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
+              ],
+            }),
+            ...(isVideo && {
+              eager: [{ format: 'mp4', quality: 'auto' }],
+              eager_async: true,
+            }),
+          },
+          (error: Error | undefined, res: Record<string, unknown> | undefined) => {
+            if (error || !res) reject(error ?? new Error('Cloudinary returned empty result'));
+            else resolve(res as any);
+          }
+        );
+        stream.end(buffer);
+      });
+
+      return sendSuccess(
         {
-          folder:        'clw-marketplace/products',
-          resource_type: isVideo ? 'video' : 'image',
-          ...(isImage && {
-            transformation: [
-              { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
-            ],
-          }),
-          ...(isVideo && {
-            eager: [{ format: 'mp4', quality: 'auto' }],
-            eager_async: true,
-          }),
+          url:       result.secure_url,
+          publicId:  result.public_id,
+          mediaType: isVideo ? 'video' : 'image',
+          provider:  'cloudinary',
+          ...(result.width    !== undefined && { width:    result.width }),
+          ...(result.height   !== undefined && { height:   result.height }),
+          ...(result.duration !== undefined && { duration: result.duration }),
         },
-        (error, res) => {
-          if (error || !res) reject(error ?? new Error('Upload returned empty result'));
-          else resolve(res as typeof result extends Promise<infer T> ? T : never);
-        }
+        `${isVideo ? 'Video' : 'Image'} uploaded successfully`
       );
-      stream.end(buffer);
-    });
+    }
+
+    // ── Firebase Storage fallback (when Cloudinary not configured) ───────────
+    console.log('[Upload] Cloudinary not configured — using Firebase Storage fallback');
+    const storageFolder = `clw-marketplace/${folder}`;
+    const publicUrl = await uploadToFirebaseStorage(buffer, filename, mimeType, storageFolder);
 
     return sendSuccess(
       {
-        url:       result.secure_url,
-        publicId:  result.public_id,
+        url:       publicUrl,
         mediaType: isVideo ? 'video' : 'image',
-        ...(result.width    !== undefined && { width:    result.width }),
-        ...(result.height   !== undefined && { height:   result.height }),
-        ...(result.duration !== undefined && { duration: result.duration }),
+        provider:  'firebase-storage',
       },
       `${isVideo ? 'Video' : 'Image'} uploaded successfully`
     );
+
   } catch (err: unknown) {
     console.error('[Upload] Error:', err);
-    return sendServerError(
-      err instanceof Error ? err.message : 'Upload failed'
-    );
+    const msg = err instanceof Error ? err.message : 'Upload failed';
+
+    // Surface Cloudinary-specific config errors clearly
+    if (msg.includes('Must supply') || msg.includes('cloud_name')) {
+      return sendError(
+        'Media upload is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+        503
+      );
+    }
+
+    return sendServerError(msg);
   }
 }

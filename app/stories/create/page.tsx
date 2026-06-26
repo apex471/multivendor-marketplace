@@ -110,41 +110,73 @@ export default function CreateStoryPage() {
     }
 
     setIsPublishing(true);
+    setPublishError('');
     try {
-      // Upload the media file
+      // ── Step 1: Re-fetch the object URL as a blob and upload ────────────────
+      let blob: Blob;
+      try {
+        blob = await fetch(mediaFile).then(r => r.blob());
+      } catch {
+        throw new Error('Failed to read the selected file. Please try selecting it again.');
+      }
+
+      // Determine the real extension from the blob type or fall back to mediaType
+      const ext = mediaType === 'video' ? 'mp4' : 'jpg';
+      const fileName = `story.${ext}`;
+
       const uploadFormData = new FormData();
-      // mediaFile is an object URL — fetch it back as a blob to upload
-      const blob = await fetch(mediaFile).then(r => r.blob());
-      uploadFormData.append('file', blob, `story.${mediaType === 'video' ? 'mp4' : 'jpg'}`);
+      uploadFormData.append('file', blob, fileName);
+      // Pass type hint so the API handles octet-stream correctly
+      uploadFormData.append('type', mediaType ?? 'image');
+      // Stories go to their own Cloudinary folder
+      uploadFormData.append('folder', 'stories');
 
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
       });
-      const uploadJson = await uploadRes.json();
-      if (!uploadJson.success) throw new Error(uploadJson.error ?? 'Upload failed');
 
-      const mediaUrl: string = uploadJson.data.url;
+      let uploadJson: { success: boolean; data?: { url: string }; message?: string; error?: string };
+      try {
+        uploadJson = await uploadRes.json();
+      } catch {
+        throw new Error(`Upload server error (HTTP ${uploadRes.status}). Please try again.`);
+      }
 
-      // Create the story
+      if (!uploadRes.ok || !uploadJson.success) {
+        throw new Error(uploadJson.message ?? uploadJson.error ?? `Upload failed (${uploadRes.status})`);
+      }
+
+      const mediaUrl: string = uploadJson.data!.url;
+
+      // ── Step 2: Create the story record ─────────────────────────────────────
       const storyRes = await fetch('/api/stories', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mediaUrls: [mediaUrl],
+          mediaUrls:  [mediaUrl],
           mediaTypes: [mediaType ?? 'image'],
           filter,
           duration,
           textOverlays,
         }),
       });
-      const storyJson = await storyRes.json();
-      if (!storyJson.success) throw new Error(storyJson.error ?? 'Story creation failed');
 
-      router.push('/feed');
+      let storyJson: { success: boolean; message?: string; error?: string };
+      try {
+        storyJson = await storyRes.json();
+      } catch {
+        throw new Error('Story creation failed. Please try again.');
+      }
+
+      if (!storyRes.ok || !storyJson.success) {
+        throw new Error(storyJson.message ?? storyJson.error ?? 'Story creation failed');
+      }
+
+      router.push('/social/feed');
     } catch (err) {
-      setPublishError(err instanceof Error ? err.message : 'Failed to publish story');
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish story. Please try again.');
     } finally {
       setIsPublishing(false);
     }
