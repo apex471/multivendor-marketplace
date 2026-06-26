@@ -1,8 +1,10 @@
 import { db, docToObject } from '@/backend/config/firebase';
 
 export type TransactionType =
-  | 'order_payment'
-  | 'escrow_release'
+  | 'order_payment'       // buyer charge — includes subtotal + 5% service fee + shipping + tax
+  | 'escrow_release'      // vendor payout after escrow period — subtotal minus 5% seller fee
+  | 'platform_fee'        // admin revenue record: 5% buyer + 5% seller = 10% gross
+  | 'stripe_fee'          // stripe processing fee absorbed by platform (2.9%)
   | 'refund'
   | 'commission_payout'
   | 'withdrawal';
@@ -16,10 +18,22 @@ export interface ITransaction {
   amount: number;
   currency: string;
   status: TransactionStatus;
-  fromUser?: string;
-  toUser?: string;
+  fromUser?: string;    // buyer userId for order_payment / vendor userId for escrow_release
+  toUser?: string;      // vendor userId for escrow_release / admin for platform_fee
   orderId?: string;
   description: string;
+  // Fee breakdown fields (present on order_payment records)
+  feeBreakdown?: {
+    subtotal: number;
+    buyerServiceFee: number;  // 5% from buyer
+    sellerFee: number;        // 5% from seller (deducted at payout)
+    shipping: number;
+    tax: number;
+    stripeFee: number;        // 2.9% absorbed by platform
+    vendorPayout: number;     // subtotal − sellerFee
+    platformGross: number;    // buyerServiceFee + sellerFee
+    platformNet: number;      // platformGross − stripeFee
+  };
   metadata?: Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;

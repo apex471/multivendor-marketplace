@@ -9,9 +9,19 @@ export interface ISettings {
   allowNewVendors: boolean;
   allowNewBrands: boolean;
   requireEmailVerification: boolean;
+  // ── Fee model ────────────────────────────────────────────────────────────────
+  /** DEPRECATED — kept for backward compat, mirrors (buyerFeeRate + sellerFeeRate) × 100 */
   commissionRate: number;
+  /** Buyer-side service fee in % (default: 5) */
+  buyerFeeRate: number;
+  /** Seller-side commission in % (default: 5) */
+  sellerFeeRate: number;
+  /** Stripe processing rate in % (default: 2.9) — absorbed by platform */
+  stripeFeeRate: number;
+  // ── Escrow & withdrawals ─────────────────────────────────────────────────────
   escrowDuration: number;
   minWithdrawal: number;
+  // ── Shipping ─────────────────────────────────────────────────────────────────
   freeShippingThreshold: number;
   defaultShippingCost: number;
   internationalShipping: boolean;
@@ -28,7 +38,10 @@ const DEFAULTS: Omit<ISettings, 'id' | 'updatedAt'> = {
   allowNewVendors: true,
   allowNewBrands: true,
   requireEmailVerification: true,
-  commissionRate: 10,
+  commissionRate: 10,  // legacy total (5+5)
+  buyerFeeRate: 5,
+  sellerFeeRate: 5,
+  stripeFeeRate: 2.9,
   escrowDuration: 7,
   minWithdrawal: 50,
   freeShippingThreshold: 100,
@@ -45,10 +58,22 @@ export const Settings = {
       await db.doc(SETTINGS_DOC).set(data);
       return { id: 'singleton', ...data };
     }
-    return docToObject<ISettings>(snap)!;
+    const s = docToObject<ISettings>(snap)!;
+    // Backfill missing fields for existing documents
+    if (s.buyerFeeRate == null) s.buyerFeeRate = 5;
+    if (s.sellerFeeRate == null) s.sellerFeeRate = 5;
+    if (s.stripeFeeRate == null) s.stripeFeeRate = 2.9;
+    return s;
   },
 
   async updateOne(updates: Partial<ISettings>): Promise<ISettings & { id: string }> {
+    // Keep commissionRate in sync with buyer+seller for backward compat
+    if (updates.buyerFeeRate != null || updates.sellerFeeRate != null) {
+      const current = await this.findOne();
+      updates.commissionRate =
+        (updates.buyerFeeRate  ?? current.buyerFeeRate)  +
+        (updates.sellerFeeRate ?? current.sellerFeeRate);
+    }
     const data = { ...updates, updatedAt: new Date() };
     await db.doc(SETTINGS_DOC).set(data, { merge: true });
     return this.findOne();

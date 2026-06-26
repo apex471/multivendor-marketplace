@@ -6,7 +6,8 @@ import { sendSuccess, sendError, sendServerError } from '@/backend/utils/respons
 const ALLOWED_FIELDS = [
   'platformName', 'platformEmail', 'supportEmail',
   'maintenanceMode', 'allowNewVendors', 'allowNewBrands', 'requireEmailVerification',
-  'commissionRate', 'escrowDuration', 'minWithdrawal',
+  'commissionRate', 'buyerFeeRate', 'sellerFeeRate', 'stripeFeeRate',
+  'escrowDuration', 'minWithdrawal',
   'freeShippingThreshold', 'defaultShippingCost', 'internationalShipping',
 ] as const;
 

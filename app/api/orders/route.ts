@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as OrderStore from '@/lib/store/orders';
 import { Order } from '@/backend/models/Order';
+import { Transaction } from '@/backend/models/Transaction';
 import { verifyToken } from '@/backend/utils/jwt';
+import { calculateFees } from '@/lib/fees';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
     const {
       shippingInfo, cartItems,
       courierId, courierName, courierIcon, courierPrice, courierEta, courierCarrier, courierTracking,
-      subtotal, tax, total, shippingCost, discount, couponCode, paymentMethod,
+      subtotal: rawSubtotal, shippingCost: rawShipping, discount, couponCode, paymentMethod,
     } = body;
 
     if (!shippingInfo || !cartItems?.length) {
@@ -24,9 +26,18 @@ export async function POST(request: NextRequest) {
       if (payload) { customerId = payload.userId; if (!customerEmail) customerEmail = payload.email; }
     }
 
+    // ── Fee calculation ─────────────────────────────────────────────────────────
+    const subtotal = rawSubtotal ?? cartItems.reduce((s: number, i: { price?: number; quantity?: number }) => s + (i.price ?? 0) * (i.quantity ?? 1), 0);
+    const shipping = rawShipping ?? courierPrice ?? 0;
+    const fees = calculateFees(subtotal, shipping);
+    // Apply discount to grand total if coupon provided
+    const discountAmount = discount ?? 0;
+    const buyerTotal = Math.max(0, fees.buyerTotal - discountAmount);
+
     const { randomBytes } = await import('crypto');
     const orderId = `ORD-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 
+    // ── Persist order in Firestore ──────────────────────────────────────────────
     await Order.create({
       orderId,
       ...(customerId ? { customerId } : {}),
@@ -46,14 +57,42 @@ export async function POST(request: NextRequest) {
         zipCode: shippingInfo.zipCode, country: shippingInfo.country ?? 'United States',
       },
       paymentMethod: { type: paymentMethod?.type ?? 'card', cardLast4: paymentMethod?.cardNumber?.slice(-4), cardHolder: paymentMethod?.cardHolder },
-      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: courierPrice ?? 0, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
-      subtotal: subtotal ?? 0, shippingCost: shippingCost ?? 0, tax: tax ?? 0,
-      discount: discount ?? 0, total: total ?? 0,
-      couponCode: couponCode || undefined,
-      status: 'pending',
+      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: fees.shipping, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
+      subtotal:     fees.subtotal,
+      shippingCost: fees.shipping,
+      tax:          fees.tax,
+      discount:     discountAmount,
+      total:        buyerTotal,
+      couponCode:   couponCode || undefined,
+      status:       'pending',
       paymentStatus: paymentMethod?.paymentIntentId ? 'paid' : 'pending',
     });
 
+    // ── Record escrow transaction (buyer charge) ─────────────────────────────────
+    // This record sits in escrow until admin releases it to the vendor.
+    await Transaction.create({
+      transactionId: `TXN-${orderId}`,
+      type:          'order_payment',
+      amount:        buyerTotal,
+      currency:      'USD',
+      status:        'pending',           // escrow-held; becomes 'completed' on release
+      ...(customerId ? { fromUser: customerId } : {}),
+      orderId,
+      description:   `Buyer payment for order ${orderId} (incl. 5% service fee, shipping & tax)`,
+      feeBreakdown: {
+        subtotal:        fees.subtotal,
+        buyerServiceFee: fees.buyerServiceFee,
+        sellerFee:       fees.sellerFee,
+        shipping:        fees.shipping,
+        tax:             fees.tax,
+        stripeFee:       fees.stripeFee,
+        vendorPayout:    fees.vendorPayout,
+        platformGross:   fees.platformGross,
+        platformNet:     fees.platformNet,
+      },
+    });
+
+    // ── Sync to in-memory store for live logistics monitor ───────────────────────
     const inMemoryOrder = {
       id: orderId,
       customerName: shippingInfo.fullName, customerEmail: customerEmail || 'guest@example.com',
@@ -64,16 +103,34 @@ export async function POST(request: NextRequest) {
       items: cartItems.map((i: { name: string; price?: number; quantity?: number; image?: string; vendor?: string }, idx: number) => ({
         id: String(idx), name: i.name, price: i.price ?? 0, quantity: i.quantity ?? 1, image: i.image ?? '', vendor: i.vendor ?? '',
       })),
-      total: total ?? 0, subtotal: subtotal ?? 0, tax: tax ?? 0,
-      status: 'pending' as const, paymentStatus: 'paid' as const,
-      orderDate: new Date().toISOString(),
+      total:         buyerTotal,
+      subtotal:      fees.subtotal,
+      tax:           fees.tax,
+      status:        'pending' as const,
+      paymentStatus: 'paid' as const,
+      orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',
-      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: courierPrice ?? 0, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
+      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: fees.shipping, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
     };
     OrderStore.add(inMemoryOrder);
 
-    return NextResponse.json({ success: true, data: { orderId, order: inMemoryOrder } }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      data: {
+        orderId,
+        order: inMemoryOrder,
+        fees: {
+          buyerServiceFee: fees.buyerServiceFee,
+          sellerFee:       fees.sellerFee,
+          stripeFee:       fees.stripeFee,
+          vendorPayout:    fees.vendorPayout,
+          platformGross:   fees.platformGross,
+          platformNet:     fees.platformNet,
+          total:           buyerTotal,
+        },
+      },
+    }, { status: 201 });
   } catch (err) {
     console.error('POST /api/orders error:', err);
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });

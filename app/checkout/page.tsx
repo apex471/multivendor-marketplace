@@ -8,6 +8,7 @@ import { COURIERS, BADGE_STYLES, TRACKING_LABEL } from '../../lib/couriers';
 import { useCart } from '@/contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useToast } from '@/components/common/Toast';
+import { calculateFees } from '@/lib/fees';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -37,8 +38,8 @@ export default function CheckoutPage() {
   const selectedCourier = COURIERS.find(c => c.id === selectedCourierId) ?? COURIERS[2];
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = selectedCourier.price;
-  const tax      = subtotal * 0.08;
-  const total    = subtotal + shipping + tax;
+  const fees = calculateFees(subtotal, shipping);
+  const { buyerServiceFee, tax, buyerTotal: total } = fees;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleShippingSubmit = (e: React.FormEvent) => {
@@ -652,6 +653,14 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-charcoal-600 dark:text-cool-gray-400">Subtotal</span>
                   <span className="font-medium text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
+                </div>
+                {/* Buyer service fee */}
+                <div className="flex justify-between text-sm">
+                  <div>
+                    <span className="text-charcoal-600 dark:text-cool-gray-400">Service Fee</span>
+                    <div className="text-[10px] text-cool-gray-500 mt-0.5">5% buyer fee · funds escrow protection</div>
+                  </div>
+                  <span className="font-medium text-blue-600 dark:text-blue-400">+${buyerServiceFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <div>

@@ -11,7 +11,10 @@ interface Settings {
   allowNewVendors: boolean;
   allowNewBrands: boolean;
   requireEmailVerification: boolean;
-  commissionRate: number;
+  commissionRate: number;   // legacy — kept for backward compat
+  buyerFeeRate: number;     // 5% charged to buyer
+  sellerFeeRate: number;    // 5% deducted from seller payout
+  stripeFeeRate: number;    // 2.9% Stripe cost absorbed by platform
   escrowDuration: number;
   minWithdrawal: number;
   freeShippingThreshold: number;
@@ -22,7 +25,8 @@ interface Settings {
 const DEFAULT: Settings = {
   platformName: 'CLW Marketplace', platformEmail: 'admin@clw.com', supportEmail: 'support@clw.com',
   maintenanceMode: false, allowNewVendors: true, allowNewBrands: true, requireEmailVerification: false,
-  commissionRate: 10, escrowDuration: 7, minWithdrawal: 50,
+  commissionRate: 10, buyerFeeRate: 5, sellerFeeRate: 5, stripeFeeRate: 2.9,
+  escrowDuration: 7, minWithdrawal: 50,
   freeShippingThreshold: 100, defaultShippingCost: 9.99, internationalShipping: true,
 };
 
@@ -125,7 +129,41 @@ export default function SettingsPage() {
         )}
         {tab === 'payments' && (
           <>
-            <Field label="Commission Rate (%)" field="commissionRate" type="number" placeholder="10" />
+            {/* Live fee margin display */}
+            <div className="bg-charcoal-700 rounded-xl p-4 border border-gold-800/30">
+              <div className="text-xs font-bold text-gold-400 uppercase mb-3">Fee Structure (Fiverr Model)</div>
+              <div className="grid grid-cols-3 gap-3 text-center mb-3">
+                <div className="bg-charcoal-800 rounded-lg p-3">
+                  <div className="text-xs text-cool-gray-500">Buyer pays</div>
+                  <div className="text-xl font-bold text-blue-400">{settings.buyerFeeRate}%</div>
+                  <div className="text-[10px] text-cool-gray-600">on subtotal</div>
+                </div>
+                <div className="bg-charcoal-800 rounded-lg p-3">
+                  <div className="text-xs text-cool-gray-500">Seller pays</div>
+                  <div className="text-xl font-bold text-purple-400">{settings.sellerFeeRate}%</div>
+                  <div className="text-[10px] text-cool-gray-600">at payout</div>
+                </div>
+                <div className="bg-green-900/30 border border-green-800/30 rounded-lg p-3">
+                  <div className="text-xs text-green-500">Platform net</div>
+                  <div className="text-xl font-bold text-green-400">
+                    {Math.max(0, settings.buyerFeeRate + settings.sellerFeeRate - settings.stripeFeeRate).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-green-600">after Stripe</div>
+                </div>
+              </div>
+              <div className="text-xs text-cool-gray-500 text-center">
+                Gross: {settings.buyerFeeRate + settings.sellerFeeRate}% &nbsp;−&nbsp; Stripe: {settings.stripeFeeRate}% &nbsp;=&nbsp;
+                <span className="text-green-400 font-semibold">{(settings.buyerFeeRate + settings.sellerFeeRate - settings.stripeFeeRate).toFixed(1)}% net margin</span>
+              </div>
+            </div>
+            <Field label="Buyer Service Fee (%)" field="buyerFeeRate" type="number" placeholder="5" />
+            <Field label="Seller Commission (%)" field="sellerFeeRate" type="number" placeholder="5" />
+            <div>
+              <label className="block text-xs font-semibold text-cool-gray-400 mb-1.5">Stripe Processing Rate (%)</label>
+              <input type="number" value={settings.stripeFeeRate} readOnly
+                className="w-full px-4 py-2.5 bg-charcoal-900 border border-charcoal-600 text-cool-gray-500 rounded-lg text-sm cursor-not-allowed" />
+              <p className="text-[10px] text-cool-gray-600 mt-1">Fixed at 2.9% (Stripe's rate). Platform absorbs this cost from gross revenue.</p>
+            </div>
             <Field label="Escrow Duration (days)" field="escrowDuration" type="number" placeholder="7" />
             <Field label="Minimum Withdrawal ($)" field="minWithdrawal" type="number" placeholder="50" />
           </>

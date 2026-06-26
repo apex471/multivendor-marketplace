@@ -95,6 +95,19 @@ export async function GET(request: NextRequest) {
     const courierBreakdown = Array.from(courierMap.values())
       .sort((a, b) => b.count - a.count);
 
+    // Platform revenue: prefer platform_fee records; fall back to 10% estimate
+    const platformFeeRecords = allTxs.filter(t => t.type === 'platform_fee' && t.status === 'completed');
+    const totalPlatformGross = platformFeeRecords.length > 0
+      ? platformFeeRecords.reduce((sum, t) => sum + t.amount, 0)
+      : Math.round(totalRevenue * 0.10 * 100) / 100;
+
+    const stripeFeeRecords = allTxs.filter(t => t.type === 'stripe_fee' && t.status === 'completed');
+    const totalStripeFees = stripeFeeRecords.length > 0
+      ? stripeFeeRecords.reduce((sum, t) => sum + t.amount, 0)
+      : Math.round(totalRevenue * 0.029 * 100) / 100;
+
+    const totalPlatformNet = Math.round((totalPlatformGross - totalStripeFees) * 100) / 100;
+
     return sendSuccess({
       users: {
         customers: totalCustomers,
@@ -120,7 +133,9 @@ export async function GET(request: NextRequest) {
         monthTransactions: monthTransactionCount,
         pendingEscrow: pendingEscrowAmount,
         pendingEscrowCount,
-        commissionEarned: Math.round(totalRevenue * 0.1),
+        commissionEarned:  totalPlatformGross,   // 10% gross (5% buyer + 5% seller)
+        stripeFees:        totalStripeFees,       // 2.9% absorbed by platform
+        netRevenue:        totalPlatformNet,      // 7.1% net
       },
       charts: {
         weeklySignups,

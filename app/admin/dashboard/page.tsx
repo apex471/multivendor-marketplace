@@ -24,7 +24,9 @@ interface StatsData {
     totalRevenue: number;
     monthRevenue: number;
     pendingEscrow: number;
-    commissionEarned: number;
+    commissionEarned: number;  // platform gross (5% buyer + 5% seller)
+    stripeFees: number;        // 2.9% absorbed by platform
+    netRevenue: number;        // platform gross − stripe fees
   };
   charts: {
     weeklySignups: { date: string; count: number }[];
@@ -142,7 +144,18 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <div className="text-2xl font-bold text-white">{fmtMoney(stats?.financials.commissionEarned ?? 0)}</div>
-          <div className="text-xs text-cool-gray-400 mt-1">Commission Earned (10%)</div>
+          <div className="text-xs text-cool-gray-400 mt-1">Platform Fees Gross (5%+5%)</div>
+          {/* Stripe fee breakdown */}
+          <div className="mt-3 pt-3 border-t border-charcoal-700 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-cool-gray-500">Stripe fees (2.9%)</span>
+              <span className="text-red-400">−{fmtMoney(stats?.financials.stripeFees ?? 0)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-cool-gray-400 font-medium">Net to platform</span>
+              <span className="text-green-400 font-bold">{fmtMoney(stats?.financials.netRevenue ?? 0)}</span>
+            </div>
+          </div>
         </div>
 
         {/* Pending Escrow */}
