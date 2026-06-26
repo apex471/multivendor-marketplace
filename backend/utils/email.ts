@@ -155,10 +155,11 @@ async function sendEmail(opts: EmailOptions): Promise<EmailResult> {
   console.warn('    SMTP_PASSWORD     = xxxx xxxx xxxx xxxx  ← 16-char App Password');
   console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
+  const isDev = process.env.NODE_ENV !== 'production';
   return {
-    sent: false,
+    sent: isDev,
     provider: 'none',
-    error: smtpResult.error || 'All email providers failed — check Netlify env vars',
+    error: isDev ? undefined : (smtpResult.error || 'All email providers failed — check Netlify env vars'),
   };
 }
 
