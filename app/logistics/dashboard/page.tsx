@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LogisticsDashboard() {
+  const router = useRouter();
   const [driverStatus,    setDriverStatus]    = useState<DriverStatus>('offline');
   const [activeTab,       setActiveTab]       = useState<'home' | 'history' | 'earnings'>('home');
   const [incomingOrder,   setIncomingOrder]   = useState<DeliveryOrder | null>(null);
@@ -103,6 +105,14 @@ export default function LogisticsDashboard() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3500);
   }, []);
+
+  // ── Auth guard — redirect to logistics login if not authenticated ─────────
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.replace('/auth/logistics/login');
+    }
+  }, [router]);
 
   // ── Load profile + today stats ──────────────────────────────────────────
   useEffect(() => {

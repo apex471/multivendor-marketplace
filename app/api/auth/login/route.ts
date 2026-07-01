@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
       return sendError('Invalid email or password', 401);
     }
 
-    if (!userSnap.isEmailVerified) {
+    // Logistics providers are approved manually by admin review and never go
+    // through the email-OTP flow, so we skip the verification gate for them.
+    if (!userSnap.isEmailVerified && userSnap.role !== UserRole.LOGISTICS) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       await User.updateOne(userSnap.id!, {
         emailVerificationToken: otp,

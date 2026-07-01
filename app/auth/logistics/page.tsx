@@ -1078,7 +1078,7 @@ function LogisticsSignupContent() {
         {/* Footer note */}
         <p className="text-center text-cool-gray-600 text-xs mt-6">
           Already have an account?{' '}
-          <Link href="/auth/login" className="text-gold-500 hover:text-gold-400">
+          <Link href="/auth/logistics/login" className="text-gold-500 hover:text-gold-400">
             Sign in
           </Link>
         </p>
