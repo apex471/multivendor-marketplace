@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { verifyToken } from './jwt';
-import { connectDB } from '../config/database';
 import { User } from '../models/User';
 
 export interface AdminAuthResult {
