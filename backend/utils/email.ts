@@ -257,3 +257,93 @@ export async function sendTestEmail(to: string): Promise<EmailResult> {
     text: `If you received this, email delivery is working correctly for ${APP_NAME}.`,
   });
 }
+
+/**
+ * Send an application approval or rejection notification to a vendor,
+ * brand owner, or logistics provider after an admin takes action.
+ */
+export async function sendApplicationStatusEmail(opts: {
+  email: string;
+  firstName: string;
+  role: 'vendor' | 'brand' | 'logistics';
+  action: 'approve' | 'reject';
+  notes?: string;
+}): Promise<EmailResult> {
+  const { email, firstName, role, action, notes } = opts;
+  const approved = action === 'approve';
+
+  const roleMeta: Record<string, { label: string; icon: string; portal: string; loginPath: string }> = {
+    logistics: { label: 'Logistics Provider', icon: '🚚', portal: 'Dispatch Portal', loginPath: '/auth/logistics/login' },
+    vendor:    { label: 'Vendor',             icon: '🏪', portal: 'Vendor Portal',   loginPath: '/auth/vendor/login' },
+    brand:     { label: 'Brand',              icon: '👑', portal: 'Brand Portal',     loginPath: '/auth/brand/login' },
+  };
+
+  const meta     = roleMeta[role] ?? roleMeta.vendor;
+  const siteUrl  = process.env.NEXT_PUBLIC_SITE_URL || 'https://certifiedluxuryworld.com';
+  const loginUrl = `${siteUrl}${meta.loginPath}`;
+  const year     = new Date().getFullYear();
+
+  const subject = approved
+    ? `${meta.icon} Your ${meta.label} application has been approved — ${APP_NAME}`
+    : `Your ${meta.label} application status update — ${APP_NAME}`;
+
+  const badgeStyle = approved
+    ? 'background:#d1fae5;color:#065f46'
+    : 'background:#fee2e2;color:#991b1b';
+
+  const approvedBody = `
+    <p>Great news! Your <strong>${meta.label}</strong> application on <strong>${APP_NAME}</strong>
+    has been <strong>approved</strong>. Your account is now fully active and you can start
+    using the ${meta.portal} immediately.</p>
+    <div style="text-align:center;margin:28px 0 8px">
+      <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#b8962e,#d4af37);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px">
+        Access Your ${meta.portal} &rarr;
+      </a>
+    </div>
+    ${notes ? `<div style="background:#fdf9ec;border-left:4px solid #d4af37;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0"><p style="margin:0;color:#374151;font-size:14px"><strong>Note from admin:</strong> ${notes}</p></div>` : ''}
+    <p style="margin-top:20px;font-size:13px;color:#6b7280">
+      Login URL: <a href="${loginUrl}" style="color:#b8962e">${loginUrl}</a>
+    </p>`;
+
+  const rejectedBody = `
+    <p>Thank you for applying to join <strong>${APP_NAME}</strong> as a
+    <strong>${meta.label}</strong>. After careful review, we were unable to approve
+    your application at this time.</p>
+    ${notes ? `<div style="background:#fef3c7;border-radius:8px;padding:14px 18px;margin-top:20px"><p style="margin:0;font-size:13px;color:#92400e"><strong>Reason:</strong> ${notes}</p></div>` : ''}
+    <p style="margin-top:20px">If you believe this is an error or would like to re-apply with
+    updated information, please contact our support team at
+    <a href="mailto:support@certifiedluxuryworld.com" style="color:#b8962e">
+    support@certifiedluxuryworld.com</a>.</p>`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="background:linear-gradient(135deg,#b8962e,#d4af37);padding:36px 40px;text-align:center">
+      <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700">${meta.icon} ${APP_NAME}</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">${meta.label} Application Update</p>
+      <div style="display:inline-block;margin:16px auto 0;padding:7px 22px;border-radius:999px;font-size:13px;font-weight:700;${badgeStyle}">
+        ${approved ? '✅ APPROVED' : '❌ NOT APPROVED'}
+      </div>
+    </div>
+    <div style="padding:36px 40px">
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6">Hi <strong>${firstName}</strong>,</p>
+      ${approved ? approvedBody : rejectedBody}
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;text-align:center">
+      <p style="margin:0;font-size:12px;color:#9ca3af">&copy; ${year} ${APP_NAME}. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = approved
+    ? `Hi ${firstName},\n\nYour ${meta.label} application on ${APP_NAME} has been APPROVED!\n\nLog in at: ${loginUrl}\n${notes ? `\nNote from admin: ${notes}\n` : ''}\n${APP_NAME}`
+    : `Hi ${firstName},\n\nYour ${meta.label} application on ${APP_NAME} was not approved at this time.\n${notes ? `\nReason: ${notes}\n` : ''}\nContact support@certifiedluxuryworld.com for help.\n\n${APP_NAME}`;
+
+  return sendEmail({ to: email, subject, html, text });
+}

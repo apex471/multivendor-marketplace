@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { User } from '@/backend/models/User';
 import { verifyAdminAuth } from '@/backend/utils/adminAuth';
+import { sendApplicationStatusEmail } from '@/backend/utils/email';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
 export async function GET(request: NextRequest) {
@@ -62,6 +63,24 @@ export async function POST(request: NextRequest) {
     if (action === 'approve') updates.isActive = true;
 
     await User.updateOne(userId, updates);
+
+    // Fire-and-forget: send status notification email — never block the API response
+    sendApplicationStatusEmail({
+      email:     user.email,
+      firstName: user.firstName,
+      role:      user.role as 'vendor' | 'brand' | 'logistics',
+      action,
+      notes:     notes || undefined,
+    }).then(result => {
+      if (!result.sent) {
+        console.warn(`[Approvals] Status email not delivered to ${user.email}:`, result.error);
+      } else {
+        console.info(`[Approvals] Status email sent to ${user.email} via ${result.provider}`);
+      }
+    }).catch(err => {
+      console.error('[Approvals] sendApplicationStatusEmail threw:', err);
+    });
+
     return sendSuccess({ userId, role: user.role, ...updates }, `Application ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
