@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface Product {
-  _id: string;
+  id: string;
   name: string;
   vendorName: string;
   category: string;
@@ -128,7 +128,7 @@ export default function ProductManagementPage() {
               <p className="text-cool-gray-400 text-sm mt-1">Try changing your filters.</p>
             </div>
           ) : products.map(product => (
-            <div key={product._id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div key={product.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-white font-semibold">{product.name}</span>
@@ -147,9 +147,9 @@ export default function ProductManagementPage() {
               <div className="flex gap-2 shrink-0">
                 {product.status === 'pending' && (
                   <>
-                    <button onClick={() => updateProduct(product._id, { status: 'active' })} disabled={actionLoading === product._id}
+                    <button onClick={() => updateProduct(product.id, { status: 'active' })} disabled={actionLoading === product.id}
                       className="px-3 py-2 bg-green-700 hover:bg-green-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">Approve</button>
-                    <button onClick={() => { setSelected(product); setNewStatus('rejected'); setRejectionReason(''); }} disabled={actionLoading === product._id}
+                    <button onClick={() => { setSelected(product); setNewStatus('rejected'); setRejectionReason(''); }} disabled={actionLoading === product.id}
                       className="px-3 py-2 bg-red-800 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">Reject</button>
                   </>
                 )}
@@ -187,15 +187,15 @@ export default function ProductManagementPage() {
               )}
               <div className="flex items-center justify-between p-3 bg-charcoal-700 rounded-xl">
                 <span className="text-sm text-white">Featured product</span>
-                <button onClick={() => updateProduct(selected._id, { featured: !selected.featured })} disabled={actionLoading === selected._id}
+                <button onClick={() => updateProduct(selected.id, { featured: !selected.featured })} disabled={actionLoading === selected.id}
                   className={`relative w-10 h-5 rounded-full transition-colors disabled:opacity-50 ${selected.featured ? 'bg-gold-500' : 'bg-charcoal-500'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${selected.featured ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
-              <button onClick={() => updateProduct(selected._id, { status: newStatus, ...(newStatus === 'rejected' && { rejectionReason }) })}
-                disabled={actionLoading === selected._id}
+              <button onClick={() => updateProduct(selected.id, { status: newStatus, ...(newStatus === 'rejected' && { rejectionReason }) })}
+                disabled={actionLoading === selected.id}
                 className="w-full py-3 bg-gold-600 hover:bg-gold-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
-                {actionLoading === selected._id ? 'Saving...' : 'Save Changes'}
+                {actionLoading === selected.id ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

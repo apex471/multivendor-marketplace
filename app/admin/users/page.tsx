@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface User {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -191,7 +191,7 @@ export default function UserManagementPage() {
               ) : users.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-cool-gray-500">No users found</td></tr>
               ) : users.map(user => (
-                <tr key={user._id} className="hover:bg-charcoal-750 transition-colors">
+                <tr key={user.id} className="hover:bg-charcoal-750 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-charcoal-700 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0">
@@ -294,15 +294,15 @@ export default function UserManagementPage() {
                         />
                       </div>
                       <button
-                        onClick={() => performAction(selectedUser._id, 'suspend', suspendReason ? { reason: suspendReason } : {})}
-                        disabled={actionLoading === selectedUser._id + 'suspend'}
+                        onClick={() => performAction(selectedUser.id, 'suspend', suspendReason ? { reason: suspendReason } : {})}
+                        disabled={actionLoading === selectedUser.id + 'suspend'}
                         className="px-3 py-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                       >
                         Suspend Account
                       </button>
                       <button
-                        onClick={() => performAction(selectedUser._id, 'ban')}
-                        disabled={actionLoading === selectedUser._id + 'ban'}
+                        onClick={() => performAction(selectedUser.id, 'ban')}
+                        disabled={actionLoading === selectedUser.id + 'ban'}
                         className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                       >
                         Ban Permanently
@@ -310,8 +310,8 @@ export default function UserManagementPage() {
                     </>
                   ) : (
                     <button
-                      onClick={() => performAction(selectedUser._id, 'activate')}
-                      disabled={actionLoading === selectedUser._id + 'activate'}
+                      onClick={() => performAction(selectedUser.id, 'activate')}
+                      disabled={actionLoading === selectedUser.id + 'activate'}
                       className="col-span-2 px-3 py-2 bg-green-700 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
                       Reactivate Account
@@ -326,7 +326,7 @@ export default function UserManagementPage() {
                   <div className="text-xs font-semibold text-cool-gray-400 uppercase mb-3">Application Review</div>
                   <div className="space-y-2">
                     <button
-                      onClick={() => performAction(selectedUser._id, 'approve')}
+                      onClick={() => performAction(selectedUser.id, 'approve')}
                       disabled={!!actionLoading}
                       className="w-full px-3 py-2 bg-green-700 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
@@ -342,7 +342,7 @@ export default function UserManagementPage() {
                     <button
                       onClick={() => {
                         if (!rejectNotes.trim()) { showToast('Please provide a rejection reason'); return; }
-                        performAction(selectedUser._id, 'reject', { notes: rejectNotes });
+                        performAction(selectedUser.id, 'reject', { notes: rejectNotes });
                       }}
                       disabled={!!actionLoading}
                       className="w-full px-3 py-2 bg-red-800 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
@@ -358,7 +358,7 @@ export default function UserManagementPage() {
                 <div className="bg-charcoal-700 rounded-xl p-4">
                   <div className="text-xs font-semibold text-cool-gray-400 uppercase mb-3">Verification</div>
                   <button
-                    onClick={() => performAction(selectedUser._id, 'verify_email')}
+                    onClick={() => performAction(selectedUser.id, 'verify_email')}
                     disabled={!!actionLoading}
                     className="w-full px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                   >

@@ -15,7 +15,7 @@ interface FeeBreakdown {
 }
 
 interface Transaction {
-  _id: string;
+  id: string;
   transactionId: string;
   type: string;
   amount: number;
@@ -24,8 +24,8 @@ interface Transaction {
   description: string;
   orderId?: string;
   feeBreakdown?: FeeBreakdown;
-  fromUser?: { _id: string; firstName: string; lastName: string; email: string; };
-  toUser?: { _id: string; firstName: string; lastName: string; email: string; };
+  fromUser?: { id: string; firstName: string; lastName: string; email: string; };
+  toUser?: { id: string; firstName: string; lastName: string; email: string; };
   createdAt: string;
 }
 
@@ -200,7 +200,7 @@ export default function EscrowManagementPage() {
               <p className="text-cool-gray-400 text-sm mt-1">No funds currently held.</p>
             </div>
           ) : escrow.transactions.map(tx => (
-            <div key={tx._id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5">
+            <div key={tx.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -314,13 +314,13 @@ export default function EscrowManagementPage() {
                   className="w-full px-4 py-2 bg-charcoal-700 border border-charcoal-600 text-white placeholder-cool-gray-500 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gold-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => doAction(selected._id, 'release')} disabled={actionLoading === selected._id}
+                <button onClick={() => doAction(selected.id, 'release')} disabled={actionLoading === selected.id}
                   className="py-3 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
-                  {actionLoading === selected._id ? '...' : '✓ Release to Vendor'}
+                  {actionLoading === selected.id ? '...' : '✓ Release to Vendor'}
                 </button>
-                <button onClick={() => doAction(selected._id, 'refund')} disabled={actionLoading === selected._id}
+                <button onClick={() => doAction(selected.id, 'refund')} disabled={actionLoading === selected.id}
                   className="py-3 bg-red-800 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
-                  {actionLoading === selected._id ? '...' : '↩ Refund Buyer'}
+                  {actionLoading === selected.id ? '...' : '↩ Refund Buyer'}
                 </button>
               </div>
             </div>

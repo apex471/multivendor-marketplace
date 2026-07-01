@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface Transaction {
-  _id: string;
+  id: string;
   transactionId: string;
   type: string;
   status: string;
@@ -189,7 +189,7 @@ export default function TransactionsPage() {
                   </td>
                 </tr>
               ) : transactions.map(tx => (
-                <tr key={tx._id} className="hover:bg-charcoal-750 transition-colors">
+                <tr key={tx.id} className="hover:bg-charcoal-750 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-cool-gray-300 font-mono text-xs">{tx.transactionId}</span>
                   </td>

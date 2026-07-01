@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { COURIERS } from '@/lib/couriers';
 
 interface Provider {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -103,12 +103,12 @@ export default function AdminLogisticsPage() {
     if (!selected) return;
     if (action === 'reject' && !notes.trim()) { showToast('Notes required for rejection'); return; }
     if (action === 'suspend' && !notes.trim()) { showToast('Reason required for suspension'); return; }
-    setActionLoading(selected._id);
+    setActionLoading(selected.id);
     try {
       const res = await fetch('/api/admin/logistics', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ providerId: selected._id, action, notes: notes.trim() || undefined }),
+        body: JSON.stringify({ providerId: selected.id, action, notes: notes.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
@@ -182,7 +182,7 @@ export default function AdminLogisticsPage() {
             <p className="text-cool-gray-400 text-sm mt-1">Try adjusting your filters.</p>
           </div>
         ) : providers.map(provider => (
-          <div key={provider._id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div key={provider.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <div className="w-12 h-12 bg-green-900/30 rounded-xl flex items-center justify-center text-2xl shrink-0">🚚</div>
               <div className="min-w-0">
@@ -395,12 +395,12 @@ export default function AdminLogisticsPage() {
                   placeholder="Add notes..." rows={3}
                   className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white placeholder-cool-gray-500 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gold-500 resize-none" />
               </div>
-              <button onClick={doAction} disabled={actionLoading === selected._id}
+              <button onClick={doAction} disabled={actionLoading === selected.id}
                 className={`w-full py-3 font-semibold rounded-xl transition-colors disabled:opacity-50 text-white ${
                   action === 'approve' || action === 'unsuspend' ? 'bg-green-700 hover:bg-green-600' :
                   action === 'reject' || action === 'suspend' ? 'bg-red-800 hover:bg-red-700' : 'bg-gold-600 hover:bg-gold-500'
                 }`}>
-                {actionLoading === selected._id ? 'Processing...' : `Confirm ${action}`}
+                {actionLoading === selected.id ? 'Processing...' : `Confirm ${action}`}
               </button>
             </div>
           </div>

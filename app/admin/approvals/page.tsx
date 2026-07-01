@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface Application {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -63,6 +63,9 @@ export default function ApprovalsPage() {
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
   const doAction = async (userId: string, action: 'approve' | 'reject') => {
+    if (!userId) {
+      showToast('Cannot action: missing user ID'); return;
+    }
     if (action === 'reject' && !notes.trim()) {
       showToast('Please provide rejection notes'); return;
     }
@@ -167,7 +170,7 @@ export default function ApprovalsPage() {
             </p>
           </div>
         ) : applications.map(app => (
-          <div key={app._id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div key={app.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <div className="w-12 h-12 bg-charcoal-700 rounded-xl flex items-center justify-center text-2xl shrink-0">
                 {roleIcon(app.role)}
@@ -248,18 +251,18 @@ export default function ApprovalsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => doAction(selected._id, 'approve')}
-                  disabled={actionLoading === selected._id}
+                  onClick={() => doAction(selected.id, 'approve')}
+                  disabled={actionLoading === selected.id}
                   className="py-3 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
                 >
-                  {actionLoading === selected._id ? '...' : '✓ Approve'}
+                  {actionLoading === selected.id ? '...' : '✓ Approve'}
                 </button>
                 <button
-                  onClick={() => doAction(selected._id, 'reject')}
-                  disabled={actionLoading === selected._id}
+                  onClick={() => doAction(selected.id, 'reject')}
+                  disabled={actionLoading === selected.id}
                   className="py-3 bg-red-800 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
                 >
-                  {actionLoading === selected._id ? '...' : '✕ Reject'}
+                  {actionLoading === selected.id ? '...' : '✕ Reject'}
                 </button>
               </div>
             </div>

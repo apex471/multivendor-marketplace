@@ -10,7 +10,7 @@ interface TicketResponse {
 }
 
 interface Ticket {
-  _id: string;
+  id: string;
   ticketNumber: string;
   customerName: string;
   customerEmail: string;
@@ -80,12 +80,12 @@ export default function CustomerSupportPage() {
 
   const updateTicket = async () => {
     if (!selected) return;
-    setActionLoading(selected._id);
+    setActionLoading(selected.id);
     try {
       const res = await fetch('/api/admin/support', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ ticketId: selected._id, status: newStatus || undefined, reply: reply || undefined }),
+        body: JSON.stringify({ ticketId: selected.id, status: newStatus || undefined, reply: reply || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
@@ -155,7 +155,7 @@ export default function CustomerSupportPage() {
               <p className="text-cool-gray-400 text-sm mt-1">All clear! No support tickets.</p>
             </div>
           ) : tickets.map(ticket => (
-            <div key={ticket._id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5">
+            <div key={ticket.id} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5">
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -227,9 +227,9 @@ export default function CustomerSupportPage() {
               <textarea value={reply} onChange={e => setReply(e.target.value)}
                 placeholder="Write a reply to the customer..." rows={3}
                 className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white placeholder-cool-gray-500 rounded-xl text-sm outline-none focus:ring-2 focus:ring-gold-500 resize-none" />
-              <button onClick={updateTicket} disabled={actionLoading === selected._id}
+              <button onClick={updateTicket} disabled={actionLoading === selected.id}
                 className="w-full py-3 bg-gold-600 hover:bg-gold-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
-                {actionLoading === selected._id ? 'Sending...' : 'Send Reply & Update Status'}
+                {actionLoading === selected.id ? 'Sending...' : 'Send Reply & Update Status'}
               </button>
             </div>
           </div>

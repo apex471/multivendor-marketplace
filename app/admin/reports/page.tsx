@@ -16,11 +16,11 @@ interface ReportData {
   };
   revenue: { period: number; total: number; };
   charts: {
-    dailyRevenue: { _id: string; revenue: number; count: number; }[];
-    dailySignups: { _id: string; count: number; }[];
+    dailyRevenue: { id: string; revenue: number; count: number; }[];
+    dailySignups: { id: string; count: number; }[];
   };
   recentTransactions: {
-    _id: string; transactionId: string; type: string;
+    id: string; transactionId: string; type: string;
     amount: number; status: string; description: string; createdAt: string;
   }[];
 }
@@ -145,7 +145,7 @@ export default function ReportsPage() {
                 const max = Math.max(...data.charts.dailyRevenue.map(x => x.revenue), 1);
                 const h = Math.round((d.revenue / max) * 100);
                 return (
-                  <div key={d._id} className="flex-1 flex flex-col items-center gap-0.5 min-w-[8px]" title={`${d._id}: $${d.revenue.toFixed(2)}`}>
+                  <div key={d.id} className="flex-1 flex flex-col items-center gap-0.5 min-w-[8px]" title={`${d.id}: $${d.revenue.toFixed(2)}`}>
                     <div className="w-full bg-gold-600/70 rounded-sm" style={{ height: `${h}%` }} />
                   </div>
                 );
@@ -153,8 +153,8 @@ export default function ReportsPage() {
             </div>
           </div>
           <div className="flex justify-between text-xs text-cool-gray-500 mt-1">
-            <span>{data.charts.dailyRevenue[0]?._id}</span>
-            <span>{data.charts.dailyRevenue[data.charts.dailyRevenue.length - 1]?._id}</span>
+            <span>{data.charts.dailyRevenue[0]?.id}</span>
+            <span>{data.charts.dailyRevenue[data.charts.dailyRevenue.length - 1]?.id}</span>
           </div>
         </div>
       )}
@@ -167,7 +167,7 @@ export default function ReportsPage() {
         ) : (
           <div className="space-y-2">
             {data.recentTransactions.map(tx => (
-              <div key={tx._id} className="flex items-center justify-between p-3 bg-charcoal-700 rounded-lg">
+              <div key={tx.id} className="flex items-center justify-between p-3 bg-charcoal-700 rounded-lg">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-white text-sm font-medium font-mono">{tx.transactionId}</span>
