@@ -108,7 +108,7 @@ export default function AddProductPage() {
 
       if (!res.ok || !json.success) {
         setSlots(prev => prev.map(s =>
-          s.abortKey === abortKey ? { ...s, status: 'error', error: json.error ?? `Server error ${res.status}` } : s
+          s.abortKey === abortKey ? { ...s, status: 'error', error: json.message ?? json.error ?? `Server error ${res.status}` } : s
         ));
         return;
       }
@@ -245,7 +245,9 @@ export default function AddProductPage() {
           name:          formData.name.trim(),
           description:   formData.description.trim(),
           category:      formData.category,
-          tags:          formData.tags,
+          tags:          formData.tags
+                           ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+                           : [],
           price:         parseFloat(formData.regularPrice),
           salePrice:     formData.salePrice  ? parseFloat(formData.salePrice)  : undefined,
           costPrice:     formData.costPrice  ? parseFloat(formData.costPrice)  : undefined,
@@ -255,12 +257,12 @@ export default function AddProductPage() {
           images:        orderedImages,
           videos:        uploadedVids,
           variants,
-          status:        isDraft ? 'draft' : 'pending',
+          status:        'pending' as const,
         }),
       });
 
       const json = await res.json();
-      if (!json.success) { setFormError(json.error ?? 'Failed to save product.'); return; }
+      if (!json.success) { setFormError(json.message ?? json.error ?? 'Failed to save product.'); return; }
       // Redirect based on role
       const storedUser = getStoredUser();
       router.push(storedUser?.role === 'brand' ? '/dashboard/brand' : '/vendor/products');
