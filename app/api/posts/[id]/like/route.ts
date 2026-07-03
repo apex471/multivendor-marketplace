@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { Post } from '@/backend/models/Post';
 import { PostLike } from '@/backend/models/PostLike';
+import { User } from '@/backend/models/User';
 import { Notification } from '@/backend/models/Notification';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
@@ -11,7 +12,7 @@ import {
 } from '@/backend/utils/responseAppRouter';
 
 // POST /api/posts/[id]/like
-// ─ Any authenticated user (customer, vendor, brand, admin) can like/unlike any post.
+// ─ Any authenticated user (customer, vendor, brand, admin) can like/unlike.
 // ─ Body: { action: 'like' | 'unlike' }   (defaults to 'like' if absent)
 export async function POST(
   req: NextRequest,
@@ -19,18 +20,16 @@ export async function POST(
 ) {
   const { id } = await params;
 
-  // ── Auth — no role restriction, any signed-in user may engage ───────────
   const auth  = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return sendUnauthorized('You must be logged in to like posts');
   const payload = verifyToken(token);
-  if (!payload?.userId) return sendUnauthorized('Invalid or expired session — please log in again');
+  if (!payload?.userId) return sendUnauthorized('Invalid or expired session');
 
   try {
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
-    // Read body; default to 'like' if body is missing or malformed
     let action: string;
     try {
       const body = await req.json();
@@ -43,7 +42,6 @@ export async function POST(
     let newCount = post.likes ?? 0;
 
     if (action === 'unlike') {
-      // ── Unlike ─────────────────────────────────────────────────────────
       const deleted = await PostLike.findOneAndDelete({ postId: id, userId: payload.userId });
       if (deleted) {
         await Post.increment(id, 'likes', -1);
@@ -51,30 +49,40 @@ export async function POST(
       }
       liked = false;
     } else {
-      // ── Like (idempotent) ───────────────────────────────────────────────
       const existing = await PostLike.findOne({ postId: id, userId: payload.userId });
       if (existing) {
-        // Already liked — just confirm the current state (idempotent)
         liked    = true;
-        newCount = newCount; // unchanged
+        // Already liked — idempotent, return current state
       } else {
         await PostLike.create({ postId: id, userId: payload.userId });
         await Post.increment(id, 'likes', 1);
         newCount = newCount + 1;
+        liked    = true;
 
-        // Notify author (fire-and-forget, never blocks the response)
+        // ── Notify post author (fire-and-forget) ──────────────────────────
         if (String(post.authorId) !== payload.userId) {
+          let actorName   = 'Someone';
+          let actorAvatar: string | undefined;
+          try {
+            const actor = await User.findById(payload.userId);
+            if (actor) {
+              actorName   = `${actor.firstName} ${actor.lastName ?? ''}`.trim() || 'Someone';
+              actorAvatar = actor.avatar ?? undefined;
+            }
+          } catch { /* non-fatal */ }
+
           Notification.create({
-            recipientId: post.authorId,
+            recipientId: String(post.authorId),
             type:        'like',
             actorId:     payload.userId,
-            text:        'Someone liked your post',
+            actorName,
+            actorAvatar,
+            text:        `${actorName} liked your post`,
             link:        `/post/${id}`,
             isRead:      false,
           }).catch(() => {});
         }
       }
-      liked = true;
     }
 
     return sendSuccess({ likes: newCount, liked });
