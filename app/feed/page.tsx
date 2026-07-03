@@ -171,15 +171,18 @@ export default function FeedPage() {
       .then(json => {
         if (json.success && json.data?.posts) {
           const livePosts: Post[] = json.data.posts.map((p: {
-            _id: string; authorId: string; authorName: string; authorAvatar?: string | null;
+            id?: string; _id?: string;  // API returns 'id' via docToObject(); _id is legacy fallback
+            authorId: string; authorName: string; authorAvatar?: string | null;
             authorRole: string; content: string; images: string[]; product?: PostProduct;
             likes: number; comments: number; shares: number; createdAt: string; liked?: boolean;
           }) => ({
-            id: String(p._id), authorId: String(p.authorId),
+            id: String(p.id ?? p._id ?? ''),  // prefer 'id' (Firestore docToObject), fallback to _id
+            authorId: String(p.authorId),
             author: { name: p.authorName, avatar: p.authorAvatar ?? null, verified: p.authorRole !== 'customer', isVendor: ['vendor','brand'].includes(p.authorRole) },
             content: p.content, images: p.images ?? [], product: p.product,
             likes: p.likes, comments: p.comments, shares: p.shares,
-            timestamp: new Date(p.createdAt).toLocaleDateString(), liked: p.liked ?? false, saved: false,
+            timestamp: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
+            liked: p.liked ?? false, saved: false,
           }));
           if (append) setPosts(prev => [...prev, ...livePosts]);
           else setPosts(livePosts);
@@ -206,8 +209,9 @@ export default function FeedPage() {
         const res  = await fetch('/api/posts?limit=1&page=1', { headers });
         const json = await res.json();
         if (json.success && json.data?.posts?.length > 0) {
-          const newestId = String(json.data.posts[0]._id);
-          if (latestPostIdRef.current && newestId !== latestPostIdRef.current) setNewPostsAvailable(true);
+          const newest = json.data.posts[0];
+          const newestId = String(newest.id ?? newest._id ?? '');
+          if (latestPostIdRef.current && newestId && newestId !== latestPostIdRef.current) setNewPostsAvailable(true);
         }
       } catch { /* silent */ }
     }, 30_000);

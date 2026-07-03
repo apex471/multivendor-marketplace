@@ -12,7 +12,7 @@ import {
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
 
-// GET /api/posts/[id]/comment — list persisted comments (public)
+// GET /api/posts/[id]/comment — list top-level comments (public)
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,18 +27,18 @@ export async function GET(
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
-    // Fetch all comments for the post and filter top-level ones in-memory
     const allComments = await Comment.find({ postId: id });
-    const topLevel = allComments.filter(c => !(c as any).parentId);
-    
-    // Sort by createdAt desc
-    topLevel.sort((a, b) => {
-      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bd - ad;
-    });
 
-    const total = topLevel.length;
+    // Filter top-level, sort newest first in-memory
+    const topLevel = allComments
+      .filter(c => !(c as unknown as Record<string, unknown>).parentId)
+      .sort((a, b) => {
+        const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bd - ad;
+      });
+
+    const total     = topLevel.length;
     const paginated = topLevel.slice(skip, skip + limit);
 
     return sendSuccess({
@@ -48,62 +48,80 @@ export async function GET(
         authorId:     String(c.authorId),
         authorName:   c.authorName,
         authorAvatar: c.authorAvatar ?? null,
-        likes:        c.likes,
+        likes:        c.likes ?? 0,
         createdAt:    c.createdAt,
       })),
       pagination: { page, limit, total, hasNext: page * limit < total },
     });
   } catch (err) {
-    return sendServerError(err instanceof Error ? err.message : String(err));
+    console.error('[Comment GET] error:', err);
+    return sendServerError(err instanceof Error ? err.message : 'Failed to load comments');
   }
 }
 
-// POST /api/posts/[id]/comment — add a comment (requires auth)
+// POST /api/posts/[id]/comment
+// ─ Any authenticated user (customer, vendor, brand, admin) can comment.
+// ─ Body: { text: string, parentId?: string }
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  try {
-    const auth = req.headers.get('authorization') ?? '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) return sendUnauthorized('Authentication required');
-    const payload = verifyToken(token);
-    if (!payload) return sendUnauthorized('Invalid token');
 
-    const { text, parentId } = await req.json();
-    if (!text?.trim()) return sendError('Comment text is required');
+  // ── Auth — no role restriction, any signed-in user may comment ──────────
+  const auth  = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return sendUnauthorized('You must be logged in to comment');
+  const payload = verifyToken(token);
+  if (!payload?.userId) return sendUnauthorized('Invalid or expired session — please log in again');
+
+  try {
+    let body: { text?: string; parentId?: string } = {};
+    try { body = await req.json(); } catch { /* malformed body */ }
+
+    const text     = (body.text ?? '').trim();
+    const parentId = body.parentId ?? undefined;
+
+    if (!text) return sendError('Comment text is required', 400);
+    if (text.length > 2000) return sendError('Comment is too long (max 2000 characters)', 400);
 
     const post = await Post.findById(id);
     if (!post) return sendNotFound('Post not found');
 
-    // Fetch commenter info
-    const user = await User.findById(payload.userId);
-    const authorName = user
-      ? `${user.firstName} ${user.lastName ?? ''}`.trim()
-      : 'User';
+    // Resolve author display name — gracefully handle if profile not found
+    let authorName   = 'User';
+    let authorAvatar: string | undefined;
+    try {
+      const user = await User.findById(payload.userId);
+      if (user) {
+        authorName   = `${user.firstName} ${user.lastName ?? ''}`.trim() || 'User';
+        authorAvatar = user.avatar ?? undefined;
+      }
+    } catch { /* non-fatal — use defaults */ }
 
-    // Store the comment in the Comment collection
+    // Persist the comment
     const comment = await Comment.create({
       postId:      id,
       authorId:    payload.userId,
       authorName,
-      authorAvatar: user?.avatar ?? undefined,
-      content:      text.trim(),
+      authorAvatar,
+      content:     text,
+      likes:       0,
       ...(parentId ? { parentId } : {}),
-    } as any);
+    } as Parameters<typeof Comment.create>[0]);
 
+    // Increment post comment counter
     await Post.increment(id, 'comments', 1);
-    post.comments = post.comments + 1;
+    const totalComments = (post.comments ?? 0) + 1;
 
-    // Send notification to post author (non-blocking)
+    // Notify post author (fire-and-forget)
     if (String(post.authorId) !== payload.userId) {
       Notification.create({
         recipientId: post.authorId,
         type:        'comment',
         actorId:     payload.userId,
         actorName:   authorName,
-        actorAvatar: user?.avatar ?? undefined,
+        actorAvatar: authorAvatar,
         text:        `${authorName} commented on your post`,
         link:        `/post/${id}`,
         isRead:      false,
@@ -112,19 +130,20 @@ export async function POST(
 
     return sendSuccess(
       {
-        id:           String(comment.id),
-        text:         comment.content,
-        authorId:     String(comment.authorId),
-        authorName:   comment.authorName,
-        authorAvatar: comment.authorAvatar ?? null,
-        likes:        0,
-        createdAt:    comment.createdAt,
-        totalComments: post.comments,
+        id:            String(comment.id),
+        text:          comment.content,
+        authorId:      String(comment.authorId),
+        authorName:    comment.authorName,
+        authorAvatar:  comment.authorAvatar ?? null,
+        likes:         0,
+        createdAt:     comment.createdAt,
+        totalComments,
       },
       'Comment added',
-      201
+      201,
     );
   } catch (err) {
-    return sendServerError(err instanceof Error ? err.message : String(err));
+    console.error('[Comment POST] error:', err);
+    return sendServerError(err instanceof Error ? err.message : 'Failed to post comment');
   }
 }
