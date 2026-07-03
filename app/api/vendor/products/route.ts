@@ -58,7 +58,16 @@ export async function GET(request: NextRequest) {
     const total = products.length;
     const paged = products.slice((page - 1) * limit, page * limit);
 
-    return sendSuccess({ products: paged, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    // Compute status counts from the full (unpaginated) result for the stats cards
+    const statusCounts = {
+      active:     products.filter(p => p.status === 'active').length,
+      pending:    products.filter(p => p.status === 'pending').length,
+      rejected:   products.filter(p => p.status === 'rejected').length,
+      suspended:  products.filter(p => p.status === 'suspended').length,
+      outOfStock: products.filter(p => p.stock === 0).length,
+    };
+
+    return sendSuccess({ products: paged, statusCounts, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }

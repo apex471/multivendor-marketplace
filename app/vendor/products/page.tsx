@@ -22,7 +22,8 @@ interface Product {
 }
 
 interface RawProduct {
-  _id: string;
+  id: string;       // Firestore doc id set by docToObject()
+  _id?: string;     // legacy alias — may be present in older responses
   name: string;
   price: number;
   stock?: number;
@@ -78,7 +79,7 @@ export default function VendorProductsPage() {
       const json = await res.json();
       if (json.success) {
         const normalized: Product[] = (json.data.products as RawProduct[]).map(p => ({
-          id:        p._id,
+          id:        p.id ?? p._id ?? '',   // API returns 'id' via docToObject(); _id is legacy fallback
           name:      p.name,
           price:     p.price,
           stock:     p.stock ?? 0,
