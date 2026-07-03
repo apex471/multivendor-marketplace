@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLogistics } from '@/contexts/LogisticsContext';
+import { useLogistics } from '../../../contexts/LogisticsContext';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
 import { getAuthToken } from '@/lib/api/auth';
 
