@@ -8,6 +8,54 @@
 ────────────────────────────────────────────────────────────────────────────── */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─── Brand Palette Aliases ──────────────────────────────────────────────────
+   Maps Tailwind generic gray-* classes to the brand's charcoal / cool-gray
+   tokens. Any legacy page still using bg-gray-* etc. will render on-brand
+   without needing individual file edits.
+────────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Text */
+  .text-gray-50  { color: var(--color-cool-gray-50);  }
+  .text-gray-100 { color: var(--color-cool-gray-100); }
+  .text-gray-200 { color: var(--color-cool-gray-200); }
+  .text-gray-300 { color: var(--color-cool-gray-300); }
+  .text-gray-400 { color: var(--color-cool-gray-400); }
+  .text-gray-500 { color: var(--color-cool-gray-500); }
+  .text-gray-600 { color: var(--color-cool-gray-600); }
+  .text-gray-700 { color: var(--color-cool-gray-700); }
+  .text-gray-800 { color: var(--color-charcoal-700);  }
+  .text-gray-900 { color: var(--color-charcoal-900);  }
+
+  /* Background */
+  .bg-gray-50  { background-color: var(--color-cool-gray-50);  }
+  .bg-gray-100 { background-color: var(--color-cool-gray-100); }
+  .bg-gray-200 { background-color: var(--color-cool-gray-200); }
+  .bg-gray-300 { background-color: var(--color-cool-gray-300); }
+  .bg-gray-400 { background-color: var(--color-cool-gray-400); }
+  .bg-gray-500 { background-color: var(--color-cool-gray-500); }
+  .bg-gray-600 { background-color: var(--color-cool-gray-600); }
+  .bg-gray-700 { background-color: var(--color-charcoal-700);  }
+  .bg-gray-800 { background-color: var(--color-charcoal-800);  }
+  .bg-gray-900 { background-color: var(--color-charcoal-900);  }
+
+  /* Border */
+  .border-gray-100 { border-color: var(--color-cool-gray-100); }
+  .border-gray-200 { border-color: var(--color-cool-gray-200); }
+  .border-gray-300 { border-color: var(--color-cool-gray-300); }
+  .border-gray-400 { border-color: var(--color-cool-gray-400); }
+  .border-gray-500 { border-color: var(--color-cool-gray-500); }
+  .border-gray-600 { border-color: var(--color-cool-gray-600); }
+  .border-gray-700 { border-color: var(--color-charcoal-700);  }
+  .border-gray-800 { border-color: var(--color-charcoal-800);  }
+
+  /* Divide */
+  .divide-gray-100 > * + * { border-color: var(--color-cool-gray-100); }
+  .divide-gray-200 > * + * { border-color: var(--color-cool-gray-200); }
+  .divide-gray-700 > * + * { border-color: var(--color-charcoal-700);  }
+  .divide-gray-800 > * + * { border-color: var(--color-charcoal-800);  }
+}
+
+
 /* ─── Custom utilities ───────────────────────────────────────────────────────
    All `bg-gradient-to-*` usages have been migrated to `bg-linear-to-*`
    (official Tailwind v4 class names). No aliases needed.

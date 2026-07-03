@@ -9,13 +9,72 @@ export default function Footer() {
   const { user } = useAuth();
   const isCustomer = user?.role === 'customer';
 
+  // ── All footer link groups ───────────────────────────────────────────────
+  // Only include links that have actual pages. No 404s.
+  const shopLinks = [
+    { href: '/shop',          label: 'All Products' },
+    { href: '/shop/new',      label: 'New Arrivals' },
+    { href: '/shop/featured', label: 'Featured' },
+    { href: '/vendors',       label: 'Find Vendors' },
+    { href: '/brands',        label: 'Brands' },
+    { href: '/size-guide',    label: 'Size Guide' },
+  ];
+
+  const communityLinks = [
+    { href: '/feed',    label: 'Fashion Feed' },
+    { href: '/stories', label: 'Stories' },
+    { href: '/explore', label: 'Explore' },
+    { href: '/about',   label: 'About Us' },
+  ];
+
+  const supportLinks = [
+    { href: '/help',           label: 'Help Center' },
+    { href: '/contact',        label: 'Contact Us' },
+    { href: '/shipping',       label: 'Shipping Info' },
+    { href: '/return-policy',  label: 'Return Policy' },
+    { href: '/terms',          label: 'Terms of Service' },
+    { href: '/privacy',        label: 'Privacy Policy' },
+  ];
+
+  // ── Social links — only include real profiles; no placeholder hrefs ──────
+  const socialLinks: { label: string; href: string; icon: React.ReactNode }[] = [
+    {
+      label: 'Instagram',
+      href:  'https://instagram.com/certifiedluxuryworld',
+      icon:  (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+        </svg>
+      ),
+    },
+    {
+      label: 'X (Twitter)',
+      href:  'https://twitter.com/certifiedluxury',
+      icon:  (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Facebook',
+      href:  'https://facebook.com/certifiedluxuryworld',
+      icon:  (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
-    <footer className="bg-charcoal-900 text-white">
-      <div className="container mx-auto px-4 py-8 sm:py-10 md:py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-7 md:gap-8">
-          {/* Brand */}
+    <footer className="bg-charcoal-900 text-white" role="contentinfo">
+      <div className="container mx-auto px-4 py-10 sm:py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+
+          {/* ── Brand Column ─────────────────────────────────────────────── */}
           <div className="col-span-2 md:col-span-1">
-            <div className="mb-3 sm:mb-4">
+            <div className="mb-4">
               <Image
                 src="/images/brand/clw-logo.png"
                 alt="Certified Luxury World"
@@ -24,128 +83,95 @@ export default function Footer() {
                 className="h-12 w-auto object-contain"
               />
             </div>
-            <p className="text-xs sm:text-sm text-gray-300 pr-4 md:pr-0">
+            <p className="text-sm text-cool-gray-400 leading-relaxed max-w-xs">
               Your premier destination for certified luxury products and refined style.
             </p>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-3 mt-5">
+              {socialLinks.map(s => (
+                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="w-8 h-8 rounded-full bg-charcoal-800 hover:bg-gold-600 flex items-center justify-center text-cool-gray-400 hover:text-white transition-all duration-200">
+                  {s.icon}
+                </a>
+              ))}
+            </div>
           </div>
 
-          {/* Quick Links */}
+          {/* ── Shop Links ───────────────────────────────────────────────── */}
           <div>
-            <h3 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Shop</h3>
-            <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-300">
-              <li>
-                <Link href="/shop" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  All Products
-                </Link>
-              </li>
-              <li>
-                <Link href="/shop/new" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  New Arrivals
-                </Link>
-              </li>
-              <li>
-                <Link href="/shop/featured" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Featured
-                </Link>
-              </li>
-              <li>
-                <Link href="/vendors" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Find Vendors
-                </Link>
-              </li>
-              <li>
-                <Link href="/size-guide" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Size Guide
-                </Link>
-              </li>
+            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Shop</h3>
+            <ul className="space-y-2.5">
+              {shopLinks.map(link => (
+                <li key={link.href}>
+                  <Link href={link.href}
+                    className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Community */}
+          {/* ── Community Links ──────────────────────────────────────────── */}
           <div>
-            <h3 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Community</h3>
-            <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-300">
-              <li>
-                <Link href="/feed" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Fashion Feed
-                </Link>
-              </li>
-              <li>
-                <Link href="/explore" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Explore
-                </Link>
-              </li>
-              <li>
-                <Link href="/stories" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Stories
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  About Us
-                </Link>
-              </li>
+            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Community</h3>
+            <ul className="space-y-2.5">
+              {communityLinks.map(link => (
+                <li key={link.href}>
+                  <Link href={link.href}
+                    className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Support */}
+          {/* ── Support Links ────────────────────────────────────────────── */}
           <div>
-            <h3 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Support</h3>
-            <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-300">
-              <li>
-                <Link href="/help" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/shipping" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Shipping Info
-                </Link>
-              </li>
-              <li>
-                <Link href="/return-policy" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Return Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="hover:text-gold-400 transition-colors touch-manipulation inline-block py-0.5">
-                  Privacy Policy
-                </Link>
-              </li>
+            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Support</h3>
+            <ul className="space-y-2.5">
+              {supportLinks.map(link => (
+                <li key={link.href}>
+                  <Link href={link.href}
+                    className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        {/* Brand Owner CTA — hidden for logged-in customers */}
+        {/* ── Brand Owner CTA — hidden for logged-in customers ─────────── */}
         {!isCustomer && (
-          <div className="border-t border-charcoal-800 mt-6 sm:mt-7 md:mt-8 pt-6 sm:pt-7 md:pt-8">
-            <div className="bg-linear-to-r from-gold-600 to-gold-700 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Own a Fashion Brand?</h3>
-              <p className="text-sm sm:text-base text-white/90 mb-4">
-                Partner with top vendors through our affiliate program. Expand your reach and grow your brand.
-              </p>
-              <Link 
-                href="/auth/signup?role=brand"
-                className="inline-block px-6 sm:px-8 py-2.5 sm:py-3 bg-charcoal-900 text-white rounded-lg font-semibold hover:bg-charcoal-800 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
-              >
+          <div className="border-t border-charcoal-800 mt-10 pt-8">
+            <div className="bg-linear-to-r from-gold-700 to-gold-600 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-1">Own a Fashion Brand?</h3>
+                <p className="text-sm text-white/80">
+                  Partner with us — expand your reach through the CLW luxury network.
+                </p>
+              </div>
+              <Link
+                href="/become-brand"
+                className="shrink-0 px-6 py-2.5 bg-charcoal-900 hover:bg-charcoal-800 text-white rounded-xl font-semibold text-sm transition-all shadow-lg hover:shadow-xl whitespace-nowrap">
                 Become a Brand Owner
               </Link>
             </div>
           </div>
         )}
 
-        <div className="border-t border-charcoal-800 mt-6 sm:mt-7 md:mt-8 pt-6 sm:pt-7 md:pt-8 text-center text-xs sm:text-sm text-gray-400">
-          <p>© {currentYear} CLW. All rights reserved.</p>
+        {/* ── Bottom Bar ───────────────────────────────────────────────── */}
+        <div className="border-t border-charcoal-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cool-gray-500">
+          <p>© {currentYear} Certified Luxury World. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/terms"   className="hover:text-gold-400 transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-gold-400 transition-colors">Privacy</Link>
+            <Link href="/contact" className="hover:text-gold-400 transition-colors">Contact</Link>
+          </div>
         </div>
       </div>
     </footer>
