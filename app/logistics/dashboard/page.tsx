@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ interface DeliveryOrder {
   pickedUpAt?:    string;
   deliveredAt?:   string;
   createdAt:      string;
+  customerId?:    string;
 }
 
 const STATUS_STEPS: { key: OrderStatus; label: string; icon: string }[] = [
@@ -79,7 +81,34 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 export default function LogisticsDashboard() {
   const router = useRouter();
   const [driverStatus,    setDriverStatus]    = useState<DriverStatus>('offline');
-  const [activeTab,       setActiveTab]       = useState<'home' | 'history' | 'earnings'>('home');
+  const [activeTab,       setActiveTab]       = useState<'home' | 'history' | 'earnings' | 'messages' | 'notifications'>('home');
+  const [beepsNotifications, setBeepsNotifications] = useState<any[]>([]);
+  const [loadingBeeps, setLoadingBeeps] = useState(false);
+
+  const loadBeepsNotifications = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setLoadingBeeps(true);
+    try {
+      const res = await fetch('/api/notifications?limit=30', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setBeepsNotifications(json.data.notifications || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingBeeps(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      loadBeepsNotifications();
+    }
+  }, [activeTab, loadBeepsNotifications]);
   const [incomingOrder,   setIncomingOrder]   = useState<DeliveryOrder | null>(null);
   const [activeOrder,     setActiveOrder]     = useState<DeliveryOrder | null>(null);
   const [history,         setHistory]         = useState<DeliveryOrder[]>([]);
@@ -167,11 +196,11 @@ export default function LogisticsDashboard() {
     setLocLoading(true);
     setLocError('');
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
+    navigator.geolocation.getCurrentPosition(
+      async (firstPos) => {
         setLocLoading(false);
         setLocPermission('granted');
-        const { latitude: lat, longitude: lng, accuracy, heading, speed } = pos.coords;
+        const { latitude: lat, longitude: lng, accuracy, heading, speed } = firstPos.coords;
         const area = await reverseGeocode(lat, lng);
         const loc: DriverLocation = {
           lat, lng, accuracy,
@@ -181,6 +210,7 @@ export default function LogisticsDashboard() {
           updatedAt: new Date().toISOString(),
         };
         setDriverLoc(loc);
+
         // Broadcast to server
         const token = getAuthToken() ?? '';
         if (token) {
@@ -190,6 +220,35 @@ export default function LogisticsDashboard() {
             body: JSON.stringify(loc),
           }).catch(() => {});
         }
+
+        // Start active tracking watch
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          async (pos) => {
+            const { latitude: latW, longitude: lngW, accuracy: accW, heading: headW, speed: spdW } = pos.coords;
+            const areaW = await reverseGeocode(latW, lngW);
+            const locW: DriverLocation = {
+              lat: latW,
+              lng: lngW,
+              accuracy: accW,
+              heading: headW ?? null,
+              speed: spdW ? Math.round(spdW * 3.6) : null,
+              area: areaW,
+              updatedAt: new Date().toISOString(),
+            };
+            setDriverLoc(locW);
+            if (token) {
+              fetch('/api/logistics/location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(locW),
+              }).catch(() => {});
+            }
+          },
+          (errW) => {
+            console.warn('Watch location error:', errW);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        );
       },
       (err) => {
         setLocLoading(false);
@@ -200,7 +259,7 @@ export default function LogisticsDashboard() {
           setLocError('Unable to get location. Check GPS signal.');
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
 
@@ -900,12 +959,22 @@ export default function LogisticsDashboard() {
                       <p className="text-sm font-bold text-white">{activeOrder.customer}</p>
                       <p className="text-xs text-gray-400">{activeOrder.customerPhone}</p>
                     </div>
-                    <a
-                      href={`tel:${activeOrder.customerPhone}`}
-                      className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center text-lg transition-colors"
-                    >
-                      📞
-                    </a>
+                    <div className="flex gap-2">
+                      <a
+                        href={`tel:${activeOrder.customerPhone}`}
+                        className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center text-lg transition-colors"
+                      >
+                        📞
+                      </a>
+                      {activeOrder.customerId && (
+                        <Link
+                          href={`/messages?userId=${activeOrder.customerId}`}
+                          className="w-10 h-10 bg-yellow-600 hover:bg-yellow-500 rounded-full flex items-center justify-center text-lg transition-colors"
+                        >
+                          💬
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1074,14 +1143,89 @@ export default function LogisticsDashboard() {
             </div>
           </div>
         )}
+
+        {/* ── MESSAGES TAB ─────────────────────────────────────────────── */}
+        {activeTab === 'messages' && (
+          <div className="p-4 space-y-4 max-w-lg mx-auto text-center py-12">
+            <span className="text-6xl block mb-4">💬</span>
+            <h2 className="text-xl font-bold text-white mb-2">Direct Messages</h2>
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+              Open your chat inbox to communicate with customers, brand owners, or vendors regarding order updates and inquiries.
+            </p>
+            <Link
+              href="/messages"
+              className="inline-block px-8 py-3.5 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-2xl transition-colors shadow-lg shadow-yellow-900/30"
+            >
+              Open Chat Inbox
+            </Link>
+          </div>
+        )}
+
+        {/* ── NOTIFICATIONS / BEEPS TAB ─────────────────────────────────── */}
+        {activeTab === 'notifications' && (
+          <div className="p-4 space-y-4 max-w-lg mx-auto">
+            <div className="flex justify-between items-center pt-1">
+              <h2 className="text-lg font-black text-white">Alerts & Beeps</h2>
+              <button 
+                onClick={loadBeepsNotifications}
+                className="text-xs text-yellow-500 hover:text-yellow-400 font-bold"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {loadingBeeps ? (
+              <div className="text-center py-10">
+                <div className="animate-spin w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-xs text-gray-500">Checking alerts...</p>
+              </div>
+            ) : beepsNotifications.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 text-sm">
+                No recent notifications or beeps received.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {beepsNotifications.map((notif: any) => (
+                  <div 
+                    key={notif.id} 
+                    onClick={() => {
+                      if (notif.link) {
+                        router.push(notif.link);
+                      }
+                    }}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      notif.isRead 
+                        ? 'bg-gray-900/50 border-gray-800/80 hover:bg-gray-800/40' 
+                        : 'bg-yellow-950/20 border-yellow-700/30 hover:bg-yellow-950/30'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full bg-yellow-600/10 border border-yellow-500/20 flex items-center justify-center text-lg shrink-0">
+                        {notif.type === 'system' ? '🔔' : '📦'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-100 font-medium leading-normal">{notif.text}</p>
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          {new Date(notif.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Bottom navigation ─────────────────────────────────────────────── */}
       <nav className="fixed bottom-0 inset-x-0 bg-gray-900 border-t border-gray-800 flex z-40">
         {([
-          { tab: 'home',     icon: '🏠', label: 'Home'     },
-          { tab: 'history',  icon: '📋', label: 'History'  },
-          { tab: 'earnings', icon: '💰', label: 'Earnings' },
+          { tab: 'home',          icon: '🏠', label: 'Home'     },
+          { tab: 'history',       icon: '📋', label: 'History'  },
+          { tab: 'earnings',      icon: '💰', label: 'Earnings' },
+          { tab: 'messages',      icon: '💬', label: 'Messages' },
+          { tab: 'notifications', icon: '🔔', label: 'Alerts'   },
         ] as const).map(({ tab, icon, label }) => (
           <button
             key={tab}
