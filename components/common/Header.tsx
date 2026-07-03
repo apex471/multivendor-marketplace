@@ -164,6 +164,19 @@ export default function Header() {
               )}
             </button>
 
+            {/* Messages - Hide on small mobile */}
+            {isLoggedIn && (
+              <div className="relative hidden xs:block">
+                <Link
+                  href="/messages"
+                  className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative flex items-center justify-center touch-manipulation"
+                  aria-label="Direct Messages"
+                >
+                  <span className="text-lg sm:text-xl">💬</span>
+                </Link>
+              </div>
+            )}
+
             {/* Notifications - Hide on small mobile */}
             <div className="relative hidden xs:block">
               <button 
