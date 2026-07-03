@@ -160,7 +160,7 @@ export const User = {
       }
     }
 
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+
     if (opts?.limit)   query = query.limit(opts.limit);
 
     const snap = await query.get();

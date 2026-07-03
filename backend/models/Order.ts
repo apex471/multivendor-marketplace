@@ -103,8 +103,8 @@ export const Order = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
-    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+
+    if (opts?.limit)   query.limit(opts.limit);
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IOrder>(d)!);
     if (opts?.skip) results = results.slice(opts.skip);

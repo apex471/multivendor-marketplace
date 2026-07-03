@@ -42,7 +42,7 @@ export const Conversation = {
 
   async findByParticipant(userId: string, opts?: { limit?: number; orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(IConversation & { id: string })[]> {
     let query = db.collection(CONVERSATIONS).where('participants', 'array-contains', userId) as FirebaseFirestore.Query;
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+
     if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     return snap.docs.map(d => docToObject<IConversation>(d)!);

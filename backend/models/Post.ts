@@ -60,11 +60,32 @@ export const Post = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
-    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+    // NOTE: Do NOT add .orderBy() here — combining .where() filters with .orderBy()
+    // on a different field requires a pre-created Firestore composite index.
+    // Instead, fetch all matching docs and sort in-memory (performant for feeds < 5k posts).
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IPost>(d)!);
+
+    // In-memory sort
+    if (opts?.orderBy) {
+      const field = opts.orderBy as keyof IPost;
+      const dir   = opts.orderDir === 'asc' ? 1 : -1;
+      results.sort((a, b) => {
+        const av = a[field] as Date | number | string | undefined;
+        const bv = b[field] as Date | number | string | undefined;
+        if (av == null && bv == null) return 0;
+        if (av == null) return dir;
+        if (bv == null) return -dir;
+        if (av < bv) return -dir;
+        if (av > bv) return dir;
+        return 0;
+      });
+    }
+
+    // In-memory pagination
     if (opts?.skip) results = results.slice(opts.skip);
+    if (opts?.limit) results = results.slice(0, opts.limit);
+
     return results;
   },
 

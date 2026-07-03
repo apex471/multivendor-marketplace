@@ -51,7 +51,7 @@ export const Story = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+
     if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     return snap.docs.map(d => docToObject<IStory>(d)!);

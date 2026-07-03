@@ -31,7 +31,7 @@ export const Wishlist = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
+
     const snap = await query.get();
     return snap.docs.map(d => docToObject<IWishlist>(d)!);
   },

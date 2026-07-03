@@ -28,10 +28,29 @@ export const Comment = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
-    if (opts?.limit)   query = query.limit(opts.limit);
+    // NOTE: Do NOT use .orderBy() + .where() together without a composite index.
+    // Fetch all matching docs and sort in-memory instead.
+    if (opts?.limit) query = query.limit(opts.limit);
     const snap = await query.get();
-    return snap.docs.map(d => docToObject<IComment>(d)!);
+    let results = snap.docs.map(d => docToObject<IComment>(d)!);
+
+    // In-memory sort
+    if (opts?.orderBy) {
+      const field = opts.orderBy as keyof IComment;
+      const dir   = opts.orderDir === 'asc' ? 1 : -1;
+      results.sort((a, b) => {
+        const av = a[field] as Date | number | string | undefined;
+        const bv = b[field] as Date | number | string | undefined;
+        if (av == null && bv == null) return 0;
+        if (av == null) return dir;
+        if (bv == null) return -dir;
+        if (av < bv) return -dir;
+        if (av > bv) return dir;
+        return 0;
+      });
+    }
+
+    return results;
   },
 
   async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {

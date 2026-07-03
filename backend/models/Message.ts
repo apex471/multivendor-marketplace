@@ -25,7 +25,7 @@ export const Message = {
     for (const [k, v] of Object.entries(filter)) {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'asc');
+
     if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     return snap.docs.map(d => docToObject<IMessage>(d)!);
