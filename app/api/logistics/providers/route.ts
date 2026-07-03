@@ -1,103 +1,89 @@
 import { NextRequest } from 'next/server';
-import { connectDB } from '@/backend/config/database';
-import { sendSuccess, sendServerError } from '@/backend/utils/responseAppRouter';
+import { db, docToObject } from '@/backend/config/firebase';
+import { LogisticsProfile } from '@/backend/models/LogisticsProfile';
+import { User } from '@/backend/models/User';
+import { verifyToken } from '@/backend/utils/jwt';
+import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-// GET /api/logistics/providers — returns all active logistics providers
-export async function GET(_req: NextRequest) {
+function getAuth(req: NextRequest) {
+  const h = req.headers.get('Authorization') ?? req.headers.get('authorization') ?? '';
+  const tok = h.startsWith('Bearer ') ? h.slice(7) : null;
+  return tok ? verifyToken(tok) : null;
+}
+
+// ─── GET /api/logistics/providers ────────────────────────────────────────────
+// Returns all approved logistics providers from Firestore.
+// ?online=true  → only providers whose user.isOnline == true
+// ?search=       → filter by companyName / coverageAreas
+export async function GET(req: NextRequest) {
   try {
-    await connectDB();
+    const sp     = new URL(req.url).searchParams;
+    const online = sp.get('online') === 'true';
+    const search = (sp.get('search') ?? '').toLowerCase();
 
-    // Providers are currently served from a curated static list.
-    // When a LogisticsProvider MongoDB model is added, replace this with a DB query.
-    let providers: unknown[] = [];
+    // Fetch logistics user accounts
+    let userQuery = db.collection('users').where('role', '==', 'logistics') as FirebaseFirestore.Query;
+    const userSnap = await userQuery.get();
 
-    if (!providers || providers.length === 0) {
-      providers = [
-        {
-          id: 'logistics-001',
-          name: 'SwiftDeliver Express',
-          logo: '🚚',
-          description: 'Fast and reliable nationwide delivery service',
-          coverageArea: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'],
-          estimatedDelivery: '2-3 days',
-          rating: 4.8,
-          totalReviews: 2450,
-          pricePerKg: 2.5,
-          baseFee: 5.0,
-          features: ['Real-time tracking', 'Insurance coverage', 'Signature required', 'Temperature control'],
-          isActive: true,
-          contactEmail: 'support@swiftdeliver.com',
-          contactPhone: '+1-800-SWIFT-01',
-        },
-        {
-          id: 'logistics-002',
-          name: 'Premium Global Logistics',
-          logo: '✈️',
-          description: 'International and premium delivery solutions',
-          coverageArea: ['Worldwide', 'Express available'],
-          estimatedDelivery: '1-2 days',
-          rating: 4.9,
-          totalReviews: 3120,
-          pricePerKg: 4.2,
-          baseFee: 12.0,
-          features: ['International shipping', 'Premium packaging', 'VIP tracking', 'Customs handling', 'White-glove service'],
-          isActive: true,
-          contactEmail: 'premium@globallogistics.com',
-          contactPhone: '+1-800-PREMIUM-1',
-        },
-        {
-          id: 'logistics-003',
-          name: 'EcoShip Solutions',
-          logo: '🌱',
-          description: 'Sustainable and eco-friendly delivery options',
-          coverageArea: ['North America', 'Europe'],
-          estimatedDelivery: '3-5 days',
-          rating: 4.6,
-          totalReviews: 1890,
-          pricePerKg: 1.8,
-          baseFee: 3.0,
-          features: ['Carbon-neutral delivery', 'Recyclable packaging', 'Scheduled delivery', 'Local hubs'],
-          isActive: true,
-          contactEmail: 'green@ecoshipsolutions.com',
-          contactPhone: '+1-800-ECO-SHIP',
-        },
-        {
-          id: 'logistics-004',
-          name: 'FastTrack Regional',
-          logo: '🚛',
-          description: 'Regional specialist with best local coverage',
-          coverageArea: ['California', 'Texas', 'Florida', 'New York'],
-          estimatedDelivery: '2-4 days',
-          rating: 4.7,
-          totalReviews: 1650,
-          pricePerKg: 2.0,
-          baseFee: 4.0,
-          features: ['Local pickup points', 'Same-day options', 'Flexible delivery', 'No size limits'],
-          isActive: true,
-          contactEmail: 'support@fasttrackregional.com',
-          contactPhone: '+1-800-FAST-TRACK',
-        },
-        {
-          id: 'logistics-005',
-          name: 'LuxeShip Premium',
-          logo: '💎',
-          description: 'Luxury brand specialized delivery service',
-          coverageArea: ['Metropolitan areas', 'Luxury districts'],
-          estimatedDelivery: '24 hours',
-          rating: 4.95,
-          totalReviews: 980,
-          pricePerKg: 6.5,
-          baseFee: 25.0,
-          features: ['Exclusive routes', 'Armed guards available', 'Luxury packaging', 'Concierge service', 'Insurance up to $100k'],
-          isActive: true,
-          contactEmail: 'luxury@luxeshipmx.com',
-          contactPhone: '+1-800-LUXE-SHIP',
-        },
-      ];
+    if (userSnap.empty) {
+      return sendSuccess({ providers: [] });
     }
 
-    return sendSuccess({ providers });
-  } catch {
-    return sendServerError();
+    const userIds = userSnap.docs.map(d => d.id);
+
+    // Fetch their logistics profiles
+    const profiles = await LogisticsProfile.find({});
+
+    // Build a map userId → profile
+    const profileMap = new Map<string, typeof profiles[number]>();
+    for (const p of profiles) profileMap.set(p.userId, p);
+
+    // Join user + profile into a rich provider object
+    const providers = userSnap.docs
+      .map(doc => {
+        const u       = doc.data();
+        const profile = profileMap.get(doc.id);
+        return {
+          id:                doc.id,
+          name:              profile?.companyName ?? u.storeName ?? `${u.firstName} ${u.lastName ?? ''}`.trim(),
+          logo:              u.avatar ?? null,
+          description:       profile ? `${profile.serviceTypes.join(', ')} · ${profile.city}, ${profile.state}` : 'Logistics provider on CLW',
+          coverageArea:      profile?.coverageAreas ?? [],
+          estimatedDelivery: profile?.estimatedDelivery ?? 'Varies',
+          rating:            (u.rating as number) ?? 4.5,
+          totalReviews:      (u.reviewCount as number) ?? 0,
+          pricePerKg:        profile?.pricePerKg ?? 0,
+          baseFee:           profile?.baseFee ?? 0,
+          features:          profile ? [
+            ...profile.serviceTypes,
+            ...profile.specialCapabilities,
+            profile.insuranceCoverage ? `Insured up to $${profile.insuranceCoverage.toLocaleString()}` : null,
+            profile.fleetSize ? `Fleet: ${profile.fleetSize}` : null,
+          ].filter(Boolean) : [],
+          isActive:         u.isActive as boolean ?? true,
+          isOnline:         u.isOnline as boolean ?? false,
+          contactEmail:     u.email as string,
+          contactPhone:     profile?.phone ?? (u.phone as string) ?? '',
+          profileId:        profile?.id ?? null,
+          licenseNumber:    profile?.licenseNumber ?? null,
+          yearsInOperation: profile?.yearsInOperation ?? null,
+          city:             profile?.city ?? null,
+          state:            profile?.state ?? null,
+        };
+      })
+      .filter(p => {
+        if (online && !p.isOnline) return false;
+        if (search) {
+          const haystack = `${p.name} ${p.description} ${p.coverageArea.join(' ')}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0) || b.rating - a.rating);
+
+    return sendSuccess({ providers, total: providers.length });
+  } catch (err) {
+    console.error('[Logistics/Providers GET]', err);
+    return sendServerError(err instanceof Error ? err.message : 'Failed to load providers');
   }
 }

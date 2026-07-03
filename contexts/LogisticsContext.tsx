@@ -15,6 +15,7 @@ export interface LogisticProvider {
   baseFee: number;
   features: string[];
   isActive: boolean;
+  isOnline?: boolean;
   contactEmail: string;
   contactPhone: string;
 }

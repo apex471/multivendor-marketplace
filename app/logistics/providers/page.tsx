@@ -8,6 +8,7 @@ import Footer from '@/components/common/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLogistics } from '@/contexts/LogisticsContext';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
+import { getAuthToken } from '@/lib/api/auth';
 
 // ─── Access Control ───────────────────────────────────────────────────────────
 
@@ -259,24 +260,48 @@ function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={onSelect}
-            className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-              isSelected
-                ? 'bg-green-600 text-white'
-                : 'bg-charcoal-900 dark:bg-gold-600 text-white hover:bg-charcoal-800 dark:hover:bg-gold-700'
-            }`}
-          >
-            {isSelected ? '✓ Selected' : 'Select Provider'}
-          </button>
-          <a
-            href={`mailto:${provider.contactEmail}`}
-            className="px-4 py-2.5 border-2 border-cool-gray-200 dark:border-charcoal-600 text-charcoal-600 dark:text-cool-gray-400 rounded-xl font-semibold text-sm hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
-            title="Contact provider"
-          >
-            📧
-          </a>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={onSelect}
+              className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                isSelected
+                  ? 'bg-green-600 text-white'
+                  : 'bg-charcoal-900 dark:bg-gold-600 text-white hover:bg-charcoal-800 dark:hover:bg-gold-700'
+              }`}
+            >
+              {isSelected ? '✓ Selected' : 'Select Provider'}
+            </button>
+            <a
+              href={`mailto:${provider.contactEmail}`}
+              className="px-4 py-2.5 border-2 border-cool-gray-200 dark:border-charcoal-600 text-charcoal-600 dark:text-cool-gray-400 rounded-xl font-semibold text-sm hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+              title="Contact provider"
+            >
+              📧
+            </a>
+          </div>
+
+          {!provider.isOnline && (
+            <button
+              onClick={async () => {
+                const token = getAuthToken();
+                if (!token) return;
+                try {
+                  const res = await fetch(`/api/logistics/providers/${provider.id}/beep`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  const json = await res.json();
+                  alert(json.message);
+                } catch {
+                  alert('Failed to ping provider');
+                }
+              }}
+              className="w-full py-2 bg-gold-500/10 hover:bg-gold-500/20 text-gold-700 dark:text-gold-400 border border-gold-500/20 hover:border-gold-500/35 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            >
+              🔔 Ping Provider to Come Online
+            </button>
+          )}
         </div>
       </div>
     </div>

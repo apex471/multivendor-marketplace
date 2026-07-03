@@ -104,7 +104,7 @@ export const Order = {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
 
-    if (opts?.limit)   query.limit(opts.limit);
+    if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IOrder>(d)!);
     if (opts?.skip) results = results.slice(opts.skip);
@@ -136,5 +136,10 @@ export const Order = {
 
   async findByOrderId(orderId: string): Promise<(IOrder & { id: string }) | null> {
     return this.findOne({ orderId });
+  },
+
+  // Alias for updateOne — accepts Firestore doc ID directly
+  async updateById(id: string, updates: Partial<IOrder> & Record<string, unknown>): Promise<void> {
+    await db.collection(ORDERS).doc(id).update({ ...updates, updatedAt: new Date() });
   },
 };
