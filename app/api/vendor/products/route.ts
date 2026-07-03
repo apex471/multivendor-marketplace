@@ -4,18 +4,34 @@ import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-function getCallerInfo(req: NextRequest): { userId: string; role: string } | null {
+const SELLER_ROLES = ['vendor', 'brand'];
+
+async function getSellerInfo(req: NextRequest): Promise<{ userId: string; role: string } | null> {
   const auth = req.headers.get('Authorization') ?? '';
   if (!auth.startsWith('Bearer ')) return null;
   const p = verifyToken(auth.slice(7));
   if (!p?.userId) return null;
-  return { userId: p.userId, role: p.role ?? '' };
+
+  // If the JWT role is already a seller role, trust it (fast path)
+  if (SELLER_ROLES.includes(p.role ?? '')) {
+    return { userId: p.userId, role: p.role };
+  }
+
+  // JWT role mismatch — do a live Firestore lookup to get the real role.
+  // This handles old tokens issued before a role update.
+  try {
+    const user = await User.findById(p.userId);
+    if (user && SELLER_ROLES.includes(user.role)) {
+      return { userId: p.userId, role: user.role };
+    }
+  } catch { /* non-fatal */ }
+
+  return null;  // not a seller
 }
 
 export async function GET(request: NextRequest) {
-  const caller = getCallerInfo(request);
-  if (!caller) return sendError('Authentication required', 401);
-  if (!['vendor', 'brand'].includes(caller.role)) return sendError('Access denied', 403);
+  const caller = await getSellerInfo(request);
+  if (!caller) return sendError('Access denied: only approved brand owners and vendors can access this page. Please log in with the correct account.', 403);
   const vendorId = caller.userId;
 
   try {
@@ -49,9 +65,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const caller = getCallerInfo(request);
-  if (!caller) return sendError('Authentication required', 401);
-  if (!['vendor', 'brand'].includes(caller.role)) return sendError('Access denied', 403);
+  const caller = await getSellerInfo(request);
+  if (!caller) return sendError('Access denied: only approved brand owners and vendors can create products. Please log in with a brand or vendor account.', 403);
   const vendorId = caller.userId;
 
   try {
