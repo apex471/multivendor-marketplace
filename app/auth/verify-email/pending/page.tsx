@@ -30,6 +30,7 @@ function VerifyEmailPendingContent() {
 
   const [codes, setCodes] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasAttemptedRef = useRef(false);
 
   const [verifyStatus, setVerifyStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [verifyError, setVerifyError] = useState('');
@@ -104,7 +105,8 @@ function VerifyEmailPendingContent() {
   // Auto-verify if code query parameter exists (One-Click Link Verification)
   useEffect(() => {
     const paramCode = searchParams.get('code') || '';
-    if (paramCode.length === 6 && /^\d+$/.test(paramCode)) {
+    if (paramCode.length === 6 && /^\d+$/.test(paramCode) && !hasAttemptedRef.current) {
+      hasAttemptedRef.current = true;
       const splitCodes = paramCode.split('');
       setCodes(splitCodes);
       handleVerify(paramCode);

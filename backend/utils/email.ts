@@ -175,7 +175,8 @@ export async function sendVerificationEmail(
   email: string,
   firstName: string,
   code: string,
-  role: string
+  role: string,
+  baseUrl?: string
 ): Promise<EmailResult> {
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
@@ -185,8 +186,9 @@ export async function sendVerificationEmail(
   }
 
   // Build direct verification URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const verifyLink = `${baseUrl}/auth/verify-email?email=${encodeURIComponent(email)}&code=${code}&role=${role}`;
+  const fallbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const finalBaseUrl = baseUrl || fallbackUrl;
+  const verifyLink = `${finalBaseUrl}/auth/verify-email?email=${encodeURIComponent(email)}&code=${code}&role=${role}`;
 
   const html = `
     <!DOCTYPE html>

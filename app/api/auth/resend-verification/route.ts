@@ -39,7 +39,10 @@ export async function POST(request: NextRequest) {
       emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    const emailResult = await sendVerificationEmail(email, user.firstName, otp, user.role as UserRole);
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const baseUrl = `${protocol}://${host}`;
+    const emailResult = await sendVerificationEmail(email, user.firstName, otp, user.role as UserRole, baseUrl);
     if (!emailResult.sent) {
       return sendError('We could not send the verification email right now. Please try again.', 503);
     }

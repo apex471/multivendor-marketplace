@@ -164,9 +164,9 @@ export default function Header() {
               )}
             </button>
 
-            {/* Messages - Hide on small mobile */}
+            {/* Messages - Visible on all screen sizes */}
             {isLoggedIn && (
-              <div className="relative hidden xs:block">
+              <div className="relative">
                 <Link
                   href="/messages"
                   className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative flex items-center justify-center touch-manipulation"
@@ -177,8 +177,8 @@ export default function Header() {
               </div>
             )}
 
-            {/* Notifications - Hide on small mobile */}
-            <div className="relative hidden xs:block">
+            {/* Notifications - Visible on all screen sizes */}
+            <div className="relative">
               <button 
                 onClick={handleNotificationClick}
                 className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative touch-manipulation"

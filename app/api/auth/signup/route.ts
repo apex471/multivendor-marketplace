@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
     let emailSent = false;
     let emailError: string | undefined;
     try {
-      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role as UserRole);
+      const host = request.headers.get('host') || 'localhost:3000';
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const baseUrl = `${protocol}://${host}`;
+      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role as UserRole, baseUrl);
       emailSent = emailResult.sent;
       emailError = emailResult.error;
     } catch (emailErr) {

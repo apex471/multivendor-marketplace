@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
       });
       let emailSentMsg = 'A new code has been sent to your inbox.';
       try {
-        const emailResult = await sendVerificationEmail(userSnap.email, userSnap.firstName, otp, userSnap.role as UserRole);
+        const host = request.headers.get('host') || 'localhost:3000';
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const baseUrl = `${protocol}://${host}`;
+        const emailResult = await sendVerificationEmail(userSnap.email, userSnap.firstName, otp, userSnap.role as UserRole, baseUrl);
         if (!emailResult.sent) emailSentMsg = 'Could not send a new code. Use the resend button.';
       } catch { /* non-blocking */ }
       return sendError(

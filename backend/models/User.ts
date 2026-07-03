@@ -192,7 +192,16 @@ export const User = {
 
   // ── Update one ────────────────────────────────────────────────────────────
   async updateOne(id: string, updates: Partial<IUser>): Promise<void> {
-    const data: Record<string, unknown> = stripUndefined({ ...updates, updatedAt: new Date() });
+    const data: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === undefined) {
+        data[key] = FieldValue.delete();
+      } else {
+        data[key] = value;
+      }
+    }
+    data.updatedAt = new Date();
+
     // Hash password if being updated
     if (data.password) {
       const salt = await bcrypt.genSalt(10);
