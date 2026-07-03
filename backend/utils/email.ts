@@ -184,6 +184,10 @@ export async function sendVerificationEmail(
     console.info(`\nℹ️  [Dev] OTP for ${email}: ${code}  (role: ${roleLabel})\n`);
   }
 
+  // Build direct verification URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const verifyLink = `${baseUrl}/auth/verify-email?email=${encodeURIComponent(email)}&code=${code}&role=${role}`;
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -202,6 +206,8 @@ export async function sendVerificationEmail(
         .code-label { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; }
         .code { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: 14px; color: #b8962e; font-family: 'Courier New', monospace; }
         .code-expiry { margin: 10px 0 0; font-size: 13px; color: #9ca3af; }
+        .btn-verify { display: block; text-align: center; background: #b8962e; color: #ffffff !important; text-decoration: none; padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 14px; margin: 24px 0; transition: background 0.2s; }
+        .btn-verify:hover { background: #d4af37; }
         .warning { background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin-top: 20px; }
         .warning p { margin: 0; font-size: 13px; color: #92400e; }
         .footer { padding: 20px 40px; background: #f9fafb; text-align: center; }
@@ -216,7 +222,12 @@ export async function sendVerificationEmail(
         </div>
         <div class="body">
           <p>Hi <strong>${firstName}</strong>,</p>
-          <p>Use the code below to verify your <strong>${roleLabel}</strong> account on ${APP_NAME}. Enter it on the verification page to activate your account.</p>
+          <p>Verify your <strong>${roleLabel}</strong> account on ${APP_NAME} by clicking the button below:</p>
+          
+          <a href="${verifyLink}" class="btn-verify">Click Here to Verify Account</a>
+
+          <p>Or manually enter the verification code on the verification screen:</p>
+          
           <div class="code-box">
             <p class="code-label">Your verification code</p>
             <p class="code">${code}</p>
@@ -234,7 +245,7 @@ export async function sendVerificationEmail(
     </html>
   `;
 
-  const text = `Hi ${firstName},\n\nYour ${APP_NAME} ${roleLabel} verification code is:\n\n  ${code}\n\nThis code expires in 10 minutes. Never share it with anyone.\n\n${APP_NAME}`;
+  const text = `Hi ${firstName},\n\nYour ${APP_NAME} ${roleLabel} verification link is:\n\n${verifyLink}\n\nAlternatively, use your verification code:\n\n  ${code}\n\nThis link and code expire in 10 minutes. Never share this code with anyone.\n\n${APP_NAME}`;
 
   return sendEmail({
     to: email,

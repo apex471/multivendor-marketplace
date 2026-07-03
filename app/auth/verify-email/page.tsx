@@ -12,11 +12,13 @@ function VerifyEmailRedirector() {
   const role = searchParams.get('role') || 'vendor';
 
   useEffect(() => {
+    const code = searchParams.get('code') || '';
+    const codeParam = code ? `&code=${encodeURIComponent(code)}` : '';
     const dest = email
-      ? `/auth/verify-email/pending?email=${encodeURIComponent(email)}&role=${role}`
+      ? `/auth/verify-email/pending?email=${encodeURIComponent(email)}&role=${role}${codeParam}`
       : '/auth/vendor/login';
     router.replace(dest);
-  }, [router, email, role]);
+  }, [router, email, role, searchParams]);
 
   return (
     <div className="text-white text-center">

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useRef, useCallback, Suspense } from 'react';
+import { useState, useRef, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { setAuthSession } from '@/lib/api/auth';
 
@@ -64,8 +64,8 @@ function VerifyEmailPendingContent() {
   };
 
   /* ── Submit OTP ─────────────────────────────────────────────────────────── */
-  const handleVerify = useCallback(async () => {
-    const code = codes.join('');
+  const handleVerify = useCallback(async (explicitCode?: string) => {
+    const code = explicitCode || codes.join('');
     if (code.length !== 6) return;
 
     setVerifyStatus('loading');
@@ -100,6 +100,16 @@ function VerifyEmailPendingContent() {
       setVerifyError('Network error. Please check your connection.');
     }
   }, [codes, email, role, router]);
+
+  // Auto-verify if code query parameter exists (One-Click Link Verification)
+  useEffect(() => {
+    const paramCode = searchParams.get('code') || '';
+    if (paramCode.length === 6 && /^\d+$/.test(paramCode)) {
+      const splitCodes = paramCode.split('');
+      setCodes(splitCodes);
+      handleVerify(paramCode);
+    }
+  }, [searchParams, handleVerify]);
 
   /* ── Resend code ────────────────────────────────────────────────────────── */
   const handleResend = async () => {
@@ -252,7 +262,7 @@ function VerifyEmailPendingContent() {
 
             {/* Verify button */}
             <button
-              onClick={handleVerify}
+              onClick={() => handleVerify()}
               disabled={!codeComplete || verifyStatus === 'loading'}
               className="w-full py-3.5 px-6 bg-linear-to-r from-gold-700 to-gold-500 hover:from-gold-600 hover:to-gold-400 disabled:opacity-40 disabled:cursor-not-allowed text-charcoal-950 font-bold rounded-xl transition-all duration-200 shadow-lg shadow-gold-900/30 mb-2 text-sm tracking-wide uppercase"
             >
