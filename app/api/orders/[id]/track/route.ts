@@ -15,9 +15,9 @@ function getAuth(req: NextRequest) {
 // Accessible by: the customer who placed it, any vendor whose items are in it, admin, and the assigned driver.
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { orderId } = await params;
+  const { id: orderId } = await params;
 
   const payload = getAuth(req);
   if (!payload) return sendError('Authentication required', 401);
