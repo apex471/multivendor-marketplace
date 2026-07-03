@@ -33,12 +33,21 @@ export const Message = {
 
   async updateMany(filter: Record<string, unknown>, updates: Partial<IMessage>): Promise<void> {
     let query = db.collection(MESSAGES) as FirebaseFirestore.Query;
+    // Only apply equality filters — avoid boolean filters (read==false) which need composite indexes
     for (const [k, v] of Object.entries(filter)) {
-      if (v !== undefined) query = query.where(k, '==', v);
+      if (v !== undefined && typeof v !== 'boolean') query = query.where(k, '==', v);
     }
     const snap = await query.get();
+    if (snap.empty) return;
     const batch = db.batch();
-    snap.docs.forEach(d => batch.update(d.ref, updates as Record<string, unknown>));
+    // Apply in-memory boolean filters to avoid index requirements
+    snap.docs.forEach(d => {
+      const data = d.data();
+      const matches = Object.entries(filter).every(([k, v]) =>
+        typeof v === 'boolean' ? data[k] === v : true
+      );
+      if (matches) batch.update(d.ref, updates as Record<string, unknown>);
+    });
     await batch.commit();
   },
 

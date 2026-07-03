@@ -42,10 +42,18 @@ export const Conversation = {
 
   async findByParticipant(userId: string, opts?: { limit?: number; orderBy?: string; orderDir?: 'asc' | 'desc' }): Promise<(IConversation & { id: string })[]> {
     let query = db.collection(CONVERSATIONS).where('participants', 'array-contains', userId) as FirebaseFirestore.Query;
-
-    if (opts?.limit)   query = query.limit(opts.limit);
+    if (opts?.limit) query = query.limit(opts.limit);
     const snap = await query.get();
-    return snap.docs.map(d => docToObject<IConversation>(d)!);
+    const results = snap.docs.map(d => docToObject<IConversation>(d)!);
+
+    // Sort in-memory — orderBy on 'lastMessageAt' combined with array-contains would need a composite index
+    results.sort((a, b) => {
+      const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bt - at; // newest first
+    });
+
+    return results;
   },
 
   async updateOne(id: string, updates: Partial<IConversation>): Promise<void> {
