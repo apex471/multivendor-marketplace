@@ -85,12 +85,42 @@ export const Product = {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
 
-    if (opts?.orderBy) query = query.orderBy(opts.orderBy, opts.orderDir ?? 'desc');
-    if (opts?.limit)   query = query.limit((opts.skip ?? 0) + opts.limit);
+    // NOTE: Do NOT add .orderBy() here when a .where() filter is active —
+    // Firestore requires a composite index for where+orderBy on different fields.
+    // We sort in-memory below instead, which is safe for our page sizes (<=2000).
+    // Only apply a Firestore-level limit when there are no filters (full scan).
+    const hasFilter = Object.keys(filter).some(k => filter[k] !== undefined && filter[k] !== null);
+    if (!hasFilter && opts?.limit) {
+      query = query.limit(opts.limit);
+    }
 
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IProduct>(d)!);
+
+    // In-memory sort (avoids composite index requirement)
+    if (opts?.orderBy) {
+      const field = opts.orderBy as keyof IProduct;
+      const dir   = opts.orderDir ?? 'desc';
+      results.sort((a, b) => {
+        const av = a[field] as unknown;
+        const bv = b[field] as unknown;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av instanceof Date && bv instanceof Date) {
+          return dir === 'asc' ? av.getTime() - bv.getTime() : bv.getTime() - av.getTime();
+        }
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return dir === 'asc' ? av - bv : bv - av;
+        }
+        const as = String(av);
+        const bs = String(bv);
+        return dir === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as);
+      });
+    }
+
     if (opts?.skip) results = results.slice(opts.skip);
+    if (opts?.limit && (hasFilter || opts.skip)) results = results.slice(0, opts.limit);
     if (opts?.hideCostPrice !== false) results.forEach(p => delete (p as any).costPrice);
     return results;
   },

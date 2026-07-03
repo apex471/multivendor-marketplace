@@ -55,12 +55,12 @@ export default function ProductManagementPage() {
         ...(search && { search }),
       });
       const res = await fetch(`/api/admin/products?${p}`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `Server error ${res.status}`);
       setProducts(data.data.products);
       setCounts(data.data.counts);
       setCategories(data.data.categories || []);
-    } catch { setError('Failed to load products.'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed to load products.'); }
     finally { setLoading(false); }
   }, [statusFilter, categoryFilter, search]);
 
