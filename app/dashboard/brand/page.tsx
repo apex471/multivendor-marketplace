@@ -78,8 +78,8 @@ export default function BrandDashboard() {
       });
       const json = await res.json();
       if (json.success) {
-        setProducts((json.data.products as Array<{ _id: string; name: string; price: number; stock?: number; status: string; category: string; images?: string[]; sku?: string }>).map(p => ({
-          id: p._id, name: p.name, price: p.price, stock: p.stock ?? 0,
+        setProducts((json.data.products as Array<{ id: string; name: string; price: number; stock?: number; status: string; category: string; images?: string[]; sku?: string }>).map(p => ({
+          id: p.id, name: p.name, price: p.price, stock: p.stock ?? 0,
           status: p.status, category: p.category,
           image: p.images?.[0] ?? '/images/placeholder.jpg', sku: p.sku ?? '—',
         })));

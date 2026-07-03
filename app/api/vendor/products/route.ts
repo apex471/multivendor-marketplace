@@ -1,18 +1,22 @@
 import { NextRequest } from 'next/server';
 import { Product } from '@/backend/models/Product';
+import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
-function getVendorId(req: NextRequest): string | null {
+function getCallerInfo(req: NextRequest): { userId: string; role: string } | null {
   const auth = req.headers.get('Authorization') ?? '';
   if (!auth.startsWith('Bearer ')) return null;
   const p = verifyToken(auth.slice(7));
-  return p?.userId ?? null;
+  if (!p?.userId) return null;
+  return { userId: p.userId, role: p.role ?? '' };
 }
 
 export async function GET(request: NextRequest) {
-  const vendorId = getVendorId(request);
-  if (!vendorId) return sendError('Authentication required', 401);
+  const caller = getCallerInfo(request);
+  if (!caller) return sendError('Authentication required', 401);
+  if (!['vendor', 'brand'].includes(caller.role)) return sendError('Access denied', 403);
+  const vendorId = caller.userId;
 
   try {
     const sp = new URL(request.url).searchParams;
@@ -45,8 +49,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const vendorId = getVendorId(request);
-  if (!vendorId) return sendError('Authentication required', 401);
+  const caller = getCallerInfo(request);
+  if (!caller) return sendError('Authentication required', 401);
+  if (!['vendor', 'brand'].includes(caller.role)) return sendError('Access denied', 403);
+  const vendorId = caller.userId;
 
   try {
     const body = await request.json().catch(() => ({}));
@@ -55,11 +61,23 @@ export async function POST(request: NextRequest) {
     if (!name?.trim()) return sendError('Product name is required', 400);
     if (!price || price < 0) return sendError('Valid price is required', 400);
 
+    // Resolve the seller's display name from their profile
+    let resolvedVendorName = body.vendorName?.trim() || '';
+    if (!resolvedVendorName) {
+      try {
+        const sellerProfile = await User.findById(vendorId);
+        if (sellerProfile) {
+          resolvedVendorName = `${sellerProfile.firstName} ${sellerProfile.lastName}`.trim();
+        }
+      } catch { /* non-fatal */ }
+    }
+    if (!resolvedVendorName) resolvedVendorName = caller.role === 'brand' ? 'Brand' : 'Vendor';
+
     const product = await Product.create({
       name: name.trim(),
       description: description?.trim() ?? '',
       vendorId,
-      vendorName: body.vendorName ?? 'Vendor',
+      vendorName: resolvedVendorName,
       category: category ?? 'Uncategorized',
       price: Number(price),
       salePrice: salePrice ? Number(salePrice) : undefined,

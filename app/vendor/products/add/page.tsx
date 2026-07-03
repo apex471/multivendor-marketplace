@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
-import { getAuthToken } from '@/lib/api/auth';
+import { getAuthToken, getStoredUser } from '@/lib/api/auth';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -85,7 +85,11 @@ export default function AddProductPage() {
   // ── Upload a single file ──────────────────────────────────────────────────
   const uploadFile = useCallback(async (file: File, abortKey: string) => {
     const token = getAuthToken();
-    if (!token) { router.push('/auth/vendor/login'); return; }
+    if (!token) {
+      const storedUser = getStoredUser();
+      router.push(storedUser?.role === 'brand' ? '/auth/brand/login' : '/auth/vendor/login');
+      return;
+    }
 
     const ctrl = new AbortController();
     abortMap.current.set(abortKey, ctrl);
@@ -221,7 +225,11 @@ export default function AddProductPage() {
     if (isUploading) { setFormError('Please wait for all uploads to finish.'); return; }
 
     const token = getAuthToken();
-    if (!token) { router.push('/auth/vendor/login'); return; }
+    if (!token) {
+      const storedUser = getStoredUser();
+      router.push(storedUser?.role === 'brand' ? '/auth/brand/login' : '/auth/vendor/login');
+      return;
+    }
 
     const safeIdx       = primaryIndex < uploadedImgs.length ? primaryIndex : 0;
     const orderedImages = uploadedImgs.length > 0
@@ -253,7 +261,9 @@ export default function AddProductPage() {
 
       const json = await res.json();
       if (!json.success) { setFormError(json.error ?? 'Failed to save product.'); return; }
-      router.push('/vendor/products');
+      // Redirect based on role
+      const storedUser = getStoredUser();
+      router.push(storedUser?.role === 'brand' ? '/dashboard/brand' : '/vendor/products');
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Unexpected error. Please try again.');
     } finally {
@@ -618,7 +628,10 @@ export default function AddProductPage() {
             {/* ── Action Buttons ── */}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
               <button
-                onClick={() => router.push('/vendor/products')}
+                onClick={() => {
+                  const storedUser = getStoredUser();
+                  router.push(storedUser?.role === 'brand' ? '/dashboard/brand' : '/vendor/products');
+                }}
                 className="px-6 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-charcoal-700 dark:text-cool-gray-300"
               >
                 Cancel
