@@ -303,7 +303,7 @@ export default function VendorDashboard() {
                 <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
                 <div className="space-y-3">
                   <button
-                    onClick={() => setActiveTab('products')}
+                    onClick={() => router.push('/vendor/products/add')}
                     className="w-full flex items-center gap-4 p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg min-h-15"
                   >
                     <span className="text-2xl">➕</span>
@@ -356,7 +356,10 @@ export default function VendorDashboard() {
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white">My Products</h2>
-                <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold min-h-11 w-full sm:w-auto">
+                <button
+                  onClick={() => router.push('/vendor/products/add')}
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold min-h-11 w-full sm:w-auto"
+                >
                   + Add Product
                 </button>
               </div>
@@ -366,7 +369,13 @@ export default function VendorDashboard() {
                 <div className="text-center py-12">
                   <div className="text-5xl mb-4">📦</div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No products yet</h3>
-                  <p className="text-gray-600 dark:text-cool-gray-400">Add products to start selling</p>
+                  <p className="text-gray-600 dark:text-cool-gray-400 mb-6">Add products to start selling</p>
+                  <button
+                    onClick={() => router.push('/vendor/products/add')}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold"
+                  >
+                    + Add Your First Product
+                  </button>
                 </div>
               ) : (
               <div className="space-y-4">
@@ -398,10 +407,15 @@ export default function VendorDashboard() {
                             <p className="font-semibold text-gray-900 dark:text-white">{product.sales} sold</p>
                           </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <button className="flex-1 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-semibold min-h-10">Edit</button>
-                          <button className="flex-1 px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-semibold min-h-10">Delete</button>
-                        </div>
+                         <div className="flex flex-col sm:flex-row gap-2">
+                           <button
+                             onClick={() => router.push(`/vendor/products/${product.id}/edit`)}
+                             className="flex-1 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-semibold min-h-10"
+                           >
+                             Edit
+                           </button>
+                           <button className="flex-1 px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-semibold min-h-10">Delete</button>
+                         </div>
                       </div>
                     </div>
                   </div>

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       ...(socialLinks ? { socialLinks } : {}),
       ...(businessCity ? { businessCity } : {}),
       ...(businessState ? { businessState } : {}),
-      applicationStatus: (role === UserRole.CUSTOMER || role === UserRole.ADMIN) ? 'approved' : 'pending',
+      applicationStatus: 'approved',
       isEmailVerified: false,
       isPhoneVerified: false,
       isActive: true,

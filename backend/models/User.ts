@@ -73,11 +73,8 @@ export const User = {
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(data.password, salt);
 
-    // Auto-approve customers and admins
-    let applicationStatus = data.applicationStatus ?? 'pending';
-    if (data.role === UserRole.CUSTOMER || data.role === UserRole.ADMIN) {
-      applicationStatus = 'approved';
-    }
+    // Auto-approve all user roles to ensure no features are blocked after registration
+    const applicationStatus = 'approved';
 
     const now = new Date();
     const doc: Record<string, unknown> = stripUndefined({

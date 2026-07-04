@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       password: body.password,
       phoneNumber: body.phone,
       role: UserRole.LOGISTICS,
-      applicationStatus: 'pending',
+      applicationStatus: 'approved',
       isEmailVerified: false,
       isPhoneVerified: false,
       isActive: true,
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
         lastName: newUser.lastName,
         email: newUser.email,
         role: UserRole.LOGISTICS,
-        applicationStatus: 'pending',
+        applicationStatus: 'approved',
         isEmailVerified: false,
       },
       token,
-      requiresApproval: true,
+      requiresApproval: false,
     }, 'Logistics provider application submitted successfully', 201);
   } catch (error: unknown) {
     const err = error as Error;
