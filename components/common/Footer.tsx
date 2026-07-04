@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalization } from '@/contexts/LocalizationContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
   const { user } = useAuth();
   const isCustomer = user?.role === 'customer';
   const { language, currency, setLanguage, setCurrency, t } = useLocalization();
@@ -147,8 +149,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* ── Brand Owner CTA — hidden for logged-in customers ─────────── */}
-        {!isCustomer && (
+        {/* ── Brand Owner CTA — only shown on homepage for unauthenticated visitors ── */}
+        {!user && pathname === '/' && (
           <div className="border-t border-charcoal-800 mt-10 pt-8">
             <div className="bg-linear-to-r from-gold-700 to-gold-600 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>

@@ -522,8 +522,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA Section — hidden for logged-in customers */}
-        {!isCustomer && (
+        {/* CTA Section — hidden for authenticated users */}
+        {!user && (
           <section>
             <div className="bg-white dark:bg-charcoal-800 rounded-xl sm:rounded-2xl shadow-xl dark:shadow-charcoal-950/50 p-6 sm:p-8 md:p-12 text-center">
               <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-2 sm:mb-3 md:mb-4 leading-tight px-2">
