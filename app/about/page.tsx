@@ -1,11 +1,16 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 
 export default function AboutPage() {
+  useEffect(() => {
+    document.title = "About Us | Certified Luxury World";
+  }, []);
+
   const stats = [
     { number: '10,000+', label: 'Active Users' },
     { number: '500+', label: 'Verified Vendors' },

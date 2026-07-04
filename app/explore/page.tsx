@@ -47,6 +47,10 @@ export default function ExplorePage() {
   const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  useEffect(() => {
+    document.title = "Explore Trends & Style | Certified Luxury World";
+  }, []);
+
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounce(searchQuery), 400);

@@ -41,6 +41,7 @@ export default function CartPage() {
 
   // Keep CheckoutContext in sync whenever cart items change
   useEffect(() => {
+    document.title = "Shopping Cart | Certified Luxury World";
     updateCartItems(cartItems);
     calculateTotals();
     // eslint-disable-next-line react-hooks/exhaustive-deps

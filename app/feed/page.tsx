@@ -137,6 +137,11 @@ export default function FeedPage() {
   const didFetch        = useRef(false);
   const storiesRef      = useRef<HTMLDivElement>(null);
 
+  // Set tab title
+  useEffect(() => {
+    document.title = "Social Feed | Certified Luxury World";
+  }, []);
+
   // Current user
   useEffect(() => {
     const token = getAuthToken();

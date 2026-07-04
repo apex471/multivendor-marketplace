@@ -68,8 +68,15 @@ export default function VendorDetailPage() {
           inStock: p.inStock ?? true,
         })));
       })
+      .catch(err => console.error('Error fetching vendor details:', err))
       .finally(() => setIsLoading(false));
   }, [vendorId]);
+
+  useEffect(() => {
+    if (vendor?.name) {
+      document.title = `${vendor.name} | Certified Luxury World`;
+    }
+  }, [vendor]);
 
   const handleAddToCart = (product: VendorProduct) => {
     addToCart({

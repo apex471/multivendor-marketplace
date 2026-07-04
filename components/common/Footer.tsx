@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { user } = useAuth();
   const isCustomer = user?.role === 'customer';
+  const { language, currency, setLanguage, setCurrency, t } = useLocalization();
 
   // ── All footer link groups ───────────────────────────────────────────────
   // Only include links that have actual pages. No 404s.
   const shopLinks = [
-    { href: '/shop',          label: 'All Products' },
+    { href: '/shop',          label: t('shop') },
     { href: '/shop/new',      label: 'New Arrivals' },
     { href: '/shop/featured', label: 'Featured' },
     { href: '/vendors',       label: 'Find Vendors' },
@@ -21,14 +23,14 @@ export default function Footer() {
   ];
 
   const communityLinks = [
-    { href: '/feed',    label: 'Fashion Feed' },
+    { href: '/feed',    label: t('feed') },
     { href: '/stories', label: 'Stories' },
-    { href: '/explore', label: 'Explore' },
-    { href: '/about',   label: 'About Us' },
+    { href: '/explore', label: t('explore') },
+    { href: '/about',   label: t('about_us') },
   ];
 
   const supportLinks = [
-    { href: '/help',           label: 'Help Center' },
+    { href: '/help',           label: t('help') },
     { href: '/contact',        label: 'Contact Us' },
     { href: '/shipping',       label: 'Shipping Info' },
     { href: '/return-policy',  label: 'Return Policy' },
@@ -99,9 +101,9 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* ── Shop Links ───────────────────────────────────────────────── */}
+          {/* ── Shop Links ────────────────────────────────────────────────── */}
           <div>
-            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Shop</h3>
+            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">{t('shop')}</h3>
             <ul className="space-y-2.5">
               {shopLinks.map(link => (
                 <li key={link.href}>
@@ -114,7 +116,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* ── Community Links ──────────────────────────────────────────── */}
+          {/* ── Community Links ───────────────────────────────────────────── */}
           <div>
             <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Community</h3>
             <ul className="space-y-2.5">
@@ -168,6 +170,30 @@ export default function Footer() {
         <div className="border-t border-charcoal-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cool-gray-500">
           <p>© {currentYear} Certified Luxury World. All rights reserved.</p>
           <div className="flex items-center gap-4">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as any)}
+              className="bg-transparent border-0 text-cool-gray-400 focus:ring-0 cursor-pointer outline-none hover:text-gold-400"
+              aria-label="Select Language"
+            >
+              <option value="en" className="bg-charcoal-900 text-white">English</option>
+              <option value="es" className="bg-charcoal-900 text-white">Español</option>
+              <option value="fr" className="bg-charcoal-900 text-white">Français</option>
+              <option value="de" className="bg-charcoal-900 text-white">Deutsch</option>
+              <option value="zh" className="bg-charcoal-900 text-white">中文</option>
+            </select>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as any)}
+              className="bg-transparent border-0 text-cool-gray-400 focus:ring-0 cursor-pointer outline-none hover:text-gold-400"
+              aria-label="Select Currency"
+            >
+              <option value="USD" className="bg-charcoal-900 text-white">USD ($)</option>
+              <option value="EUR" className="bg-charcoal-900 text-white">EUR (€)</option>
+              <option value="GBP" className="bg-charcoal-900 text-white">GBP (£)</option>
+              <option value="NGN" className="bg-charcoal-900 text-white">NGN (₦)</option>
+              <option value="CNY" className="bg-charcoal-900 text-white">CNY (¥)</option>
+            </select>
             <Link href="/terms"   className="hover:text-gold-400 transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-gold-400 transition-colors">Privacy</Link>
             <Link href="/contact" className="hover:text-gold-400 transition-colors">Contact</Link>

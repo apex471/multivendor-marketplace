@@ -81,8 +81,15 @@ export default function BrandDetailPage() {
           soldBy:     'brand' as const,
         })));
       })
+      .catch(err => console.error('Error fetching brand details:', err))
       .finally(() => setIsLoading(false));
   }, [brandId]);
+
+  useEffect(() => {
+    if (brand?.name) {
+      document.title = `${brand.name} | Certified Luxury World`;
+    }
+  }, [brand]);
 
   const filteredProducts = allProducts.filter(product => {
     if (activeTab === 'direct') return product.soldBy === 'brand';

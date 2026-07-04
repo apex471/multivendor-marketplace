@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { useLocalization } from '../../contexts/LocalizationContext';
 import { getAuthToken } from '@/lib/api/auth';
 
 interface AppNotification {
@@ -20,6 +21,7 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { language, currency, setLanguage, setCurrency, t } = useLocalization();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -99,11 +101,11 @@ export default function Header() {
   const isLoggedIn = !!user;
 
   const navigation = [
-    { name: 'Shop', href: '/shop' },
+    { name: t('shop'), href: '/shop' },
     { name: 'Brands', href: '/brands' },
     { name: 'Vendors', href: '/vendors' },
-    { name: 'Feed', href: '/feed' },
-    { name: 'Explore', href: '/explore' },
+    { name: t('feed'), href: '/feed' },
+    { name: t('explore'), href: '/explore' },
   ];
 
   return (
@@ -141,6 +143,33 @@ export default function Header() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
+            {/* Language Selector */}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as any)}
+              className="text-xs bg-transparent border-0 text-charcoal-700 dark:text-cool-gray-300 focus:ring-0 cursor-pointer outline-none font-medium hover:text-gold-600 dark:hover:text-gold-400 py-1"
+              aria-label="Select Language"
+            >
+              <option value="en" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">EN</option>
+              <option value="es" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">ES</option>
+              <option value="fr" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">FR</option>
+              <option value="de" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">DE</option>
+              <option value="zh" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">ZH</option>
+            </select>
+
+            {/* Currency Selector */}
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as any)}
+              className="text-xs bg-transparent border-0 text-charcoal-700 dark:text-cool-gray-300 focus:ring-0 cursor-pointer outline-none font-medium hover:text-gold-600 dark:hover:text-gold-400 py-1"
+              aria-label="Select Currency"
+            >
+              <option value="USD" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">USD ($)</option>
+              <option value="EUR" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">EUR (€)</option>
+              <option value="GBP" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">GBP (£)</option>
+              <option value="NGN" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">NGN (₦)</option>
+              <option value="CNY" className="bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white">CNY (¥)</option>
+            </select>
             {/* Search */}
             <button 
               onClick={() => setSearchOpen(!searchOpen)}

@@ -112,6 +112,10 @@ export default function ShopPage() {
   const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [isLoading,    setIsLoading]    = useState(true);
 
+  useEffect(() => {
+    document.title = "Shop Premium Luxury | Certified Luxury World";
+  }, []);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
@@ -12,6 +12,10 @@ interface FAQ {
 }
 
 export default function HelpPage() {
+  useEffect(() => {
+    document.title = "Help & Support | Certified Luxury World";
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

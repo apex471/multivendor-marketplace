@@ -9,6 +9,8 @@ import { LogisticsProvider } from "../contexts/LogisticsContext";
 import { CartProvider } from "../contexts/CartContext";
 import GoogleOAuthProviderWrapper from "@/components/providers/GoogleOAuthProvider";
 import { ToastProvider } from "@/components/common/Toast";
+import ScrollRevealInitializer from "@/components/common/ScrollRevealInitializer";
+import { LocalizationProvider } from "../contexts/LocalizationContext";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -87,19 +89,22 @@ export default function RootLayout({
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased bg-white dark:bg-charcoal-950 text-charcoal-900 dark:text-white transition-colors duration-200`}>
         <GoogleOAuthProviderWrapper>
           <ThemeProvider>
-            <AuthProvider>
-              <CartProvider>
-                <LocationProvider>
-                  <CheckoutProvider>
-                    <LogisticsProvider>
-                      <ToastProvider>
-                        {children}
-                      </ToastProvider>
-                    </LogisticsProvider>
-                  </CheckoutProvider>
-                </LocationProvider>
-              </CartProvider>
-            </AuthProvider>
+            <LocalizationProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <LocationProvider>
+                    <CheckoutProvider>
+                      <LogisticsProvider>
+                        <ToastProvider>
+                          <ScrollRevealInitializer />
+                          {children}
+                        </ToastProvider>
+                      </LogisticsProvider>
+                    </CheckoutProvider>
+                  </LocationProvider>
+                </CartProvider>
+              </AuthProvider>
+            </LocalizationProvider>
           </ThemeProvider>
         </GoogleOAuthProviderWrapper>
       </body>

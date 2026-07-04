@@ -17,6 +17,7 @@ export default function CheckoutPage() {
 
   // Auth guard — redirect unauthenticated users to login
   useEffect(() => {
+    document.title = "Secure Checkout | Certified Luxury World";
     const token = getAuthToken();
     if (!token) {
       router.replace('/auth/login?redirect=/checkout');

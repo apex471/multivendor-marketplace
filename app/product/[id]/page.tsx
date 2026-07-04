@@ -8,6 +8,7 @@ import Footer from '../../../components/common/Footer';
 import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/common/Toast';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Review {
   id: string;
@@ -55,6 +56,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { id: productId } = useParams() as { id: string };  const { addItem: addToCart } = useCart();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
+  const { t, formatPrice } = useLocalization();
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -85,7 +87,8 @@ export default function ProductDetailPage() {
           rating: r.rating, date: new Date(r.createdAt).toLocaleDateString(),
           comment: r.comment, verified: r.verified ?? false, helpful: r.helpful ?? 0,
         })));
-      });
+      })
+      .catch(err => console.error('Error fetching reviews:', err));
   }, [productId]);
 
   useEffect(() => {
@@ -143,9 +146,18 @@ export default function ProductDetailPage() {
           }))
         );
       })
-      .catch(() => setNotFound(true))
+      .catch(err => {
+        console.error('Error fetching product:', err);
+        setNotFound(true);
+      })
       .finally(() => setIsLoading(false));
   }, [productId]);
+
+  useEffect(() => {
+    if (product?.name) {
+      document.title = `${product.name} | Certified Luxury World`;
+    }
+  }, [product]);
 
   useEffect(() => {
     if (notFound) router.push('/shop');
@@ -316,16 +328,16 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl sm:text-4xl font-bold text-gold-600">${product.price}</span>
+                <span className="text-3xl sm:text-4xl font-bold text-gold-600">{formatPrice(product.price)}</span>
                 {product.oldPrice && (
-                  <span className="text-xl text-charcoal-500 dark:text-cool-gray-500 line-through">${product.oldPrice}</span>
+                  <span className="text-xl text-charcoal-500 dark:text-cool-gray-500 line-through">{formatPrice(product.oldPrice)}</span>
                 )}
               </div>
               <div className="flex items-center gap-2 text-sm">
                 {product.inStock ? (
-                  <span className="text-green-600 dark:text-green-400">✓ In Stock ({product.stockCount} available)</span>
+                  <span className="text-green-600 dark:text-green-400">✓ {t('in_stock')} ({product.stockCount} available)</span>
                 ) : (
-                  <span className="text-red-600 dark:text-red-400">✗ Out of Stock</span>
+                  <span className="text-red-600 dark:text-red-400">✗ {t('out_of_stock')}</span>
                 )}
               </div>
             </div>
@@ -334,7 +346,7 @@ export default function ProductDetailPage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-semibold text-charcoal-900 dark:text-white">
-                  Color: {selectedColor || 'Select'}
+                  {t('color')}: {selectedColor || 'Select'}
                 </label>
               </div>
               <div className="flex gap-3">
@@ -365,7 +377,7 @@ export default function ProductDetailPage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-semibold text-charcoal-900 dark:text-white">
-                  Size: {selectedSize || 'Select'}
+                  {t('size')}: {selectedSize || 'Select'}
                 </label>
                 <button
                   onClick={() => setShowSizeGuide(true)}
@@ -394,7 +406,7 @@ export default function ProductDetailPage() {
             {/* Quantity */}
             <div className="mb-6">
               <label className="text-sm font-semibold text-charcoal-900 dark:text-white block mb-3">
-                Quantity
+                {t('quantity')}
               </label>
               <div className="flex items-center gap-3">
                 <button
@@ -420,14 +432,14 @@ export default function ProductDetailPage() {
                 disabled={!product.inStock}
                 className="flex-1 py-4 bg-charcoal-900 dark:bg-charcoal-800 text-white rounded-lg hover:bg-charcoal-800 dark:hover:bg-charcoal-700 disabled:bg-cool-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
               >
-                🛒 Add to Cart
+                🛒 {t('add_to_cart')}
               </button>
               <button
                 onClick={handleBuyNow}
                 disabled={!product.inStock}
                 className="flex-1 py-4 bg-gold-600 dark:bg-gold-700 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-800 disabled:bg-cool-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
               >
-                Buy Now
+                {t('buy_now')}
               </button>
             </div>
 
@@ -585,7 +597,7 @@ export default function ProductDetailPage() {
                 <div className="p-3">
                   <h3 className="font-semibold text-charcoal-900 dark:text-white mb-1 line-clamp-2">{item.name}</h3>
                   <div className="flex items-center justify-between">
-                    <span className="text-gold-600 font-bold">${item.price}</span>
+                    <span className="text-gold-600 font-bold">{formatPrice(item.price)}</span>
                     <div className="flex items-center gap-1 text-xs">
                       <span className="text-yellow-500">⭐</span>
                       <span className="text-charcoal-600 dark:text-cool-gray-400">{item.rating}</span>

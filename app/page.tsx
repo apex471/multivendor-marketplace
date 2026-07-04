@@ -9,6 +9,7 @@ import Footer from "../components/common/Footer";
 import { useCart } from "../contexts/CartContext";
 import { getAuthToken } from "../lib/api/auth";
 import { useAuth } from "../contexts/AuthContext";
+import { useLocalization } from "../contexts/LocalizationContext";
 
 interface Post {
   _id: string;
@@ -53,6 +54,7 @@ export default function Home() {
   const router = useRouter();
   const { addItem } = useCart();
   const { user } = useAuth();
+  const { t, formatPrice } = useLocalization();
   const isCustomer = user?.role === 'customer';
 
   const [posts,    setPosts]    = useState<Post[]>([]);
@@ -61,12 +63,13 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
+    document.title = "Certified Luxury World | Premium Luxury Marketplace";
     // Fetch all homepage data in parallel
     Promise.all([
       fetch('/api/posts?limit=6').then(r => r.json()).catch(() => ({})),
       fetch('/api/vendors?limit=4').then(r => r.json()).catch(() => ({})),
       fetch('/api/brands?limit=6').then(r => r.json()).catch(() => ({})),
-      fetch('/api/products?limit=6&sort=popular').then(r => r.json()).catch(() => ({})),
+      fetch('/api/products?limit=18&sort=popular').then(r => r.json()).catch(() => ({})),
     ]).then(([postsRes, vendorsRes, brandsRes, productsRes]) => {
       if (postsRes?.data?.posts)    setPosts(postsRes.data.posts);
       if (vendorsRes?.data?.vendors) setVendors(vendorsRes.data.vendors);
@@ -227,14 +230,14 @@ export default function Home() {
         <section className="mb-10 sm:mb-12 md:mb-16">
           <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Fashion Feed</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Latest style inspiration</p>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('feed')}</h2>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">{t('latest_posts')}</p>
             </div>
             <Link 
               href="/feed"
               className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
             >
-              <span className="hidden sm:inline">View All</span>
+              <span className="hidden sm:inline">{t('view_all')}</span>
               <span className="sm:hidden">All</span>
               <span>→</span>
             </Link>
@@ -248,7 +251,7 @@ export default function Home() {
           ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {posts.map((post) => (
-              <div key={post._id} className="bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
+              <div key={post._id} className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
                 <button
                   onClick={() => router.push(`/post/${post._id}`)}
                   className="relative aspect-square w-full"
@@ -286,14 +289,14 @@ export default function Home() {
         <section className="mb-10 sm:mb-12 md:mb-16">
           <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Top Vendors</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('top_vendors')}</h2>
               <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Highest-rated sellers</p>
             </div>
             <Link 
               href="/vendors"
               className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
             >
-              <span className="hidden sm:inline">Explore All</span>
+              <span className="hidden sm:inline">{t('explore_all')}</span>
               <span className="sm:hidden">All</span>
               <span>→</span>
             </Link>
@@ -310,7 +313,7 @@ export default function Home() {
               <Link
                 key={vendor.id}
                 href={`/vendors/${vendor.id}`}
-                className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation"
+                className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation"
               >
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   {vendor.avatar ? (
@@ -320,10 +323,10 @@ export default function Home() {
                       {vendor.name.charAt(0)}
                     </div>
                   )}
-                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded">✓ Verified</span>
+                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded">✓ {t('verified')}</span>
                 </div>
                 <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 sm:mb-2 text-center sm:text-left truncate">{vendor.name}</h3>
-                <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">{vendor.products} products</p>
+                <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">{vendor.products} {t('products_count')}</p>
               </Link>
             ))}
           </div>
@@ -391,7 +394,7 @@ export default function Home() {
         <section className="mb-10 sm:mb-12 md:mb-16">
           <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Trending Products</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('popular_products')}</h2>
               <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Most popular items</p>
             </div>
             <Link 
@@ -412,7 +415,7 @@ export default function Home() {
           ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
             {products.map((product) => (
-              <div key={product._id} className="group relative isolate">
+              <div key={product._id} className="scroll-reveal group relative isolate">
                 <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow duration-300">
                   <div
                     onClick={() => handleProductClick(product._id)}
@@ -449,15 +452,15 @@ export default function Home() {
                       <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400">({product.salesCount ?? 0})</span>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2 mb-1.5 sm:mb-2">
-                      <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">${(product.salePrice ?? product.price).toFixed(2)}</span>
+                      <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">{formatPrice(product.salePrice ?? product.price)}</span>
                       {product.salePrice && product.salePrice < product.price && (
-                        <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-through">${product.price.toFixed(2)}</span>
+                        <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-through">{formatPrice(product.price)}</span>
                       )}
                     </div>
                     <button
                       onClick={(e) => { e.preventDefault(); handleAddToCart(product._id); }}
                       className="w-full py-1.5 sm:py-2 min-h-9 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
-                    >Add to Cart</button>
+                    >{t('add_to_cart')}</button>
                   </div>
                 </div>
               </div>
