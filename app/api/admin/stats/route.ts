@@ -19,11 +19,12 @@ export async function GET(request: NextRequest) {
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
     // Fetch all collections in parallel
-    const [allUsers, allTxs, allTickets, allOrders] = await Promise.all([
+    const [allUsers, allTxs, allTickets, allOrders, waitlistSnap] = await Promise.all([
       User.find({}),
       Transaction.find({}),
       db.collection('supportTickets').get().then(snap => snap.docs.map(d => docToObject<any>(d)!)),
       OrderModel.find({}),
+      db.collection('waitlist').get().then(snap => snap.docs.map(d => docToObject<any>(d)!)),
     ]);
 
     // Compute User stats
@@ -125,6 +126,7 @@ export async function GET(request: NextRequest) {
         approvals: pendingApprovals,
         tickets: openTickets,
         escrow: pendingEscrowCount,
+        waitlist: waitlistSnap.filter(e => e.status === 'pending').length,
       },
       financials: {
         totalRevenue,

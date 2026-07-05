@@ -49,6 +49,7 @@ export interface IOrder {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   subtotal: number;
+  buyerServiceFee?: number;
   shippingCost: number;
   tax: number;
   discount: number;

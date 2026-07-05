@@ -10,6 +10,7 @@ const PUBLIC_PATHS = ['/admin/login'];
 const NAV_ITEMS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: '⚡', desc: 'Overview & KPIs' },
   { href: '/admin/approvals', label: 'Approvals', icon: '✅', desc: 'Vendor & rider review', badgeKey: 'approvals' as const },
+  { href: '/admin/waitlist', label: 'Waitlist', icon: '⏳', desc: 'Pre-launch signups', badgeKey: 'waitlist' as const },
   { href: '/admin/users', label: 'Users', icon: '👥', desc: 'Account management' },
   { href: '/admin/brands', label: 'Brands', icon: '👑', desc: 'Brand management' },
   { href: '/admin/logistics', label: 'Logistics', icon: '🚚', desc: 'Logistics providers' },
@@ -26,13 +27,14 @@ interface BadgeCounts {
   approvals: number;
   tickets: number;
   escrow: number;
+  waitlist: number;
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [badges, setBadges] = useState<BadgeCounts>({ approvals: 0, tickets: 0, escrow: 0 });
+  const [badges, setBadges] = useState<BadgeCounts>({ approvals: 0, tickets: 0, escrow: 0, waitlist: 0 });
   const [adminName, setAdminName] = useState('Administrator');
   const [adminInitial, setAdminInitial] = useState('A');
   const [isVerifying, setIsVerifying] = useState(true);
@@ -89,6 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             approvals: statsData.data.pending.approvals || 0,
             tickets: statsData.data.pending.tickets || 0,
             escrow: statsData.data.pending.escrow || 0,
+            waitlist: statsData.data.pending.waitlist || 0,
           });
         }
       })
@@ -126,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const totalBadge = badges.approvals + badges.tickets + badges.escrow;
+  const totalBadge = badges.approvals + badges.tickets + badges.escrow + badges.waitlist;
 
   return (
     <div className="flex h-screen bg-cool-gray-50 dark:bg-charcoal-900 overflow-hidden">

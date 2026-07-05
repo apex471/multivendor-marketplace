@@ -360,3 +360,175 @@ export async function sendApplicationStatusEmail(opts: {
 
   return sendEmail({ to: email, subject, html, text });
 }
+
+export async function sendWaitlistWelcomeEmail(opts: {
+  email: string;
+  name: string;
+  role: 'vendor' | 'brand';
+  tempPassword?: string;
+  notes?: string;
+}): Promise<EmailResult> {
+  const { email, name, role, tempPassword, notes } = opts;
+  const roleLabel = role === 'vendor' ? 'Vendor' : 'Brand Owner';
+  const roleIcon = role === 'vendor' ? '🏪' : '👑';
+  const portalName = role === 'vendor' ? 'Vendor Portal' : 'Brand Portal';
+  const loginPath = role === 'vendor' ? '/auth/vendor/login' : '/auth/brand/login';
+  
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://certifiedluxuryworld.com';
+  const loginUrl = `${siteUrl}${loginPath}`;
+
+  const subject = `✨ Waitlist Approved: Welcome to ${APP_NAME} as a ${roleLabel}!`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="background:linear-gradient(135deg,#b8962e,#d4af37);padding:36px 40px;text-align:center">
+      <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700">${roleIcon} ${APP_NAME}</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">Pre-Launch Waitlist Approval</p>
+      <div style="display:inline-block;margin:16px auto 0;padding:7px 22px;border-radius:999px;font-size:13px;font-weight:700;background:#d1fae5;color:#065f46">
+        🎉 APPROVED
+      </div>
+    </div>
+    <div style="padding:36px 40px">
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6">Hi <strong>${name || 'there'}</strong>,</p>
+      <p>Congratulations! Your waitlist application to join <strong>${APP_NAME}</strong> as a <strong>${roleLabel}</strong> has been reviewed and approved!</p>
+      
+      <p>We have pre-created your professional account so you're ready for the launch. Here are your credentials:</p>
+      
+      <div style="background:#f4f4f5;border-radius:12px;padding:20px;margin:24px 0;font-size:14px;color:#1f2937;border:1px solid #e5e7eb">
+        <p style="margin:0 0 8px"><strong>Login Email:</strong> ${email}</p>
+        ${tempPassword ? `<p style="margin:0"><strong>Temporary Password:</strong> <code style="background:#e5e7eb;padding:3px 6px;border-radius:4px;font-family:monospace;font-size:14px;color:#b8962e">${tempPassword}</code></p>` : ''}
+      </div>
+
+      <p style="font-size:13px;color:#ef4444;margin-bottom:24px">⚠️ Please log in and update your password immediately upon your first sign in.</p>
+
+      <div style="text-align:center;margin:28px 0 8px">
+        <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#b8962e,#d4af37);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px">
+          Access Your ${portalName} &rarr;
+        </a>
+      </div>
+
+      ${notes ? `<div style="background:#fdf9ec;border-left:4px solid #d4af37;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0"><p style="margin:0;color:#374151;font-size:14px"><strong>Message from Admin:</strong> ${notes}</p></div>` : ''}
+
+      <p style="margin-top:24px;font-size:13px;color:#6b7280">
+        If you have any questions, feel free to contact us at <a href="mailto:support@certifiedluxuryworld.com" style="color:#b8962e">support@certifiedluxuryworld.com</a>.
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;text-align:center">
+      <p style="margin:0;font-size:12px;color:#9ca3af">&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi ${name || 'there'},\n\nYour waitlist application to join ${APP_NAME} as a ${roleLabel} has been approved!\n\nUse your credentials to sign in:\nEmail: ${email}\n${tempPassword ? `Temporary Password: ${tempPassword}\n` : ''}\nLog in here: ${loginUrl}\n\n${notes ? `Admin notes: ${notes}\n` : ''}\n${APP_NAME}`;
+
+  return sendEmail({ to: email, subject, html, text });
+}
+
+export async function sendWaitlistSignupLinkEmail(opts: {
+  email: string;
+  name: string;
+  role: 'vendor' | 'brand';
+  notes?: string;
+}): Promise<EmailResult> {
+  const { email, name, role, notes } = opts;
+  const roleLabel = role === 'vendor' ? 'Vendor' : 'Brand Owner';
+  const signupPath = role === 'vendor' ? '/auth/signup?role=vendor' : '/auth/signup?role=brand';
+  
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://certifiedluxuryworld.com';
+  const signupUrl = `${siteUrl}${signupPath}`;
+
+  const subject = `📢 Registration Details for joining ${APP_NAME}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="background:linear-gradient(135deg,#b8962e,#d4af37);padding:36px 40px;text-align:center">
+      <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700">📢 ${APP_NAME}</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">Join Our Luxury Marketplace</p>
+    </div>
+    <div style="padding:36px 40px">
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6">Hi <strong>${name || 'there'}</strong>,</p>
+      <p>Thank you for signing up for our pre-launch waitlist as a prospective <strong>${roleLabel}</strong>.</p>
+      
+      <p>To help us prepare for the launch or complete your registration details, please use the direct registration link below to sign up and establish your profile details:</p>
+      
+      <div style="text-align:center;margin:28px 0 8px">
+        <a href="${signupUrl}" style="display:inline-block;background:linear-gradient(135deg,#b8962e,#d4af37);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px">
+          Register Your Account &rarr;
+        </a>
+      </div>
+
+      ${notes ? `<div style="background:#fdf9ec;border-left:4px solid #d4af37;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0"><p style="margin:0;color:#374151;font-size:14px"><strong>Message from Admin:</strong> ${notes}</p></div>` : ''}
+
+      <p style="margin-top:24px;font-size:13px;color:#6b7280">
+        Link: <a href="${signupUrl}" style="color:#b8962e">${signupUrl}</a>
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;text-align:center">
+      <p style="margin:0;font-size:12px;color:#9ca3af">&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi ${name || 'there'},\n\nThank you for signing up for our waitlist! Please complete your registration details here:\n\n${signupUrl}\n\n${notes ? `Message from admin: ${notes}\n` : ''}\n${APP_NAME}`;
+
+  return sendEmail({ to: email, subject, html, text });
+}
+
+export async function sendWaitlistRejectionEmail(opts: {
+  email: string;
+  name: string;
+  role: 'vendor' | 'brand';
+  notes?: string;
+}): Promise<EmailResult> {
+  const { email, name, role, notes } = opts;
+  const roleLabel = role === 'vendor' ? 'Vendor' : 'Brand Owner';
+  
+  const subject = `Update regarding your waitlist request — ${APP_NAME}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="background:linear-gradient(135deg,#b8962e,#d4af37);padding:36px 40px;text-align:center">
+      <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700">📢 ${APP_NAME}</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">Waitlist Status Update</p>
+    </div>
+    <div style="padding:36px 40px">
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6">Hi <strong>${name || 'there'}</strong>,</p>
+      <p>Thank you for your interest in joining <strong>${APP_NAME}</strong> as a <strong>${roleLabel}</strong>.</p>
+      <p>After careful review of your waitlist details, we regret to inform you that we are unable to approve your application at this time.</p>
+      
+      ${notes ? `<div style="background:#fee2e2;border-radius:8px;padding:14px 18px;margin-top:20px"><p style="margin:0;font-size:13px;color:#991b1b"><strong>Reason:</strong> ${notes}</p></div>` : ''}
+      
+      <p style="margin-top:20px">If you have any questions or want to provide updated details, please reach out to us at <a href="mailto:support@certifiedluxuryworld.com" style="color:#b8962e">support@certifiedluxuryworld.com</a>.</p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;text-align:center">
+      <p style="margin:0;font-size:12px;color:#9ca3af">&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi ${name || 'there'},\n\nThank you for your interest in ${APP_NAME}. We regret to inform you that your waitlist application was not approved at this time.\n\n${notes ? `Reason: ${notes}\n` : ''}\nFeel free to contact support@certifiedluxuryworld.com for details.\n\n${APP_NAME}`;
+
+  return sendEmail({ to: email, subject, html, text });
+}
+
