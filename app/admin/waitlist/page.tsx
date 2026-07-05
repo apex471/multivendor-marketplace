@@ -111,7 +111,16 @@ export default function AdminWaitlistPage() {
       showToast(data.message || 'Action executed successfully.');
       setActionModal(null);
       setAdminNotes('');
-      setSelected(null);
+      if (selected && selected.id === entry.id) {
+        const newStatus = type === 'approve' ? 'approved' : type === 'send_link' ? 'link_sent' : 'rejected';
+        setSelected({
+          ...selected,
+          status: newStatus,
+          adminNotes: adminNotes.trim() || undefined,
+        });
+      } else {
+        setSelected(null);
+      }
       fetchWaitlist();
     } catch (e: any) {
       showToast(e.message || 'Failed to complete action.');

@@ -374,8 +374,12 @@ export async function sendWaitlistWelcomeEmail(opts: {
   const portalName = role === 'vendor' ? 'Vendor Portal' : 'Brand Portal';
   const loginPath = role === 'vendor' ? '/auth/vendor/login' : '/auth/brand/login';
   
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://certifiedluxuryworld.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const loginUrl = `${siteUrl}${loginPath}`;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\nℹ️  [Dev] Waitlist Welcome Email to ${email}:\n    Login URL: ${loginUrl}\n    Temp Password: ${tempPassword}\n`);
+  }
 
   const subject = `✨ Waitlist Approved: Welcome to ${APP_NAME} as a ${roleLabel}!`;
 
@@ -441,8 +445,12 @@ export async function sendWaitlistSignupLinkEmail(opts: {
   const roleLabel = role === 'vendor' ? 'Vendor' : 'Brand Owner';
   const signupPath = role === 'vendor' ? '/auth/signup?role=vendor' : '/auth/signup?role=brand';
   
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://certifiedluxuryworld.com';
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const signupUrl = `${siteUrl}${signupPath}`;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\nℹ️  [Dev] Waitlist Signup Link Email to ${email}:\n    Signup URL: ${signupUrl}\n`);
+  }
 
   const subject = `📢 Registration Details for joining ${APP_NAME}`;
 
@@ -496,6 +504,10 @@ export async function sendWaitlistRejectionEmail(opts: {
 }): Promise<EmailResult> {
   const { email, name, role, notes } = opts;
   const roleLabel = role === 'vendor' ? 'Vendor' : 'Brand Owner';
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\nℹ️  [Dev] Waitlist Rejection Email to ${email}\n`);
+  }
   
   const subject = `Update regarding your waitlist request — ${APP_NAME}`;
 
