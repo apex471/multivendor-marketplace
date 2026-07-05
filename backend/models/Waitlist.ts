@@ -64,9 +64,6 @@ export const Waitlist = {
 
     if (opts?.orderBy) {
       query = query.orderBy(opts.orderBy, opts.orderDir || 'asc');
-    } else {
-      // Default ordering by createdAt desc
-      query = query.orderBy('createdAt', 'desc');
     }
 
     if (opts?.limit) {
@@ -76,6 +73,15 @@ export const Waitlist = {
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IWaitlistEntry>(d)!);
     
+    // Sort in-memory by default (createdAt desc) if no custom orderBy was specified
+    if (!opts?.orderBy) {
+      results.sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tB - tA;
+      });
+    }
+
     if (opts?.skip) {
       results = results.slice(opts.skip);
     }
