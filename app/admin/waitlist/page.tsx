@@ -52,6 +52,60 @@ export default function AdminWaitlistPage() {
   const [adminNotes, setAdminNotes] = useState('');
   const [selectedApprovedRole, setSelectedApprovedRole] = useState<'vendor' | 'brand'>('vendor');
 
+  // Creation modal states
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createRole, setCreateRole] = useState<'vendor' | 'brand' | 'both'>('vendor');
+  const [createStoreName, setCreateStoreName] = useState('');
+  const [createBrandName, setCreateBrandName] = useState('');
+  const [createWebsite, setCreateWebsite] = useState('');
+  const [createIsSubmitting, setCreateIsSubmitting] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const handleCreateEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createEmail || !createEmail.includes('@')) {
+      setCreateError('Please provide a valid email address.');
+      return;
+    }
+
+    setCreateIsSubmitting(true);
+    setCreateError('');
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: createName.trim() || undefined,
+          email: createEmail.trim().toLowerCase(),
+          role: createRole,
+          storeName: createStoreName.trim() || undefined,
+          brandName: createBrandName.trim() || undefined,
+          website: createWebsite.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create waitlist entry.');
+
+      showToast('Waitlist entry created successfully.');
+      setCreateModalOpen(false);
+      setCreateName('');
+      setCreateEmail('');
+      setCreateRole('vendor');
+      setCreateStoreName('');
+      setCreateBrandName('');
+      setCreateWebsite('');
+      fetchWaitlist();
+    } catch (err: any) {
+      setCreateError(err.message || 'Something went wrong.');
+    } finally {
+      setCreateIsSubmitting(false);
+    }
+  };
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
@@ -175,11 +229,19 @@ export default function AdminWaitlistPage() {
       )}
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>⏳</span> Pre-Launch Waitlist Applications
-        </h1>
-        <p className="text-cool-gray-400 text-sm mt-1">Review pre-launch signups, approve credentials, or send live links.</p>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <span>⏳</span> Pre-Launch Waitlist Applications
+          </h1>
+          <p className="text-cool-gray-400 text-sm mt-1">Review pre-launch signups, approve credentials, or send live links.</p>
+        </div>
+        <button
+          onClick={() => setCreateModalOpen(true)}
+          className="px-4 py-2.5 bg-gold-600 hover:bg-gold-500 text-charcoal-950 font-bold rounded-lg transition text-sm cursor-pointer flex items-center gap-1.5 self-start sm:self-center"
+        >
+          ➕ Add Waitlist Entry
+        </button>
       </div>
 
       {/* Metric Cards */}
@@ -504,6 +566,103 @@ export default function AdminWaitlistPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Create Waitlist Entry Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <form onSubmit={handleCreateEntry} className="bg-charcoal-900 border border-charcoal-700 rounded-2xl w-full max-w-md p-6 space-y-4 animate-fade-in">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-1.5">
+                <span>➕</span> Add User to Waitlist
+              </h3>
+              <p className="text-xs text-cool-gray-400 mt-1">Manually insert a user application into the waitlist database.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs text-cool-gray-400 mb-1">Full Name (optional)</label>
+              <input
+                type="text"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="e.g. John Doe"
+                className="w-full px-3 py-2 bg-charcoal-950 border border-charcoal-800 text-white text-sm rounded-lg focus:ring-1 focus:ring-gold-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-cool-gray-400 mb-1">Email Address <span className="text-gold-500">*</span></label>
+              <input
+                type="email"
+                required
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                placeholder="e.g. name@brand.com"
+                className="w-full px-3 py-2 bg-charcoal-950 border border-charcoal-800 text-white text-sm rounded-lg focus:ring-1 focus:ring-gold-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-cool-gray-400 mb-1">Inquired Role</label>
+              <select
+                value={createRole}
+                onChange={(e) => setCreateRole(e.target.value as any)}
+                className="w-full px-3 py-2 bg-charcoal-950 border border-charcoal-800 text-white text-sm rounded-lg focus:ring-1 focus:ring-gold-500 outline-none"
+              >
+                <option value="vendor">Boutique / Vendor</option>
+                <option value="brand">Brand Owner</option>
+                <option value="both">Both Roles</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-cool-gray-400 mb-1">Store / Brand Name (optional)</label>
+              <input
+                type="text"
+                value={createStoreName}
+                onChange={(e) => {
+                  setCreateStoreName(e.target.value);
+                  setCreateBrandName(e.target.value);
+                }}
+                placeholder="e.g. Luxe Studio"
+                className="w-full px-3 py-2 bg-charcoal-950 border border-charcoal-800 text-white text-sm rounded-lg focus:ring-1 focus:ring-gold-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-cool-gray-400 mb-1">Website URL (optional)</label>
+              <input
+                type="text"
+                value={createWebsite}
+                onChange={(e) => setCreateWebsite(e.target.value)}
+                placeholder="e.g. https://luxestudio.com"
+                className="w-full px-3 py-2 bg-charcoal-950 border border-charcoal-800 text-white text-sm rounded-lg focus:ring-1 focus:ring-gold-500 outline-none"
+              />
+            </div>
+
+            {createError && <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-lg text-red-300 text-xs">{createError}</div>}
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateModalOpen(false);
+                  setCreateError('');
+                }}
+                className="px-4 py-2 text-xs font-semibold text-cool-gray-400 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createIsSubmitting}
+                className="px-4 py-2 bg-gold-600 hover:bg-gold-500 text-charcoal-950 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5"
+              >
+                {createIsSubmitting ? 'Submitting...' : 'Add User'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
