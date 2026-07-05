@@ -6,6 +6,15 @@ import Image from 'next/image';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
 import { getAuthToken, getStoredUser } from '@/lib/api/auth';
+import {
+  FormIcon,
+  MediaIcon,
+  VariantsIcon,
+  PricingIcon,
+  InventoryIcon,
+  ImageIcon,
+  FolderIcon,
+} from '../../../../components/common/Icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -362,12 +371,12 @@ export default function AddProductPage() {
             <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-4 sticky top-4">
               <nav className="space-y-2">
                 {([
-                  { id: 'basic',     label: 'Basic Info',      icon: '📝' },
-                  { id: 'media',     label: 'Photos & Videos', icon: '🎬', badge: mediaBadge },
-                  { id: 'variants',  label: 'Variants',        icon: '🎨' },
-                  { id: 'pricing',   label: 'Pricing',         icon: '💰' },
-                  { id: 'inventory', label: 'Inventory',       icon: '📦' },
-                ] as { id: string; label: string; icon: string; badge?: number }[]).map(tab => (
+                  { id: 'basic',     label: 'Basic Info',      icon: <FormIcon size={20} className="w-5 h-5" /> },
+                  { id: 'media',     label: 'Photos & Videos', icon: <MediaIcon size={20} className="w-5 h-5" />, badge: mediaBadge },
+                  { id: 'variants',  label: 'Variants',        icon: <VariantsIcon size={20} className="w-5 h-5" /> },
+                  { id: 'pricing',   label: 'Pricing',         icon: <PricingIcon size={20} className="w-5 h-5" /> },
+                  { id: 'inventory', label: 'Inventory',       icon: <InventoryIcon size={20} className="w-5 h-5" /> },
+                ] as { id: string; label: string; icon: React.ReactNode; badge?: number }[]).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
@@ -377,8 +386,8 @@ export default function AddProductPage() {
                         : 'hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 text-charcoal-700 dark:text-cool-gray-400'
                     }`}
                   >
-                    <span className="text-xl">{tab.icon}</span>
-                    <span className="font-semibold flex-1">{tab.label}</span>
+                    <span className="flex-shrink-0 text-gold-600 dark:text-gold-400">{tab.icon}</span>
+                    <span className="font-semibold flex-1 text-sm">{tab.label}</span>
                     {tab.badge !== undefined && (
                       <span className="ml-auto text-xs bg-gold-600 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">{tab.badge}</span>
                     )}
@@ -458,7 +467,13 @@ export default function AddProductPage() {
                         }`}>
                         <input ref={imageInputRef} type="file" multiple accept={ACCEPTED_IMAGE_TYPES.join(',')}
                           onChange={e => { if (e.target.files?.length) processFiles(e.target.files, 'image'); }} className="hidden" />
-                        <div className="text-4xl mb-2">{imageDragOver ? '📂' : '📸'}</div>
+                        <div className="flex justify-center text-gold-600 dark:text-gold-400 mb-3">
+                          {imageDragOver ? (
+                            <FolderIcon size={40} className="w-10 h-10" />
+                          ) : (
+                            <ImageIcon size={40} className="w-10 h-10" />
+                          )}
+                        </div>
                         <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
                           {imageDragOver ? 'Drop images here' : 'Click or drag & drop images'}
                         </p>
@@ -497,7 +512,13 @@ export default function AddProductPage() {
                         }`}>
                         <input ref={videoInputRef} type="file" multiple accept={ACCEPTED_VIDEO_TYPES.join(',')}
                           onChange={e => { if (e.target.files?.length) processFiles(e.target.files, 'video'); }} className="hidden" />
-                        <div className="text-4xl mb-2">{videoDragOver ? '📂' : '🎬'}</div>
+                        <div className="flex justify-center text-gold-600 dark:text-gold-400 mb-3">
+                          {videoDragOver ? (
+                            <FolderIcon size={40} className="w-10 h-10" />
+                          ) : (
+                            <MediaIcon size={40} className="w-10 h-10" />
+                          )}
+                        </div>
                         <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
                           {videoDragOver ? 'Drop videos here' : 'Click or drag & drop videos'}
                         </p>

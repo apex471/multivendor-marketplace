@@ -8,6 +8,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { getAuthToken } from '@/lib/api/auth';
+import {
+  SearchIcon,
+  CartIcon,
+  MessageIcon,
+  BellIcon,
+  UserIcon,
+  SettingsIcon,
+  LogoutIcon,
+  TruckIcon,
+  DashboardIcon,
+} from './Icons';
 
 interface AppNotification {
   id: string;
@@ -173,19 +184,19 @@ export default function Header() {
             {/* Search */}
             <button 
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation"
+              className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation flex items-center justify-center"
               aria-label="Search"
             >
-              <span className="text-lg sm:text-xl">🔍</span>
+              <SearchIcon size={20} className="w-5 h-5" />
             </button>
 
             {/* Cart */}
             <button
               onClick={handleCartClick}
-              className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative touch-manipulation"
+              className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative touch-manipulation flex items-center justify-center"
               aria-label={`Shopping cart with ${cartItemsCount} items`}
             >
-              <span className="text-lg sm:text-xl">🛒</span>
+              <CartIcon size={20} className="w-5 h-5" />
               {cartItemsCount > 0 && (
                 <span className="absolute top-0 right-0 w-4 h-4 sm:w-5 sm:h-5 bg-red-600 text-white text-[10px] sm:text-xs flex items-center justify-center rounded-full font-semibold">
                   {cartItemsCount}
@@ -201,7 +212,7 @@ export default function Header() {
                   className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative flex items-center justify-center touch-manipulation"
                   aria-label="Direct Messages"
                 >
-                  <span className="text-lg sm:text-xl">💬</span>
+                  <MessageIcon size={20} className="w-5 h-5" />
                 </Link>
               </div>
             )}
@@ -210,10 +221,10 @@ export default function Header() {
             <div className="relative">
               <button 
                 onClick={handleNotificationClick}
-                className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative touch-manipulation"
+                className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors relative touch-manipulation flex items-center justify-center"
                 aria-label="Notifications"
               >
-                <span className="text-lg sm:text-xl">🔔</span>
+                <BellIcon size={20} className="w-5 h-5" />
                 {hasNotifications && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
                 )}
@@ -258,10 +269,10 @@ export default function Header() {
                 {(user?.role === 'vendor' || user?.role === 'brand') && (
                   <Link
                     href="/logistics/providers"
-                    className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation"
+                    className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation flex items-center justify-center"
                     title="Logistics Providers"
                   >
-                    <span className="text-lg sm:text-xl">🚚</span>
+                    <TruckIcon size={20} className="w-5 h-5" />
                   </Link>
                 )}
                 {/* Profile dropdown */}
@@ -272,7 +283,7 @@ export default function Header() {
                     aria-label="Profile menu"
                     aria-expanded={profileMenuOpen}
                   >
-                    <span className="text-lg sm:text-xl">👤</span>
+                    <UserIcon size={20} className="w-5 h-5" />
                     <span className="hidden lg:block text-xs font-medium max-w-20 truncate">
                       {user?.firstName || user?.fullName?.split(' ')[0] || 'Account'}
                     </span>
@@ -303,7 +314,7 @@ export default function Header() {
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                       >
-                        <span>📊</span> Dashboard
+                        <DashboardIcon size={16} className="w-4 h-4" /> Dashboard
                       </Link>
 
                       {/* Settings */}
@@ -312,7 +323,7 @@ export default function Header() {
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
                       >
-                        <span>⚙️</span> Settings
+                        <SettingsIcon size={16} className="w-4 h-4" /> Settings
                       </Link>
 
                       {/* Divider */}
@@ -323,7 +334,7 @@ export default function Header() {
                         onClick={handleLogout}
                         className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
-                        <span>🚪</span> Sign Out
+                        <LogoutIcon size={16} className="w-4 h-4" /> Sign Out
                       </button>
                     </div>
                   )}
@@ -403,7 +414,10 @@ export default function Header() {
                     : 'text-charcoal-700 dark:text-cool-gray-300'
                 }`}
               >
-                🚚 Logistics Providers
+                <span className="flex items-center gap-2">
+                  <TruckIcon size={18} className="w-4.5 h-4.5" />
+                  Logistics Providers
+                </span>
               </button>
             )}
             {isLoggedIn ? (
@@ -422,21 +436,21 @@ export default function Header() {
                       user?.role === 'admin'  ? '/admin/dashboard'  :
                       '/dashboard/customer'
                     ); setMobileMenuOpen(false); }}
-                    className="block w-full text-left py-2 font-medium text-charcoal-700 dark:text-cool-gray-300"
+                    className="w-full text-left py-2 font-medium text-charcoal-700 dark:text-cool-gray-300 flex items-center gap-2"
                   >
-                    📊 Dashboard
+                    <DashboardIcon size={18} className="w-4.5 h-4.5" /> Dashboard
                   </button>
                   <button
                     onClick={() => { handleNavigation('/settings'); setMobileMenuOpen(false); }}
-                    className="block w-full text-left py-2 font-medium text-charcoal-700 dark:text-cool-gray-300"
+                    className="w-full text-left py-2 font-medium text-charcoal-700 dark:text-cool-gray-300 flex items-center gap-2"
                   >
-                    ⚙️ Settings
+                    <SettingsIcon size={18} className="w-4.5 h-4.5" /> Settings
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left py-2 font-medium text-red-600 dark:text-red-400"
+                    className="w-full text-left py-2 font-medium text-red-600 dark:text-red-400 flex items-center gap-2"
                   >
-                    🚪 Sign Out
+                    <LogoutIcon size={18} className="w-4.5 h-4.5" /> Sign Out
                   </button>
                 </div>
               </>
