@@ -544,3 +544,75 @@ export async function sendWaitlistRejectionEmail(opts: {
   return sendEmail({ to: email, subject, html, text });
 }
 
+export async function sendAdminNotificationEmail(opts: {
+  subject: string;
+  title: string;
+  message: string;
+  details?: Record<string, string>;
+}): Promise<EmailResult> {
+  const { subject, title, message, details } = opts;
+  const adminEmail = 'certifiedluxuryworld@gmail.com';
+  
+  let detailsHtml = '';
+  if (details && Object.keys(details).length > 0) {
+    detailsHtml = `
+      <div style="background:#f4f4f5;border-radius:12px;padding:20px;margin:24px 0;font-size:13px;color:#1f2937;border:1px solid #e5e7eb">
+        <h4 style="margin:0 0 12px;color:#111;text-transform:uppercase;font-size:11px;letter-spacing:1px">Event Details</h4>
+        <table style="width:100%;border-collapse:collapse">
+          ${Object.entries(details).map(([key, val]) => `
+            <tr>
+              <td style="padding:4px 0;font-weight:600;color:#4b5563;width:120px;vertical-align:top">${key}:</td>
+              <td style="padding:4px 0;color:#111;vertical-align:top">${val}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `;
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const adminDashboardUrl = `${siteUrl}/admin/dashboard`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="background:#111;padding:36px 40px;text-align:center;border-bottom:3px solid #c6a45e">
+      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700">⚡ CLW Admin Dispatch</h1>
+      <p style="margin:8px 0 0;color:#c6a45e;font-size:13px;text-transform:uppercase;letter-spacing:2px;font-weight:600">Platform Action Alert</p>
+    </div>
+    <div style="padding:36px 40px">
+      <h2 style="margin:0 0 16px;color:#111;font-size:20px;font-weight:700">${title}</h2>
+      <p style="margin:0 0 16px;color:#4b5563;font-size:15px;line-height:1.6">${message}</p>
+      
+      ${detailsHtml}
+
+      <div style="text-align:center;margin:32px 0 8px">
+        <a href="${adminDashboardUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:14px;border:1px solid #c6a45e">
+          Launch Admin Dashboard &rarr;
+        </a>
+      </div>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;text-align:center">
+      <p style="margin:0;font-size:12px;color:#9ca3af">&copy; ${new Date().getFullYear()} Certified Luxury World. System Automation Alert.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const detailsText = details ? Object.entries(details).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
+  const text = `CLW Admin Dispatch: ${title}\n\n${message}\n\n${detailsText}\n\nLaunch Admin Dashboard here: ${adminDashboardUrl}`;
+
+  // Log to console in dev mode
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\nℹ️  [Dev Admin Dispatch] Alert Email to ${adminEmail}:\n    Subject: ${subject}\n    Title: ${title}\n    Message: ${message}\n    Details: ${JSON.stringify(details)}\n`);
+  }
+
+  return sendEmail({ to: adminEmail, subject, html, text });
+}
+
+

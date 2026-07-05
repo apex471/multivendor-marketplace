@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { Waitlist } from '@/backend/models/Waitlist';
 import { User } from '@/backend/models/User';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
+import { sendAdminNotificationEmail } from '@/backend/utils/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +78,20 @@ export async function POST(request: NextRequest) {
       targetAudience: targetAudience || undefined,
       yearEstablished: yearEstablished || undefined,
     });
+
+    // Notify admin asynchronously
+    sendAdminNotificationEmail({
+      subject: `⏳ New Waitlist Signup: ${cleanEmail}`,
+      title: 'New Pre-launch Waitlist Entry',
+      message: `A new prospective partner has signed up for the pre-launch waitlist.`,
+      details: {
+        'Applicant Name': name || 'Not provided',
+        'Email Address': cleanEmail,
+        'Role Inquired': role,
+        'Company/Store': storeName || brandName || 'Not provided',
+        'Website': website || 'Not provided',
+      }
+    }).catch(err => console.error('[Waitlist API] Admin notification email failed:', err));
 
     return sendSuccess(entry, 'Successfully joined the waitlist! We will notify you with launch updates.', 201);
   } catch (error: unknown) {

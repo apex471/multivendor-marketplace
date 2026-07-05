@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateSignupInput, sanitizeInput } from '@/backend/utils/validation';
-import { sendVerificationEmail } from '@/backend/utils/email';
+import { sendVerificationEmail, sendAdminNotificationEmail } from '@/backend/utils/email';
 import {
   sendSuccess,
   sendError,
@@ -80,6 +80,20 @@ export async function POST(request: NextRequest) {
     }
 
     const token = generateToken(newUser.id!, newUser.email, newUser.role);
+
+    // Notify admin asynchronously
+    sendAdminNotificationEmail({
+      subject: `👤 New User Registration: ${newUser.email}`,
+      title: 'New User Registered on Platform',
+      message: `A new user has registered a new account on CLW.`,
+      details: {
+        'User Name': `${firstName} ${lastName}`,
+        'Email Address': newUser.email,
+        'Assigned Role': role,
+        'Verification Status': 'Verification email dispatched / Pending validation',
+        'Store / Brand Name': storeName || 'N/A',
+      }
+    }).catch(err => console.error('[Signup API] Admin notification email failed:', err));
 
     return sendSuccess(
       {
