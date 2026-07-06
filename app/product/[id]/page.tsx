@@ -99,9 +99,10 @@ export default function ProductDetailPage() {
         const p = json.data.product;
         const displayPrice  = p.salePrice && p.salePrice < p.price ? p.salePrice : p.price;
         const originalPrice = p.salePrice && p.salePrice < p.price ? p.price    : undefined;
-        const sizes = [...new Set<string>(
+        const rawSizes = [...new Set<string>(
           (p.variants ?? []).map((v: Record<string, string>) => v.size).filter(Boolean)
         )];
+        const sizes = sortSizes(rawSizes);
         const colorMap = new Map<string, { name: string; hex: string }>();
         (p.variants ?? []).forEach((v: Record<string, string>) => {
           if (v.color) colorMap.set(v.color, { name: v.color, hex: '#888888' });
@@ -386,16 +387,16 @@ export default function ProductDetailPage() {
                   Size Guide
                 </button>
               </div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {product.sizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`py-2 px-4 rounded-lg border ${
+                    className={`min-w-[48px] h-11 px-3 rounded-lg border font-semibold text-sm flex items-center justify-center transition-all ${
                       selectedSize === size
-                        ? 'bg-gold-600 text-white border-gold-600'
-                        : 'bg-white dark:bg-charcoal-800 border-cool-gray-300 dark:border-charcoal-700 text-charcoal-900 dark:text-white hover:border-gold-600 dark:hover:border-gold-500'
-                    } transition-colors`}
+                        ? 'bg-gold-600 text-white border-gold-600 shadow-sm'
+                        : 'bg-white dark:bg-charcoal-800 border-cool-gray-200 dark:border-charcoal-700 text-charcoal-800 dark:text-cool-gray-200 hover:border-gold-600 dark:hover:border-gold-500'
+                    }`}
                   >
                     {size}
                   </button>
