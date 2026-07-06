@@ -34,6 +34,7 @@ export default function Footer() {
   const supportLinks = [
     { href: '/help',           label: t('help') },
     { href: '/contact',        label: 'Contact Us' },
+    { href: 'https://forms.gle/EwU8X8z7UQNYPP1F8', label: 'Submit Feedback' },
     { href: '/shipping',       label: 'Shipping Info' },
     { href: '/return-policy',  label: 'Return Policy' },
     { href: '/terms',          label: 'Terms of Service' },
@@ -137,14 +138,27 @@ export default function Footer() {
           <div>
             <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Support</h3>
             <ul className="space-y-2.5">
-              {supportLinks.map(link => (
-                <li key={link.href}>
-                  <Link href={link.href}
-                    className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {supportLinks.map(link => {
+                const isExternal = link.href.startsWith('http');
+                return (
+                  <li key={link.href}>
+                    {isExternal ? (
+                      <a href={link.href} target="_blank" rel="noopener noreferrer"
+                        className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors flex items-center gap-1">
+                        {link.label}
+                        <svg className="w-3.5 h-3.5 inline opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    ) : (
+                      <Link href={link.href}
+                        className="text-sm text-cool-gray-400 hover:text-gold-400 transition-colors">
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
@@ -199,6 +213,17 @@ export default function Footer() {
             <Link href="/terms"   className="hover:text-gold-400 transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-gold-400 transition-colors">Privacy</Link>
             <Link href="/contact" className="hover:text-gold-400 transition-colors">Contact</Link>
+            <a
+              href="https://forms.gle/EwU8X8z7UQNYPP1F8"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-gold-600 hover:bg-gold-500 text-white font-medium rounded-md transition-colors shadow-xs hover:shadow-md"
+            >
+              <span>Feedback</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </div>
         </div>
       </div>
