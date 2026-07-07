@@ -78,6 +78,29 @@ const sortSizes = (sizesList: string[]) => {
   });
 };
 
+const getColorHex = (colorName: string): string => {
+  const clean = colorName.toLowerCase().trim();
+  const colorMap: Record<string, string> = {
+    black: '#000000',
+    white: '#ffffff',
+    red: '#dc2626',
+    blue: '#2563eb',
+    green: '#16a34a',
+    yellow: '#facc15',
+    orange: '#f97316',
+    purple: '#9333ea',
+    pink: '#db2777',
+    gray: '#4b5563',
+    grey: '#4b5563',
+    brown: '#78350f',
+    beige: '#f5f5dc',
+    navy: '#1e3a8a',
+    gold: '#d97706',
+    silver: '#cbd5e1',
+  };
+  return colorMap[clean] || clean;
+};
+
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id: productId } = useParams() as { id: string };  const { addItem: addToCart } = useCart();
@@ -125,13 +148,30 @@ export default function ProductDetailPage() {
         const p = json.data.product;
         const displayPrice  = p.salePrice && p.salePrice < p.price ? p.salePrice : p.price;
         const originalPrice = p.salePrice && p.salePrice < p.price ? p.price    : undefined;
-        const rawSizes = [...new Set<string>(
-          (p.variants ?? []).map((v: Record<string, string>) => v.size).filter(Boolean)
-        )];
-        const sizes = sortSizes(rawSizes);
+        const rawSizesSet = new Set<string>();
+        (p.variants ?? []).forEach((v: Record<string, string>) => {
+          if (v.size) {
+            const splitSizes = v.size.split(/[,/;]+/);
+            splitSizes.forEach((s: string) => {
+              const trimmed = s.trim();
+              if (trimmed) rawSizesSet.add(trimmed);
+            });
+          }
+        });
+        const sizes = sortSizes(Array.from(rawSizesSet));
+
         const colorMap = new Map<string, { name: string; hex: string }>();
         (p.variants ?? []).forEach((v: Record<string, string>) => {
-          if (v.color) colorMap.set(v.color, { name: v.color, hex: '#888888' });
+          if (v.color) {
+            const splitColors = v.color.split(/[,/;]+/);
+            splitColors.forEach((c: string) => {
+              const name = c.trim();
+              if (name) {
+                const hexVal = getColorHex(name);
+                colorMap.set(name.toLowerCase(), { name, hex: hexVal });
+              }
+            });
+          }
         });
         setProduct({
           id:             p._id,
@@ -389,11 +429,11 @@ export default function ProductDetailPage() {
                     title={color.name}
                   >
                     <div
-                      className="w-full h-full rounded-full"
+                      className={`w-full h-full rounded-full ${color.hex.toLowerCase() === '#ffffff' || color.hex.toLowerCase() === 'white' ? 'border border-cool-gray-200' : ''}`}
                       style={{ backgroundColor: color.hex }}
                     />
                     {selectedColor === color.name && (
-                      <span className="absolute inset-0 flex items-center justify-center text-white text-xl">✓</span>
+                      <span className={`absolute inset-0 flex items-center justify-center text-xl ${color.hex.toLowerCase() === '#ffffff' || color.hex.toLowerCase() === 'white' ? 'text-charcoal-900' : 'text-white'}`}>✓</span>
                     )}
                   </button>
                 ))}
