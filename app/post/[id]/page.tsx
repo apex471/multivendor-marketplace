@@ -207,7 +207,7 @@ export default function PostDetailPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-lg overflow-hidden">
             <div className="grid lg:grid-cols-2">
               {/* Image Section */}
               <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center">
@@ -227,7 +227,7 @@ export default function PostDetailPage() {
               {/* Content Section */}
               <div className="flex flex-col h-150">
                 {/* Post Header */}
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-200 dark:border-charcoal-700">
                   <div className="flex items-center justify-between">
                     <Link href={`/profile/${post.user.username}`} className="flex items-center gap-3 hover:opacity-80">
                       {post.user.avatar ? (
@@ -243,17 +243,17 @@ export default function PostDetailPage() {
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-charcoal-900">{post.user.username}</span>
+                          <span className="font-semibold text-charcoal-900 dark:text-white">{post.user.username}</span>
                           {post.user.verified && (
                             <span className="text-blue-600">✓</span>
                           )}
                         </div>
                         {post.location && (
-                          <p className="text-sm text-charcoal-600">📍 {post.location}</p>
+                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">📍 {post.location}</p>
                         )}
                       </div>
                     </Link>
-                    <button className="text-charcoal-700 hover:text-gold-600 transition-colors text-2xl">
+                    <button className="text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 transition-colors text-2xl">
                       •••
                     </button>
                   </div>
@@ -278,12 +278,12 @@ export default function PostDetailPage() {
                     </Link>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Link href={`/profile/${post.user.username}`} className="font-semibold text-charcoal-900 hover:text-gold-600">
+                        <Link href={`/profile/${post.user.username}`} className="font-semibold text-charcoal-900 dark:text-white hover:text-gold-600">
                           {post.user.username}
                         </Link>
-                        <span className="text-sm text-charcoal-600">{post.timestamp}</span>
+                        <span className="text-sm text-charcoal-600 dark:text-cool-gray-400">{post.timestamp}</span>
                       </div>
-                      <p className="text-charcoal-900 mb-2">{post.caption}</p>
+                      <p className="text-charcoal-900 dark:text-cool-gray-200 mb-2">{post.caption}</p>
                       {post.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.tags.map((tag) => (
@@ -309,16 +309,16 @@ export default function PostDetailPage() {
                         </Link>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <Link href={`/profile/${comment.user.username}`} className="font-semibold text-charcoal-900 hover:text-gold-600">
+                            <Link href={`/profile/${comment.user.username}`} className="font-semibold text-charcoal-900 dark:text-white hover:text-gold-600">
                               {comment.user.username}
                             </Link>
                             {comment.user.verified && (
                               <span className="text-blue-600">✓</span>
                             )}
-                            <span className="text-sm text-charcoal-600">{comment.timestamp}</span>
+                            <span className="text-sm text-charcoal-600 dark:text-cool-gray-400">{comment.timestamp}</span>
                           </div>
-                          <p className="text-charcoal-900 mb-2">{comment.text}</p>
-                          <div className="flex items-center gap-4 text-sm text-charcoal-600">
+                          <p className="text-charcoal-900 dark:text-cool-gray-200 mb-2">{comment.text}</p>
+                          <div className="flex items-center gap-4 text-sm text-charcoal-600 dark:text-cool-gray-400">
                             <button className="hover:text-gold-600 transition-colors font-medium">
                               {comment.likes > 0 && `${comment.likes} likes`}
                             </button>
@@ -337,7 +337,7 @@ export default function PostDetailPage() {
                                 onChange={e => setReplyTexts(prev => ({ ...prev, [comment.id]: e.target.value }))}
                                 onKeyDown={e => e.key === 'Enter' && handleReplySubmit(comment.id)}
                                 placeholder={`Reply to ${comment.user.username}...`}
-                                className="flex-1 text-sm px-3 py-1.5 border border-cool-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gold-600"
+                                className="flex-1 text-sm px-3 py-1.5 border border-cool-gray-300 dark:border-charcoal-700 bg-white dark:bg-charcoal-950 text-charcoal-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-gold-600"
                               />
                               <button
                                 onClick={() => handleReplySubmit(comment.id)}
@@ -364,12 +364,12 @@ export default function PostDetailPage() {
                               </Link>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <Link href={`/profile/${reply.user.username}`} className="font-semibold text-sm text-charcoal-900 hover:text-gold-600">
+                                  <Link href={`/profile/${reply.user.username}`} className="font-semibold text-sm text-charcoal-900 dark:text-white hover:text-gold-600">
                                     {reply.user.username}
                                   </Link>
-                                  <span className="text-xs text-charcoal-600">{reply.timestamp}</span>
+                                  <span className="text-xs text-charcoal-600 dark:text-cool-gray-400">{reply.timestamp}</span>
                                 </div>
-                                <p className="text-sm text-charcoal-900">{reply.text}</p>
+                                <p className="text-sm text-charcoal-900 dark:text-cool-gray-200">{reply.text}</p>
                               </div>
                             </div>
                           ))}
@@ -380,7 +380,7 @@ export default function PostDetailPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="border-t border-gray-200">
+                <div className="border-t border-gray-200 dark:border-charcoal-700">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-4">
@@ -411,18 +411,18 @@ export default function PostDetailPage() {
                         {isSaved ? '🔖' : '📑'}
                       </button>
                     </div>
-                    <p className="font-semibold text-charcoal-900 mb-2">{likesCount.toLocaleString()} likes</p>
+                    <p className="font-semibold text-charcoal-900 dark:text-white mb-2">{likesCount.toLocaleString()} likes</p>
                   </div>
 
                   {/* Add Comment */}
-                  <form onSubmit={handleComment} className="border-t border-gray-200 p-4">
+                  <form onSubmit={handleComment} className="border-t border-gray-200 dark:border-charcoal-700 p-4">
                     <div className="flex items-center gap-3">
                       <input
                         type="text"
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         placeholder="Add a comment..."
-                        className="flex-1 outline-none text-charcoal-900 placeholder:text-charcoal-400"
+                        className="flex-1 bg-transparent outline-none text-charcoal-900 dark:text-white placeholder:text-charcoal-400 dark:placeholder:text-cool-gray-500"
                       />
                       <button
                         type="submit"
@@ -444,8 +444,8 @@ export default function PostDetailPage() {
 
           {/* Related Posts */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-charcoal-900 mb-6">More from {post.user.username}</h2>
-            <p className="text-charcoal-600 text-sm">Visit their <Link href={`/profile/${post.user.username}`} className="text-gold-600 hover:underline">profile</Link> to see more posts.</p>
+            <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">More from {post.user.username}</h2>
+            <p className="text-charcoal-600 dark:text-cool-gray-400 text-sm">Visit their <Link href={`/profile/${post.user.username}`} className="text-gold-600 hover:underline">profile</Link> to see more posts.</p>
           </div>
         </div>
       </div>
