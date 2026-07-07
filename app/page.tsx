@@ -12,7 +12,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLocalization } from "../contexts/LocalizationContext";
 
 interface Post {
-  _id: string;
+  _id?: string;
+  id?: string;
   authorName?: string;
   authorAvatar?: string;
   images?: string[];
@@ -250,12 +251,14 @@ export default function Home() {
             </div>
           ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-            {posts.map((post) => (
-              <div key={post._id} className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
-                <button
-                  onClick={() => router.push(`/post/${post._id}`)}
-                  className="relative aspect-square w-full"
-                >
+            {posts.map((post) => {
+              const postId = post.id || post._id;
+              return (
+                <div key={postId || Math.random().toString()} className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
+                  <button
+                    onClick={() => postId && router.push(`/post/${postId}`)}
+                    className="relative aspect-square w-full"
+                  >
                   {post.images?.[0] ? (
                     <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
                   ) : (
@@ -280,7 +283,8 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))}
+            )
+          })}
           </div>
           )}
         </section>
