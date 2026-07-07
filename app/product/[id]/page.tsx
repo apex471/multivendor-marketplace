@@ -52,6 +52,32 @@ interface RelatedProduct {
   rating: number;
 }
 
+const sortSizes = (sizesList: string[]) => {
+  const standardOrder = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '3XL', '4XL'];
+  return [...sizesList].sort((a, b) => {
+    const cleanA = a.toUpperCase().trim();
+    const cleanB = b.toUpperCase().trim();
+    
+    // Check if both are numeric
+    const numA = parseFloat(cleanA);
+    const numB = parseFloat(cleanB);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    
+    const indexA = standardOrder.indexOf(cleanA);
+    const indexB = standardOrder.indexOf(cleanB);
+    
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    
+    return cleanA.localeCompare(cleanB);
+  });
+};
+
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id: productId } = useParams() as { id: string };  const { addItem: addToCart } = useCart();
