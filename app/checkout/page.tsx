@@ -35,6 +35,7 @@ export default function CheckoutPage() {
   const [paymentInfo, setPaymentInfo] = useState({
     cardNumber: '', cardName: '', expiryDate: '', cvv: '', saveCard: false,
   });
+  const [paymentMethodType, setPaymentMethodType] = useState<'card' | 'bank'>('card');
 
   const [couriers, setCouriers] = useState<any[]>(COURIERS);
   const [_loadingCouriers, setLoadingCouriers] = useState(true);
@@ -88,8 +89,10 @@ export default function CheckoutPage() {
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiryDate || !paymentInfo.cvv) {
-      toastWarning('Please fill in all payment details'); return;
+    if (paymentMethodType === 'card') {
+      if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiryDate || !paymentInfo.cvv) {
+        toastWarning('Please fill in all payment details'); return;
+      }
     }
     setCurrentStep(4);
   };
@@ -107,9 +110,14 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           shippingInfo,
           paymentInfo: {
-            cardNumber: paymentInfo.cardNumber.slice(-4), // only last 4 digits
-            cardName: paymentInfo.cardName,
-            expiryDate: paymentInfo.expiryDate,
+            cardNumber: paymentMethodType === 'card' ? paymentInfo.cardNumber.slice(-4) : 'Bank',
+            cardName: paymentMethodType === 'card' ? paymentInfo.cardName : 'Bank Transfer Client',
+            expiryDate: paymentMethodType === 'card' ? paymentInfo.expiryDate : 'N/A',
+          },
+          paymentMethod: {
+            type: paymentMethodType,
+            cardNumber: paymentMethodType === 'card' ? paymentInfo.cardNumber : undefined,
+            cardHolder: paymentMethodType === 'card' ? paymentInfo.cardName : 'Bank Transfer Client',
           },
           cartItems,
           courierId:       selectedCourier.id,
@@ -488,45 +496,115 @@ export default function CheckoutPage() {
             {currentStep === 3 && (
               <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
                 <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Payment Information</h2>
+                
+                {/* Payment Method Switcher */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethodType('card')}
+                    className={`py-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm ${
+                      paymentMethodType === 'card'
+                        ? 'border-gold-600 bg-gold-600/5 text-gold-600 dark:text-gold-400'
+                        : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-500 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
+                    }`}
+                  >
+                    <span>💳</span> Pay with Card
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethodType('bank')}
+                    className={`py-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm ${
+                      paymentMethodType === 'bank'
+                        ? 'border-gold-600 bg-gold-600/5 text-gold-600 dark:text-gold-400'
+                        : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-500 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
+                    }`}
+                  >
+                    <span>🏛️</span> Bank Transfer
+                  </button>
+                </div>
+
                 <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Card Number *</label>
-                    <input type="text" required value={paymentInfo.cardNumber}
-                      onChange={(e) => setPaymentInfo({ ...paymentInfo, cardNumber: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                      placeholder="1234 5678 9012 3456" maxLength={19} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Cardholder Name *</label>
-                    <input type="text" required value={paymentInfo.cardName}
-                      onChange={(e) => setPaymentInfo({ ...paymentInfo, cardName: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                      placeholder="John Doe" />
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Expiry Date *</label>
-                      <input type="text" required value={paymentInfo.expiryDate}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryDate: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                        placeholder="MM/YY" maxLength={5} />
+                  {paymentMethodType === 'card' ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Card Number *</label>
+                        <input type="text" required value={paymentInfo.cardNumber}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, cardNumber: e.target.value })}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                          placeholder="1234 5678 9012 3456" maxLength={19} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Cardholder Name *</label>
+                        <input type="text" required value={paymentInfo.cardName}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, cardName: e.target.value })}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                          placeholder="John Doe" />
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Expiry Date *</label>
+                          <input type="text" required value={paymentInfo.expiryDate}
+                            onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryDate: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                            placeholder="MM/YY" maxLength={5} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">CVV *</label>
+                          <input type="text" required value={paymentInfo.cvv}
+                            onChange={(e) => setPaymentInfo({ ...paymentInfo, cvv: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                            placeholder="123" maxLength={4} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" id="saveCard" checked={paymentInfo.saveCard}
+                          onChange={(e) => setPaymentInfo({ ...paymentInfo, saveCard: e.target.checked })}
+                          className="w-4 h-4 text-gold-600 rounded focus:ring-gold-500" />
+                        <label htmlFor="saveCard" className="text-sm text-charcoal-700 dark:text-cool-gray-300">
+                          Save card for future purchases
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700 rounded-xl p-5 space-y-4">
+                      <p className="text-sm text-charcoal-700 dark:text-cool-gray-300 font-medium">
+                        Please transfer the exact amount to the bank account below:
+                      </p>
+                      <div className="space-y-2 text-sm bg-white dark:bg-charcoal-800 p-4 rounded-lg border border-cool-gray-200 dark:border-charcoal-700">
+                        <div className="flex justify-between">
+                          <span className="text-cool-gray-500">Bank Name</span>
+                          <span className="font-semibold text-charcoal-900 dark:text-white">GTBank / Flutterwave Escrow</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-cool-gray-500">Account Name</span>
+                          <span className="font-semibold text-charcoal-900 dark:text-white">Certified Luxury World Ltd</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-cool-gray-500">Account Number</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gold-600 dark:text-gold-400 select-all">0123456789</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText('0123456789');
+                                alert('Account number copied!');
+                              }}
+                              className="text-xs text-gold-600 hover:underline font-semibold"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-cool-gray-500">Amount Due</span>
+                          <span className="font-bold text-red-600 dark:text-red-400">${total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 leading-relaxed">
+                        ℹ️ Note: After completing the transfer, click &quot;Review Order&quot; below to proceed. Our escrow engine will verify the payment automatically within 5-10 minutes.
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">CVV *</label>
-                      <input type="text" required value={paymentInfo.cvv}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, cvv: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                        placeholder="123" maxLength={4} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="saveCard" checked={paymentInfo.saveCard}
-                      onChange={(e) => setPaymentInfo({ ...paymentInfo, saveCard: e.target.checked })}
-                      className="w-4 h-4 text-gold-600 rounded focus:ring-gold-500" />
-                    <label htmlFor="saveCard" className="text-sm text-charcoal-700 dark:text-cool-gray-300">
-                      Save card for future purchases
-                    </label>
-                  </div>
+                  )}
                   <div className="bg-gold-600/10 dark:bg-gold-600/20 border border-gold-600/30 dark:border-gold-600/40 rounded-lg p-4 mt-4">
                     <div className="flex items-start gap-3">
                       <span className="text-gold-600 text-xl">🔒</span>
@@ -619,10 +697,16 @@ export default function CheckoutPage() {
                         <h3 className="font-semibold text-charcoal-900 dark:text-white">Payment Method</h3>
                         <button onClick={() => setCurrentStep(3)} className="text-xs text-gold-600 hover:text-gold-700 font-medium">Edit</button>
                       </div>
-                      <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                        💳 Card ending in {paymentInfo.cardNumber.slice(-4)}<br />
-                        Expires {paymentInfo.expiryDate}
-                      </p>
+                      {paymentMethodType === 'card' ? (
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                          💳 Card ending in {paymentInfo.cardNumber.slice(-4)}<br />
+                          Expires {paymentInfo.expiryDate}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                          🏛️ Bank Transfer (Pending Escrow Verification)
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
