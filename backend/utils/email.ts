@@ -102,7 +102,8 @@ async function sendViaSmtp(opts: EmailOptions): Promise<EmailResult> {
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const fromEmail = process.env.SMTP_FROM_EMAIL || user || 'noreply@certifiedluxuryworld.com';
 
-  const fromDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : 'certifiedluxuryworld.com';
+  const rawDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : 'certifiedluxuryworld.com';
+  const fromDomain = rawDomain.replace(/[<>]/g, '').trim();
   const randomHex = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   const messageId = `<${randomHex}@${fromDomain}>`;
 
