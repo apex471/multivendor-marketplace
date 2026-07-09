@@ -12,8 +12,8 @@ interface Settings {
   allowNewBrands: boolean;
   requireEmailVerification: boolean;
   commissionRate: number;   // legacy — kept for backward compat
-  buyerFeeRate: number;     // 5% charged to buyer
-  sellerFeeRate: number;    // 5% deducted from seller payout
+  buyerFeeRate: number;     // 10% charged to buyer
+  sellerFeeRate: number;    // 10% deducted from seller payout
   stripeFeeRate: number;    // 2.9% Stripe cost absorbed by platform
   escrowDuration: number;
   minWithdrawal: number;
@@ -25,7 +25,7 @@ interface Settings {
 const DEFAULT: Settings = {
   platformName: 'CLW Marketplace', platformEmail: 'admin@clw.com', supportEmail: 'support@clw.com',
   maintenanceMode: false, allowNewVendors: true, allowNewBrands: true, requireEmailVerification: false,
-  commissionRate: 10, buyerFeeRate: 5, sellerFeeRate: 5, stripeFeeRate: 2.9,
+  commissionRate: 10, buyerFeeRate: 10, sellerFeeRate: 10, stripeFeeRate: 2.9,
   escrowDuration: 7, minWithdrawal: 50,
   freeShippingThreshold: 100, defaultShippingCost: 9.99, internationalShipping: true,
 };

@@ -135,9 +135,9 @@ export async function GET(request: NextRequest) {
         monthTransactions: monthTransactionCount,
         pendingEscrow: pendingEscrowAmount,
         pendingEscrowCount,
-        commissionEarned:  totalPlatformGross,   // 10% gross (5% buyer + 5% seller)
+        commissionEarned:  totalPlatformGross,   // 20% gross (10% buyer + 10% seller)
         stripeFees:        totalStripeFees,       // 2.9% absorbed by platform
-        netRevenue:        totalPlatformNet,      // 7.1% net
+        netRevenue:        totalPlatformNet,      // 17.1% net
       },
       charts: {
         weeklySignups,

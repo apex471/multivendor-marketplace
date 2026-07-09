@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       status:        'pending',           // escrow-held; becomes 'completed' on release
       ...(customerId ? { fromUser: customerId } : {}),
       orderId,
-      description:   `Buyer payment for order ${orderId} (incl. 5% service fee, shipping & tax)`,
+      description:   `Buyer payment for order ${orderId} (incl. 10% service fee, shipping & tax)`,
       feeBreakdown: {
         subtotal:        fees.subtotal,
         buyerServiceFee: fees.buyerServiceFee,

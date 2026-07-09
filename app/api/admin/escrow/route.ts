@@ -176,11 +176,11 @@ export async function POST(request: NextRequest) {
         status:        'completed',
         ...(vendorId ? { toUser: vendorId } : {}),
         orderId,
-        description:   `Vendor payout for order ${orderId} (subtotal $${fees.subtotal.toFixed(2)} − 5% seller fee $${fees.sellerFee.toFixed(2)})`,
+        description:   `Vendor payout for order ${orderId} (subtotal $${fees.subtotal.toFixed(2)} − 10% seller fee $${fees.sellerFee.toFixed(2)})`,
         metadata: { sellerFee: fees.sellerFee, sellerFeeRate: FEES.SELLER_FEE_RATE * 100 },
       });
 
-      // 2. Platform fee record (gross = buyer 5% + seller 5%)
+      // 2. Platform fee record (gross = buyer 10% + seller 10%)
       await Transaction.create({
         transactionId: `FEE-${transactionId}`,
         type:          'platform_fee',
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         currency:      'USD',
         status:        'completed',
         orderId,
-        description:   `Platform fee for order ${orderId}: buyer 5% ($${fees.buyerServiceFee.toFixed(2)}) + seller 5% ($${fees.sellerFee.toFixed(2)}) = $${fees.platformGross.toFixed(2)}`,
+        description:   `Platform fee for order ${orderId}: buyer 10% ($${fees.buyerServiceFee.toFixed(2)}) + seller 10% ($${fees.sellerFee.toFixed(2)}) = $${fees.platformGross.toFixed(2)}`,
         metadata: {
           buyerServiceFee:  fees.buyerServiceFee,
           sellerFee:        fees.sellerFee,

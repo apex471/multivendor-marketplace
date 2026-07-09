@@ -3,10 +3,10 @@
  * ─────────────────────────────────────────
  * Fee model (mirrors Fiverr's dual-sided structure):
  *
- *  BUYER        pays  5% service fee on the merchandise subtotal
- *  SELLER       pays  5% commission on the merchandise subtotal (deducted at payout)
- *  PLATFORM     earns 10% gross (5% from each side) → absorbs 2.9% Stripe processing fee
- *  NET MARGIN   = 10% − 2.9% = 7.1% per successful transaction
+ *  BUYER        pays  10% service fee on the merchandise subtotal
+ *  SELLER       pays  10% commission on the merchandise subtotal (deducted at payout)
+ *  PLATFORM     earns 20% gross (10% from each side) → absorbs 2.9% Stripe processing fee
+ *  NET MARGIN   = 20% − 2.9% = 17.1% per successful transaction
  *
  *  Tax (8%) and shipping are pass-through — not subject to the service fee.
  */
@@ -15,11 +15,11 @@ export const FEES = {
   /** Stripe processing rate (2.9% + $0.30, budgeted at flat 2.9%) */
   STRIPE_RATE: 0.029,
 
-  /** Buyer service fee — 5% service fee on the merchandise subtotal */
-  BUYER_SERVICE_FEE_RATE: 0.05,
+  /** Buyer service fee — 10% service fee on the merchandise subtotal */
+  BUYER_SERVICE_FEE_RATE: 0.10,
 
   /** % deducted from the vendor's merchandise subtotal at escrow release */
-  SELLER_FEE_RATE: 0.05,
+  SELLER_FEE_RATE: 0.10,
 
   /** Sales tax rate (8%) */
   TAX_RATE: 0.08,
@@ -30,7 +30,7 @@ export interface FeeBreakdown {
   subtotal: number;
   /** Shipping cost */
   shipping: number;
-  /** Buyer-side 5% service fee on merchandise subtotal */
+  /** Buyer-side 10% service fee on merchandise subtotal */
   buyerServiceFee: number;
   /** 8% sales tax on merchandise subtotal only */
   tax: number;
@@ -38,7 +38,7 @@ export interface FeeBreakdown {
   buyerTotal: number;
   /** Stripe processing fee (2.9% of buyerTotal) — absorbed by platform */
   stripeFee: number;
-  /** 5% seller commission deducted at escrow payout */
+  /** 10% seller commission deducted at escrow payout */
   sellerFee: number;
   /** Net amount released to vendor after sellerFee deduction */
   vendorPayout: number;
