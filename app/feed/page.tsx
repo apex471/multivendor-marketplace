@@ -239,7 +239,7 @@ export default function FeedPage() {
   };
 
   const handleSave     = (postId: string) => setPosts(posts.map(p => p.id === postId ? { ...p, saved: !p.saved } : p));
-  const handleBuyNow   = (product: PostProduct) => { addItem({ productId: product.id, name: product.name, price: product.price, image: product.image, vendor: product.vendor, size: 'One Size', color: 'Default', quantity: 1 }); router.push('/checkout/review'); };
+  const handleBuyNow   = (product: PostProduct) => { addItem({ productId: product.id, name: product.name || 'Product', price: Number(product.price || 0), image: product.image, vendor: product.vendor, size: 'One Size', color: 'Default', quantity: 1 }); router.push('/checkout/review'); };
 
   const handleCreatePost = async () => {
     const text = newPostContent.trim();
@@ -521,8 +521,10 @@ export default function FeedPage() {
                       <Image src={post.product.image} alt={post.product.name} fill className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-charcoal-900 dark:text-white truncate">{post.product.name}</p>
-                      <p className="text-gold-600 dark:text-gold-400 font-bold text-base">${post.product.price.toFixed(2)}</p>
+                      <p className="font-bold text-sm text-charcoal-900 dark:text-white truncate">{post.product.name || 'Tagged Product'}</p>
+                      <p className="text-gold-600 dark:text-gold-400 font-bold text-base">
+                        ${typeof post.product.price === 'number' ? post.product.price.toFixed(2) : Number(post.product.price || 0).toFixed(2)}
+                      </p>
                       {post.product.vendor && (
                         <p className="text-xs text-cool-gray-500 truncate">by {post.product.vendor}</p>
                       )}

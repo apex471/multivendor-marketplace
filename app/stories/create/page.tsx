@@ -137,15 +137,16 @@ export default function CreateStoryPage() {
         body: uploadFormData,
       });
 
-      let uploadJson: { success: boolean; data?: { url: string }; message?: string; error?: string };
+      let uploadJson: { success: boolean; data?: { url: string }; message?: string; error?: string } | null = null;
       try {
-        uploadJson = await uploadRes.json();
+        const text = await uploadRes.text();
+        uploadJson = JSON.parse(text);
       } catch {
-        throw new Error(`Upload server error (HTTP ${uploadRes.status}). Please try again.`);
+        // Not a JSON response
       }
 
-      if (!uploadRes.ok || !uploadJson.success) {
-        throw new Error(uploadJson.message ?? uploadJson.error ?? `Upload failed (${uploadRes.status})`);
+      if (!uploadRes.ok || !uploadJson || !uploadJson.success) {
+        throw new Error(uploadJson?.message ?? uploadJson?.error ?? `Upload failed (HTTP ${uploadRes.status})`);
       }
 
       const mediaUrl: string = uploadJson.data!.url;

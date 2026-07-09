@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
     if (msg.includes('Must supply') || msg.includes('cloud_name')) {
       return sendError(
         'Media upload is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in Netlify environment variables.',
-        503
+        400
       );
     }
 
@@ -254,10 +254,10 @@ export async function POST(request: NextRequest) {
         'Image upload requires Firebase Storage (Blaze plan) or Cloudinary. ' +
         'To fix: either (A) upgrade Firebase to Blaze plan at console.firebase.google.com → your project → Upgrade, ' +
         'or (B) add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to Netlify env vars (free at cloudinary.com).',
-        503
+        400
       );
     }
 
-    return sendServerError(msg);
+    return sendError(msg, 400);
   }
 }

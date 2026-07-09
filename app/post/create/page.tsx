@@ -74,10 +74,10 @@ export default function CreatePostPage() {
     })
       .then(r => r.json())
       .then(json => {
-        if (json.success && json.data) {
-          const p = json.data;
+        if (json.success && json.data?.product) {
+          const p = json.data.product;
           const product: TaggedProduct = {
-            id:    p._id ?? productId,
+            id:    p.id || p._id || productId,
             name:  p.name,
             price: p.price,
             image: p.images?.[0] ?? '/images/placeholder.jpg',
