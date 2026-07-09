@@ -121,6 +121,7 @@ export default function LogisticsDashboard() {
   const [showToggleSheet, setShowToggleSheet] = useState(false);
   const [toastMsg,        setToastMsg]        = useState('');
   const [deliveredFlash,  setDeliveredFlash]  = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<string>('approved');
 
   // ── Location state ───────────────────────────────────────────────────────
   const [locPermission, setLocPermission] = useState<LocPermission>('prompt');
@@ -153,6 +154,7 @@ export default function LogisticsDashboard() {
         if (d.success) {
           const p = d.data.profile;
           setProviderName([p.firstName, p.lastName].filter(Boolean).join(' ') || 'Courier');
+          setApplicationStatus(p.applicationStatus || 'pending');
           const s = d.data.stats;
           if (s?.todayRevenue    > 0) setTodayEarnings(s.todayRevenue);
           if (s?.todayDeliveries > 0) setTodayDeliveries(s.todayDeliveries);
@@ -542,7 +544,13 @@ export default function LogisticsDashboard() {
         </div>
 
         <button
-          onClick={() => driverStatus !== 'on-delivery' && setShowToggleSheet(true)}
+          onClick={() => {
+            if (applicationStatus !== 'approved') {
+              showToast('Verification Pending: Your profile is under review by admin.');
+              return;
+            }
+            if (driverStatus !== 'on-delivery') setShowToggleSheet(true);
+          }}
           disabled={driverStatus === 'on-delivery'}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
             driverStatus === 'online'      ? 'bg-green-600 text-white shadow-lg shadow-green-900/40' :
@@ -557,6 +565,19 @@ export default function LogisticsDashboard() {
           {driverStatus === 'online' ? 'ONLINE' : driverStatus === 'on-delivery' ? 'ON DELIVERY' : 'OFFLINE'}
         </button>
       </header>
+
+      {/* Verification Warning Bar */}
+      {applicationStatus !== 'approved' && (
+        <div className="bg-yellow-950/40 border-b border-yellow-800/40 px-4 py-3 flex items-start gap-3">
+          <span className="text-yellow-500 text-lg">⚠️</span>
+          <div>
+            <p className="text-sm font-semibold text-yellow-500">Account Application Under Review</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Your profile is currently being reviewed by the admin team. You can view your dashboard, statistics, and history, but you will not be able to accept delivery orders until your profile is approved.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Go Online / Go Offline Bottom Sheet ─────────────────────────── */}
       {showToggleSheet && (

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { User, UserRole } from '@/backend/models/User';
 import { LogisticsProfile } from '@/backend/models/LogisticsProfile';
 import { generateToken } from '@/backend/utils/jwt';
+import { sendVerificationEmail } from '@/backend/utils/email';
 import {
   sendSuccess,
   sendError,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const firstName = nameParts[0];
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Provider';
 
-    // Create user
+    // Create user with pending status
     const newUser = await User.create({
       firstName,
       lastName,
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       password: body.password,
       phoneNumber: body.phone,
       role: UserRole.LOGISTICS,
-      applicationStatus: 'approved',
+      applicationStatus: 'pending',
       isEmailVerified: false,
       isPhoneVerified: false,
       isActive: true,
@@ -89,6 +90,26 @@ export async function POST(request: NextRequest) {
       referrerRole:        body.referrerRole || undefined,
     });
 
+    // Generate and save OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await User.updateOne(newUser.id!, {
+      emailVerificationToken: otp,
+      emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    let emailSent = false;
+    let emailError: string | undefined;
+    try {
+      const host = request.headers.get('host') || 'localhost:3000';
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const baseUrl = `${protocol}://${host}`;
+      const emailResult = await sendVerificationEmail(newUser.email, newUser.firstName, otp, newUser.role as UserRole, baseUrl);
+      emailSent = emailResult.sent;
+      emailError = emailResult.error;
+    } catch (emailErr) {
+      console.error('[Logistics Signup] Unexpected email error:', emailErr);
+    }
+
     const token = generateToken(newUser.id!, newUser.email, UserRole.LOGISTICS);
 
     return sendSuccess({
@@ -98,12 +119,14 @@ export async function POST(request: NextRequest) {
         lastName: newUser.lastName,
         email: newUser.email,
         role: UserRole.LOGISTICS,
-        applicationStatus: 'approved',
+        applicationStatus: 'pending',
         isEmailVerified: false,
       },
       token,
-      requiresApproval: false,
-    }, 'Logistics provider application submitted successfully', 201);
+      requiresApproval: true,
+      requiresEmailVerification: true,
+      ...(emailSent ? {} : { emailWarning: emailError || 'Verification email could not be sent.' }),
+    }, 'Logistics provider application submitted successfully. Please check your email for a verification code.', 201);
   } catch (error: unknown) {
     const err = error as Error;
     console.error('[Logistics Signup]', err?.message || error);
