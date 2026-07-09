@@ -36,7 +36,40 @@ export default function CheckoutPage() {
     cardNumber: '', cardName: '', expiryDate: '', cvv: '', saveCard: false,
   });
 
-  const selectedCourier = COURIERS.find(c => c.id === selectedCourierId) ?? COURIERS[2];
+  const [couriers, setCouriers] = useState<any[]>(COURIERS);
+  const [_loadingCouriers, setLoadingCouriers] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/logistics/providers')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data?.providers?.length > 0) {
+          const mapped = d.data.providers.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            carrier: p.name,
+            tagline: p.description || 'Reliable logistics services',
+            icon: p.logo ? '🚚' : '📦',
+            price: Number(p.baseFee || 10),
+            deliveryDays: p.estimatedDelivery || '3-5 business days',
+            estimatedDate: p.estimatedDelivery || '3-5 business days',
+            features: p.features || [],
+            tracking: 'standard',
+            insurance: true,
+            signature: true,
+            available: true,
+          }));
+          setCouriers(mapped);
+          if (mapped.length > 0) {
+            setSelectedCourierId(mapped[0].id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCouriers(false));
+  }, []);
+
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId) ?? couriers[0] ?? COURIERS[2];
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = selectedCourier.price;
   const fees = calculateFees(subtotal, shipping);
@@ -292,7 +325,7 @@ export default function CheckoutPage() {
 
                 {/* ── Courier rows ────────────────────────────────────────── */}
                 <div className="bg-white dark:bg-charcoal-800 divide-y divide-cool-gray-100 dark:divide-charcoal-700/60">
-                  {COURIERS.map((courier) => {
+                  {couriers.map((courier) => {
                     const isSelected    = selectedCourierId === courier.id;
                     const isUnavailable = !courier.available;
                     return (
