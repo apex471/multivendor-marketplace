@@ -77,6 +77,10 @@ export const Transaction = {
     return snap.data().count;
   },
 
+  async updateOne(id: string, updates: Partial<ITransaction>): Promise<void> {
+    await db.collection(TRANSACTIONS).doc(id).update(updates as any);
+  },
+
   // Compute sum and count for completed transactions
   async aggregate(filter: Record<string, unknown> = {}): Promise<{ total: number; count: number; avg: number }> {
     const txs = await this.find({ ...filter, status: 'completed' });

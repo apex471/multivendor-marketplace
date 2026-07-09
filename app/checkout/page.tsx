@@ -98,8 +98,14 @@ export default function CheckoutPage() {
         return;
       }
       const orderId = data.data?.orderId;
-      clearCart();
-      router.push(`/order/confirmation?orderId=${orderId}`);
+      const paymentLink = data.paymentLink;
+
+      if (paymentLink) {
+        window.location.href = paymentLink;
+      } else {
+        clearCart();
+        router.push(`/order/confirmation?orderId=${orderId}`);
+      }
     } catch {
       setOrderError('Network error. Please check your connection and try again.');
     } finally {

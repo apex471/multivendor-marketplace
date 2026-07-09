@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       total:        buyerTotal,
       couponCode:   couponCode || undefined,
       status:       'pending',
-      paymentStatus: paymentMethod?.paymentIntentId ? 'paid' : 'pending',
+      paymentStatus: process.env.FLUTTERWAVE_SECRET_KEY ? 'pending' : 'paid',
     });
 
     // ── Record escrow transaction (buyer charge) ─────────────────────────────────
@@ -92,6 +92,47 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // ── Flutterwave Payment Link Initialization ──────────────────────────────────
+    let paymentLink: string | undefined;
+    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    if (flwSecretKey) {
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${flwSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tx_ref: orderId,
+            amount: buyerTotal,
+            currency: 'USD',
+            redirect_url: `${appUrl}/checkout/verify`,
+            customer: {
+              email: customerEmail || 'guest@example.com',
+              phonenumber: shippingInfo.phone || '0000000000',
+              name: shippingInfo.fullName,
+            },
+            customizations: {
+              title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
+              description: `Payment for order ${orderId}`,
+              logo: `${appUrl}/images/brand/clw-logo.png`,
+            },
+          }),
+        });
+
+        const flwData = await flwResponse.json();
+        if (flwResponse.ok && flwData.status === 'success') {
+          paymentLink = flwData.data.link;
+        } else {
+          console.error('[Flutterwave] Init failed:', flwData);
+        }
+      } catch (err) {
+        console.error('[Flutterwave] Init error:', err);
+      }
+    }
+
     // ── Sync to in-memory store for live logistics monitor ───────────────────────
     const inMemoryOrder = {
       id: orderId,
@@ -107,7 +148,7 @@ export async function POST(request: NextRequest) {
       subtotal:      fees.subtotal,
       tax:           fees.tax,
       status:        'pending' as const,
-      paymentStatus: 'paid' as const,
+      paymentStatus: (flwSecretKey ? 'pending' : 'paid') as 'pending' | 'paid',
       orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',
@@ -117,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      paymentLink,
       data: {
         orderId,
         order: inMemoryOrder,
