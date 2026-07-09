@@ -32,6 +32,7 @@ export interface IUser {
   phoneNumber?: string;
   role: UserRole;
   avatar?: string;
+  banner?: string;
   bio?: string;
   googleId?: string;
   oauthProvider?: 'google' | 'github' | 'facebook';

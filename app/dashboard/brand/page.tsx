@@ -46,7 +46,7 @@ interface BrandStats {
 
 export default function BrandDashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
@@ -56,6 +56,20 @@ export default function BrandDashboard() {
     totalAffiliates: 0, pendingRequests: 0, affiliateEarnings: 0,
   });
   const [_statsLoading, setStatsLoading] = useState(true);
+
+  // Profile avatar & banner states
+  const [avatar, setAvatar] = useState('');
+  const [banner, setBanner] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setAvatar(user.avatar || '');
+      setBanner(user.banner || '');
+    }
+  }, [user]);
 
   // Products state
   interface BrandProduct {
@@ -597,6 +611,13 @@ export default function BrandDashboard() {
     <div className="space-y-6">
       <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
         <h2 className="text-xl font-display font-bold text-white mb-6">Brand Settings</h2>
+        
+        {settingsMsg && (
+          <div className={`p-4 rounded-xl text-sm mb-6 ${settingsMsg.startsWith('✓') ? 'bg-green-900/30 text-green-300 border border-green-700' : 'bg-red-900/30 text-red-300 border border-red-700'}`}>
+            {settingsMsg}
+          </div>
+        )}
+
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -604,19 +625,167 @@ export default function BrandDashboard() {
             const fd   = new FormData(form);
             const authToken = getAuthToken();
             if (!authToken) return;
-            const nameParts = String(fd.get('brandName') ?? '').trim().split(' ');
-            await fetch('/api/auth/profile', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-              body: JSON.stringify({
-                firstName: nameParts[0] || '',
-                lastName:  nameParts.slice(1).join(' ') || '',
-                bio: fd.get('description'),
-              }),
-            });
+            const brandName = String(fd.get('brandName') ?? '').trim();
+            const description = String(fd.get('description') ?? '').trim();
+            const nameParts = brandName.split(' ');
+            
+            try {
+              const res = await fetch('/api/auth/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+                body: JSON.stringify({
+                  firstName: nameParts[0] || '',
+                  lastName:  nameParts.slice(1).join(' ') || '',
+                  bio: description,
+                  avatar: avatar || undefined,
+                  banner: banner || undefined,
+                }),
+              });
+              const json = await res.json();
+              if (res.ok && json.success) {
+                setSettingsMsg('✓ Profile updated successfully!');
+                updateUser({
+                  avatar: avatar || undefined,
+                  banner: banner || undefined,
+                  fullName: brandName,
+                  bio: description,
+                });
+              } else {
+                setSettingsMsg(json.message || 'Profile update failed.');
+              }
+            } catch {
+              setSettingsMsg('Profile update failed due to network error.');
+            }
           }}
-          className="space-y-5"
+          className="space-y-6"
         >
+          {/* Logo & Banner Upload Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-charcoal-700">
+            {/* Logo Upload */}
+            <div>
+              <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Brand Logo (Profile Picture)</label>
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-charcoal-700 border border-charcoal-600 flex items-center justify-center shrink-0">
+                  {avatar ? (
+                    <Image src={avatar} alt="Logo Preview" fill className="object-cover" />
+                  ) : (
+                    <span className="text-2xl">🏬</span>
+                  )}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="brand-logo-file"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setIsUploadingAvatar(true);
+                      setSettingsMsg('');
+                      try {
+                        const token = getAuthToken();
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('folder', 'profiles');
+                        const res = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                          body: fd,
+                        });
+                        const json = await res.json();
+                        if (res.ok && json.success) {
+                          setAvatar(json.data.url);
+                          setSettingsMsg('✓ Logo uploaded successfully!');
+                        } else {
+                          setSettingsMsg(json.message || 'Logo upload failed.');
+                        }
+                      } catch {
+                        setSettingsMsg('Logo upload failed due to network error.');
+                      } finally {
+                        setIsUploadingAvatar(false);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="brand-logo-file"
+                    className="px-4 py-2 bg-charcoal-700 hover:bg-charcoal-600 text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors inline-block"
+                  >
+                    Upload Logo
+                  </label>
+                  <p className="text-xs text-cool-gray-500 mt-1.5">Square JPG, PNG, or WebP. Max 10MB.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Banner Upload */}
+            <div>
+              <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Store Banner</label>
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full h-24 rounded-xl overflow-hidden bg-charcoal-700 border border-charcoal-600 flex items-center justify-center">
+                  {banner ? (
+                    <Image src={banner} alt="Banner Preview" fill className="object-cover" />
+                  ) : (
+                    <span className="text-cool-gray-500 text-sm">No Banner Uploaded</span>
+                  )}
+                  {isUploadingBanner && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="brand-banner-file"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setIsUploadingBanner(true);
+                      setSettingsMsg('');
+                      try {
+                        const token = getAuthToken();
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('folder', 'banners');
+                        const res = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                          body: fd,
+                        });
+                        const json = await res.json();
+                        if (res.ok && json.success) {
+                          setBanner(json.data.url);
+                          setSettingsMsg('✓ Banner uploaded successfully!');
+                        } else {
+                          setSettingsMsg(json.message || 'Banner upload failed.');
+                        }
+                      } catch {
+                        setSettingsMsg('Banner upload failed due to network error.');
+                      } finally {
+                        setIsUploadingBanner(false);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="brand-banner-file"
+                    className="px-4 py-2 bg-charcoal-700 hover:bg-charcoal-600 text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors inline-block"
+                  >
+                    Upload Banner
+                  </label>
+                  <p className="text-xs text-cool-gray-500 mt-1.5">Recommended ratio 3:1. Max 10MB.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Brand Name</label>
             <input
@@ -652,7 +821,7 @@ export default function BrandDashboard() {
         </form>
       </div>
     </div>
-  ), [user]);
+  ), [user, avatar, banner, isUploadingAvatar, isUploadingBanner, settingsMsg, updateUser]);
 
   return (
     <div className="min-h-screen bg-charcoal-950">

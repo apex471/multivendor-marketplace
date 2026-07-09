@@ -26,6 +26,7 @@ interface Vendor {
   id: string;
   name: string;
   avatar: string | null;
+  banner?: string | null;
   bio: string;
   products: number;
 }
@@ -34,6 +35,7 @@ interface Brand {
   id: string;
   name: string;
   avatar: string | null;
+  banner?: string | null;
   bio: string;
   products: number;
 }
@@ -47,6 +49,8 @@ interface Product {
   rating?: number;
   salesCount?: number;
   vendorName?: string;
+  category?: string;
+  tags?: string[];
 }
 
 export default function Home() {
@@ -78,6 +82,28 @@ export default function Home() {
       if (productsRes?.data?.products) setProducts(productsRes.data.products);
     });
   }, []);
+
+  const getCategoryImage = (catName: string): string | null => {
+    const found = products.find(p => {
+      const cat = p.category?.toLowerCase() || '';
+      const tags = (p.tags || []).map(t => t.toLowerCase());
+      const name = p.name?.toLowerCase() || '';
+      if (catName === "Women's Fashion") {
+        return cat === 'dresses' || cat === 'tops' || tags.includes('women') || tags.includes('womens') || name.includes('women') || name.includes('dress') || name.includes('girl');
+      }
+      if (catName === "Men's Fashion") {
+        return tags.includes('men') || tags.includes('mens') || name.includes('men') || name.includes('man') || name.includes('pants') || name.includes('jacket');
+      }
+      if (catName === 'Accessories') {
+        return cat === 'accessories' || cat === 'bags' || cat === 'jewelry' || tags.includes('accessory') || name.includes('bag') || name.includes('jewelry') || name.includes('bangles');
+      }
+      if (catName === 'Footwear') {
+        return cat === 'shoes' || cat === 'footwear' || tags.includes('shoes') || tags.includes('footwear') || name.includes('shoes') || name.includes('pants') || name.includes('boot') || name.includes('sneaker');
+      }
+      return false;
+    });
+    return found?.images?.[0] || null;
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,20 +343,36 @@ export default function Home() {
               <Link
                 key={vendor.id}
                 href={`/vendors/${vendor.id}`}
-                className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation"
+                className="group scroll-reveal bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation flex flex-col"
               >
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
-                  {vendor.avatar ? (
-                    <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-14 sm:h-14 rounded-full shrink-0 object-cover" />
+                {/* Store banner top section */}
+                <div className="relative h-16 sm:h-20 bg-linear-to-br from-purple-900/20 to-charcoal-700 flex items-center justify-center overflow-hidden shrink-0">
+                  {vendor.banner ? (
+                    <>
+                      <Image src={vendor.banner} alt={vendor.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-black/20" />
+                    </>
                   ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xl font-bold text-gold-600 shrink-0">
-                      {vendor.name.charAt(0)}
-                    </div>
+                    <div className="absolute inset-0 bg-linear-to-br from-purple-900/20 to-charcoal-700" />
                   )}
-                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded">✓ {t('verified')}</span>
                 </div>
-                <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 sm:mb-2 text-center sm:text-left truncate">{vendor.name}</h3>
-                <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">{vendor.products} {t('products_count')}</p>
+
+                <div className="p-3 sm:p-4 md:p-5 flex-1 flex flex-col -mt-8 sm:-mt-10 relative z-10">
+                  <div className="flex flex-col items-center sm:items-start sm:flex-row gap-2 sm:gap-4 mb-3">
+                    {vendor.avatar ? (
+                      <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full shrink-0 object-cover border-2 border-white dark:border-charcoal-800 shadow-md" />
+                    ) : (
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-lg sm:text-xl font-bold text-gold-600 shrink-0 border-2 border-white dark:border-charcoal-800 shadow-md">
+                        {vendor.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="sm:pt-6">
+                      <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded whitespace-nowrap">✓ {t('verified')}</span>
+                    </div>
+                  </div>
+                  <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 text-center sm:text-left truncate mt-1">{vendor.name}</h3>
+                  <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400 mt-auto">{vendor.products} {t('products_count')}</p>
+                </div>
               </Link>
             ))}
           </div>
@@ -367,14 +409,22 @@ export default function Home() {
                 href={`/brand/${brand.id}`}
                 className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-2xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1"
               >
-                <div className="relative h-24 sm:h-32 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center">
+                <div className="relative h-24 sm:h-32 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center overflow-hidden">
+                  {brand.banner ? (
+                    <>
+                      <Image src={brand.banner} alt={brand.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-black/25" />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-linear-to-br from-gold-900/20 to-charcoal-800" />
+                  )}
                   <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
                     <span>✓</span><span className="hidden sm:inline">Official</span>
                   </div>
                   {brand.avatar ? (
-                    <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-700 shadow-lg" />
+                    <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-700 shadow-lg relative z-10" />
                   ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-lg">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-lg relative z-10">
                       {brand.name.charAt(0)}
                     </div>
                   )}
@@ -510,19 +560,35 @@ export default function Home() {
               { name: "Men's Fashion", icon: '👔', color: 'from-blue-500 to-indigo-500' },
               { name: 'Accessories', icon: '👜', color: 'from-purple-500 to-pink-500' },
               { name: 'Footwear', icon: '👟', color: 'from-orange-500 to-red-500' },
-            ].map((category) => (
-              <Link
-                key={category.name}
-                href={`/shop?category=${category.name}`}
-                className="group relative overflow-hidden rounded-lg sm:rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation"
-              >
-                <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-110 transition-transform duration-300`} />
-                <div className="relative z-10 text-center text-white px-2">
-                  <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2 md:mb-3">{category.icon}</div>
-                  <div className="font-display font-bold text-sm sm:text-base md:text-xl leading-tight">{category.name}</div>
-                </div>
-              </Link>
-            ))}
+            ].map((category) => {
+              const img = getCategoryImage(category.name);
+              return (
+                <Link
+                  key={category.name}
+                  href={`/shop?category=${category.name}`}
+                  className="group relative overflow-hidden rounded-lg sm:rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation"
+                >
+                  {img ? (
+                    <>
+                      <Image
+                        src={img}
+                        alt={category.name}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="absolute inset-0 object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300" />
+                    </>
+                  ) : (
+                    <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-110 transition-transform duration-300`} />
+                  )}
+                  <div className="relative z-10 text-center text-white px-2">
+                    <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2 md:mb-3">{category.icon}</div>
+                    <div className="font-display font-bold text-sm sm:text-base md:text-xl leading-tight">{category.name}</div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
 

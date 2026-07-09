@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.role,
         avatar: user.avatar || null,
+        banner: user.banner || null,
         bio: user.bio || null,
         phoneNumber: user.phoneNumber || null,
         isEmailVerified: user.isEmailVerified,

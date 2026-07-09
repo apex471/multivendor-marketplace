@@ -33,6 +33,7 @@ export async function GET(
         lastName:    brand.lastName,
         email:       brand.email,
         avatar:      brand.avatar ?? null,
+        banner:      brand.banner ?? null,
         bio:         brand.bio ?? '',
         joinedAt:    brand.createdAt,
         productCount: products.length,

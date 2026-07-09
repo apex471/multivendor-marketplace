@@ -41,6 +41,7 @@ function normalizeUser(backendUser: any): User {
     firstName: backendUser.firstName,
     lastName: backendUser.lastName,
     avatar: backendUser.avatar ?? undefined,
+    banner: backendUser.banner ?? undefined,
     bio: backendUser.bio ?? undefined,
     phoneNumber: backendUser.phoneNumber ?? undefined,
     isEmailVerified: backendUser.isEmailVerified ?? false,

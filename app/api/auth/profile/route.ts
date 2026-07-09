@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
-    const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar'];
+    const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar', 'banner'];
     const updateData: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
@@ -51,6 +51,7 @@ export async function PUT(request: NextRequest) {
         email: updated!.email,
         role: updated!.role,
         avatar: updated!.avatar || null,
+        banner: updated!.banner || null,
         bio: updated!.bio || null,
         phoneNumber: updated!.phoneNumber || null,
       },

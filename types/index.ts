@@ -11,6 +11,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   avatar?: string;
+  banner?: string;
   bio?: string;
   phoneNumber?: string;
   isEmailVerified?: boolean;

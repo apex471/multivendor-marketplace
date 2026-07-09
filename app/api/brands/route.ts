@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
         id,
         name:     `${brand.firstName} ${brand.lastName ?? ''}`.trim(),
         avatar:   brand.avatar || null,
+        banner:   brand.banner || null,
         bio:      brand.bio    || '',
         products: countMap.get(id) || 0,
         joinedAt: brand.createdAt,

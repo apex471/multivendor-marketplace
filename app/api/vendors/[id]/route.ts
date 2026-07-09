@@ -33,6 +33,7 @@ export async function GET(
         lastName:    vendor.lastName,
         email:       vendor.email,
         avatar:      vendor.avatar ?? null,
+        banner:      vendor.banner ?? null,
         bio:         vendor.bio ?? '',
         phoneNumber: vendor.phoneNumber ?? '',
         joinedAt:    vendor.createdAt,

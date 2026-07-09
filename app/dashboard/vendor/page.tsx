@@ -13,9 +13,23 @@ type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 
 export default function VendorDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, updateUser } = useAuth();
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
+
+  // Profile avatar & banner states
+  const [avatar, setAvatar] = useState('');
+  const [banner, setBanner] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setAvatar(user.avatar || '');
+      setBanner(user.banner || '');
+    }
+  }, [user]);
+
   // ── Dashboard data state ────────────────────────────────────────────
   type VendorOrder = { id: string; customer: string; date: string; items: number; total: number; status: string };
   const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, avgRating: 0 });
@@ -594,11 +608,139 @@ export default function VendorDashboard() {
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
               <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Store Settings</h2>
               {settingsMsg && (
-                <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${
+                <div className={`mb-6 px-4 py-3 rounded-lg text-sm font-semibold ${
                   settingsMsg.startsWith('✓') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>{settingsMsg}</div>
               )}
               <div className="max-w-2xl space-y-6">
+                
+                {/* Logo & Banner Upload Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-200 dark:border-charcoal-700">
+                  {/* Logo Upload */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Logo (Profile Picture)</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-charcoal-700 border border-gray-200 dark:border-charcoal-600 flex items-center justify-center shrink-0">
+                        {avatar ? (
+                          <Image src={avatar} alt="Logo Preview" fill className="object-cover" />
+                        ) : (
+                          <span className="text-2xl">🏪</span>
+                        )}
+                        {isUploadingAvatar && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          id="vendor-logo-file"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setIsUploadingAvatar(true);
+                            setSettingsMsg('');
+                            try {
+                              const token = getAuthToken();
+                              const fd = new FormData();
+                              fd.append('file', file);
+                              fd.append('folder', 'profiles');
+                              const res = await fetch('/api/upload', {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${token}` },
+                                body: fd,
+                              });
+                              const json = await res.json();
+                              if (res.ok && json.success) {
+                                setAvatar(json.data.url);
+                                setSettingsMsg('✓ Logo uploaded successfully!');
+                              } else {
+                                setSettingsMsg(json.message || 'Logo upload failed.');
+                              }
+                            } catch {
+                              setSettingsMsg('Logo upload failed due to network error.');
+                            } finally {
+                              setIsUploadingAvatar(false);
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor="vendor-logo-file"
+                          className="px-4 py-2 bg-gray-200 dark:bg-charcoal-700 hover:bg-gray-300 dark:hover:bg-charcoal-600 text-gray-900 dark:text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors inline-block"
+                        >
+                          Upload Logo
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1.5">Square image. Max 10MB.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Banner Upload */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Banner</label>
+                    <div className="flex flex-col gap-3">
+                      <div className="relative w-full h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-charcoal-700 border border-gray-200 dark:border-charcoal-600 flex items-center justify-center">
+                        {banner ? (
+                          <Image src={banner} alt="Banner Preview" fill className="object-cover" />
+                        ) : (
+                          <span className="text-gray-500 text-sm">No Banner Uploaded</span>
+                        )}
+                        {isUploadingBanner && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          id="vendor-banner-file"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setIsUploadingBanner(true);
+                            setSettingsMsg('');
+                            try {
+                              const token = getAuthToken();
+                              const fd = new FormData();
+                              fd.append('file', file);
+                              fd.append('folder', 'banners');
+                              const res = await fetch('/api/upload', {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${token}` },
+                                body: fd,
+                              });
+                              const json = await res.json();
+                              if (res.ok && json.success) {
+                                setBanner(json.data.url);
+                                setSettingsMsg('✓ Banner uploaded successfully!');
+                              } else {
+                                setSettingsMsg(json.message || 'Banner upload failed.');
+                              }
+                            } catch {
+                              setSettingsMsg('Banner upload failed due to network error.');
+                            } finally {
+                              setIsUploadingBanner(false);
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor="vendor-banner-file"
+                          className="px-4 py-2 bg-gray-200 dark:bg-charcoal-700 hover:bg-gray-300 dark:hover:bg-charcoal-600 text-gray-900 dark:text-white rounded-lg text-sm font-semibold cursor-pointer transition-colors inline-block"
+                        >
+                          Upload Banner
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1.5">Recommended ratio 3:1. Max 10MB.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Store Name</label>
                   <input
@@ -655,10 +797,23 @@ export default function VendorDashboard() {
                             lastName:  parts.slice(1).join(' ') || '',
                             bio: settingsForm.bio,
                             phoneNumber: settingsForm.phone,
+                            avatar: avatar || undefined,
+                            banner: banner || undefined,
                           }),
                         });
                         const d = await res.json();
-                        setSettingsMsg(d.success ? '✓ Settings saved' : d.message || 'Save failed');
+                        if (res.ok && d.success) {
+                          setSettingsMsg('✓ Settings saved');
+                          updateUser({
+                            avatar: avatar || undefined,
+                            banner: banner || undefined,
+                            fullName: settingsForm.storeName,
+                            bio: settingsForm.bio,
+                            phoneNumber: settingsForm.phone,
+                          });
+                        } else {
+                          setSettingsMsg(d.message || 'Save failed');
+                        }
                       } catch {
                         setSettingsMsg('Save failed — please try again');
                       } finally {
@@ -671,7 +826,11 @@ export default function VendorDashboard() {
                     {settingsSaving ? 'Saving…' : 'Save Changes'}
                   </button>
                   <button
-                    onClick={() => setSettingsForm({ storeName: user?.fullName || '', bio: (user as unknown as Record<string,string>)?.bio || '', email: user?.email || '', phone: (user as unknown as Record<string,string>)?.phoneNumber || '' })}
+                    onClick={() => {
+                      setSettingsForm({ storeName: user?.fullName || '', bio: (user as unknown as Record<string,string>)?.bio || '', email: user?.email || '', phone: (user as unknown as Record<string,string>)?.phoneNumber || '' });
+                      setAvatar(user?.avatar || '');
+                      setBanner(user?.banner || '');
+                    }}
                     className="px-6 py-3 border border-gray-300 dark:border-charcoal-600 text-gray-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-12"
                   >
                     Cancel

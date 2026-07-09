@@ -43,7 +43,7 @@ export default function VendorDetailPage() {
           id:           String(v.id),
           name:         v.name,
           logo:         v.avatar || '/images/placeholder.jpg',
-          banner:       '/images/placeholder.jpg',
+          banner:       v.banner || '/images/placeholder.jpg',
           description:  v.bio || `Welcome to ${v.name}'s store.`,
           category:     'Vendor',
           rating:       0,
