@@ -92,44 +92,83 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // ── Flutterwave Payment Link Initialization ──────────────────────────────────
+    // ── Payment Link Initialization (Flutterwave for Card / Korapay for Bank) ─────
     let paymentLink: string | undefined;
+    const paymentType = paymentMethod?.type ?? 'card';
     const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    if (flwSecretKey) {
-      try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${flwSecretKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tx_ref: orderId,
-            amount: buyerTotal,
-            currency: 'USD',
-            redirect_url: `${appUrl}/checkout/verify`,
-            customer: {
-              email: customerEmail || 'guest@example.com',
-              phonenumber: shippingInfo.phone || '0000000000',
-              name: shippingInfo.fullName,
-            },
-            customizations: {
-              title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
-              description: `Payment for order ${orderId}`,
-              logo: `${appUrl}/images/brand/clw-logo.png`,
-            },
-          }),
-        });
+    const koraSecretKey = process.env.KORAPAY_SECRET_KEY;
 
-        const flwData = await flwResponse.json();
-        if (flwResponse.ok && flwData.status === 'success') {
-          paymentLink = flwData.data.link;
-        } else {
-          console.error('[Flutterwave] Init failed:', flwData);
+    if (paymentType === 'bank') {
+      if (koraSecretKey) {
+        try {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const koraResponse = await fetch('https://api.korapay.com/merchant/api/v1/charges/initialize', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${koraSecretKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              amount: buyerTotal,
+              reference: orderId,
+              currency: process.env.KORAPAY_CURRENCY || 'USD',
+              notification_url: `${appUrl}/api/payment/korapay/webhook`,
+              redirect_url: `${appUrl}/checkout/verify?gateway=korapay&order_id=${orderId}`,
+              customer: {
+                name: shippingInfo.fullName,
+                email: customerEmail || 'guest@example.com',
+              },
+              channels: ['bank_transfer'],
+            }),
+          });
+
+          const koraData = await koraResponse.json();
+          if (koraResponse.ok && koraData.status === true) {
+            paymentLink = koraData.data.checkout_url;
+          } else {
+            console.error('[Korapay] Init failed:', koraData);
+          }
+        } catch (err) {
+          console.error('[Korapay] Init error:', err);
         }
-      } catch (err) {
-        console.error('[Flutterwave] Init error:', err);
+      }
+    } else {
+      if (flwSecretKey) {
+        try {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${flwSecretKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              tx_ref: orderId,
+              amount: buyerTotal,
+              currency: 'USD',
+              redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
+              customer: {
+                email: customerEmail || 'guest@example.com',
+                phonenumber: shippingInfo.phone || '0000000000',
+                name: shippingInfo.fullName,
+              },
+              customizations: {
+                title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
+                description: `Payment for order ${orderId}`,
+                logo: `${appUrl}/images/brand/clw-logo.png`,
+              },
+            }),
+          });
+
+          const flwData = await flwResponse.json();
+          if (flwResponse.ok && flwData.status === 'success') {
+            paymentLink = flwData.data.link;
+          } else {
+            console.error('[Flutterwave] Init failed:', flwData);
+          }
+        } catch (err) {
+          console.error('[Flutterwave] Init error:', err);
+        }
       }
     }
 
@@ -148,7 +187,7 @@ export async function POST(request: NextRequest) {
       subtotal:      fees.subtotal,
       tax:           fees.tax,
       status:        'pending' as const,
-      paymentStatus: (flwSecretKey ? 'pending' : 'paid') as 'pending' | 'paid',
+      paymentStatus: (paymentLink ? 'pending' : 'paid') as 'pending' | 'paid',
       orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',

@@ -15,25 +15,38 @@ function VerifyPaymentContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const gateway = searchParams.get('gateway') || 'flutterwave';
   const status = searchParams.get('status');
-  const txRef = searchParams.get('tx_ref'); // orderId
+  const txRef = searchParams.get('tx_ref') || searchParams.get('order_id'); // orderId
   const transactionId = searchParams.get('transaction_id');
 
   useEffect(() => {
-    if (!status || !txRef) {
-      setErrorMsg('Invalid return parameters from payment gateway.');
-      return;
-    }
+    if (gateway === 'flutterwave') {
+      if (!status || !txRef) {
+        setErrorMsg('Invalid return parameters from payment gateway.');
+        return;
+      }
 
-    if (status !== 'successful') {
-      setErrorMsg('Payment was not completed successfully.');
-      return;
+      if (status !== 'successful') {
+        setErrorMsg('Payment was not completed successfully.');
+        return;
+      }
+    } else if (gateway === 'korapay') {
+      if (!txRef) {
+        setErrorMsg('Missing order reference for Korapay verification.');
+        return;
+      }
     }
 
     const verify = async () => {
-      setStatusMsg('Verifying your payment with Flutterwave...');
+      setStatusMsg(`Verifying your payment with ${gateway === 'korapay' ? 'Korapay' : 'Flutterwave'}...`);
       try {
-        const res = await fetch(`/api/payment/verify?transaction_id=${transactionId}&order_id=${txRef}`);
+        const queryParams = new URLSearchParams();
+        queryParams.set('gateway', gateway);
+        if (txRef) queryParams.set('order_id', txRef);
+        if (transactionId) queryParams.set('transaction_id', transactionId || '');
+
+        const res = await fetch(`/api/payment/verify?${queryParams.toString()}`);
         const data = await res.json();
         
         if (res.ok && data.success) {
@@ -52,7 +65,7 @@ function VerifyPaymentContent() {
     };
 
     verify();
-  }, [status, txRef, transactionId, clearCart, router]);
+  }, [gateway, status, txRef, transactionId, clearCart, router]);
 
   return (
     <div className="max-w-md w-full mx-auto bg-white dark:bg-charcoal-800 rounded-2xl shadow-xl p-8 text-center border border-cool-gray-100 dark:border-charcoal-700">
