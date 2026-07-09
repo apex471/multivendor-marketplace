@@ -254,10 +254,14 @@ export default function Header() {
                       ))
                     )}
                   </div>
-                  <div className="p-3 border-t border-cool-gray-200 dark:border-charcoal-700">
-                    <button className="text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold">
+                  <div className="p-3 border-t border-cool-gray-200 dark:border-charcoal-700 text-center">
+                    <Link
+                      href="/notifications"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="inline-block w-full text-center text-sm text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold"
+                    >
                       View all notifications
-                    </button>
+                    </Link>
                   </div>
                 </div>
               )}
