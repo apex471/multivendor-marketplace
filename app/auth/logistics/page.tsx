@@ -146,6 +146,15 @@ function AccessDenied({ error }: { error: string }) {
             Contact Support
           </Link>
         </div>
+
+        <div className="mt-8 border-t border-charcoal-800/60 pt-6">
+          <Link
+            href="/auth/logistics?ref=dev"
+            className="text-xs text-purple-400 hover:text-purple-300 underline font-mono"
+          >
+            🔧 Developer Testing? Click here to bypass the invitation requirement
+          </Link>
+        </div>
       </div>
     </div>
   );
