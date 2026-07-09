@@ -47,12 +47,17 @@ async function sendViaResend(opts: EmailOptions): Promise<EmailResult> {
 
   try {
     const resend = new Resend(apiKey);
+    const randomHex = Math.random().toString(36).substring(2, 15);
     const { error } = await resend.emails.send({
       from: `${APP_NAME} <${fromEmail}>`,
       to: [opts.to],
       subject: opts.subject,
       html: opts.html,
       text: opts.text || '',
+      headers: {
+        'X-Entity-Ref-ID': randomHex,
+        'Precedence': 'bulk',
+      },
     });
 
     if (error) {
@@ -95,7 +100,11 @@ async function sendViaSmtp(opts: EmailOptions): Promise<EmailResult> {
   }
 
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const fromEmail = process.env.SMTP_FROM_EMAIL || user;
+  const fromEmail = process.env.SMTP_FROM_EMAIL || user || 'noreply@certifiedluxuryworld.com';
+
+  const fromDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : 'certifiedluxuryworld.com';
+  const randomHex = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const messageId = `<${randomHex}@${fromDomain}>`;
 
   try {
     const transporter = nodemailer.createTransport({
@@ -111,6 +120,12 @@ async function sendViaSmtp(opts: EmailOptions): Promise<EmailResult> {
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
+      headers: {
+        'Message-ID': messageId,
+        'X-Entity-Ref-ID': randomHex,
+        'Precedence': 'bulk',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+      },
     });
     console.info(`[Email] ✅ Delivered via SMTP to ${opts.to}`);
     return { sent: true, provider: 'smtp' };
