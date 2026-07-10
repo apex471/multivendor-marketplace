@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
-import { COURIERS, BADGE_STYLES, TRACKING_LABEL, getCourierById } from '../../../lib/couriers';
+import { BADGE_STYLES, TRACKING_LABEL } from '../../../lib/couriers';
 import { getAuthToken } from '../../../lib/api/auth';
 
 interface SavedAddress {
@@ -23,11 +23,11 @@ interface SavedAddress {
 
 export default function ShippingPage() {
   const router = useRouter();
-  const { checkoutData, updateShippingAddress, updateCourierId } = useCheckout();
+  const { checkoutData, couriers, loadingCouriers, updateShippingAddress, updateCourierId } = useCheckout();
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId ?? 'quickbox');
-  const selectedCourier = getCourierById(selectedCourierId);
+  const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId);
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: '', name: 'Standard Courier', price: 10, icon: '📦', tagline: '', deliveryDays: '3-5 days', estimatedDate: '3-5 days', features: [], tracking: 'standard', insurance: true, signature: true, available: true, carrier: 'Courier' };
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
   useEffect(() => {
@@ -317,66 +317,74 @@ export default function ShippingPage() {
             {!showNewAddressForm && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">Choose Delivery Method</h3>
-                <div className="space-y-3">
-                  {COURIERS.map((courier) => {
-                    const isSelected    = selectedCourierId === courier.id;
-                    const isUnavailable = !courier.available;
-                    return (
-                      <label
-                        key={courier.id}
-                        className={`relative flex gap-4 p-4 rounded-xl border-2 transition-all ${
-                          isUnavailable
-                            ? 'opacity-50 cursor-not-allowed border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-900'
-                            : isSelected
-                            ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10 cursor-pointer'
-                            : 'border-cool-gray-200 dark:border-charcoal-600 bg-white dark:bg-charcoal-800 hover:border-gold-300 hover:bg-gold-50/40 dark:hover:bg-gold-900/5 cursor-pointer'
-                        }`}
-                      >
-                        <input type="radio" name="courier" value={courier.id}
-                          checked={isSelected} disabled={isUnavailable}
-                          onChange={() => setSelectedCourierId(courier.id)}
-                          className="mt-1 w-4 h-4 shrink-0 accent-gold-600" />
-                        <div className="text-3xl leading-none mt-0.5 shrink-0 select-none">{courier.icon}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-bold text-charcoal-900 dark:text-white text-sm sm:text-base">{courier.name}</span>
-                            {courier.badge && courier.badgeVariant && (
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BADGE_STYLES[courier.badgeVariant]}`}>
-                                {courier.badge}
-                              </span>
-                            )}
-                            {isUnavailable && (
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 text-charcoal-500 dark:text-cool-gray-400">
-                                Not available in your area
-                              </span>
-                            )}
+                {loadingCouriers ? (
+                  <div className="flex items-center justify-center py-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold-600 border-t-transparent" />
+                  </div>
+                ) : couriers.length === 0 ? (
+                  <div className="text-center py-6 text-charcoal-500">No delivery providers currently available.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {couriers.map((courier) => {
+                      const isSelected    = selectedCourierId === courier.id;
+                      const isUnavailable = !courier.available;
+                      return (
+                        <label
+                          key={courier.id}
+                          className={`relative flex gap-4 p-4 rounded-xl border-2 transition-all ${
+                            isUnavailable
+                              ? 'opacity-50 cursor-not-allowed border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-900'
+                              : isSelected
+                              ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10 cursor-pointer'
+                              : 'border-cool-gray-200 dark:border-charcoal-600 bg-white dark:bg-charcoal-800 hover:border-gold-300 hover:bg-gold-50/40 dark:hover:bg-gold-900/5 cursor-pointer'
+                          }`}
+                        >
+                          <input type="radio" name="courier" value={courier.id}
+                            checked={isSelected} disabled={isUnavailable}
+                            onChange={() => setSelectedCourierId(courier.id)}
+                            className="mt-1 w-4 h-4 shrink-0 accent-gold-600" />
+                          <div className="text-3xl leading-none mt-0.5 shrink-0 select-none">{courier.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="font-bold text-charcoal-900 dark:text-white text-sm sm:text-base">{courier.name}</span>
+                              {courier.badge && courier.badgeVariant && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BADGE_STYLES[courier.badgeVariant]}`}>
+                                  {courier.badge}
+                                </span>
+                              )}
+                              {isUnavailable && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 text-charcoal-500 dark:text-cool-gray-400">
+                                  Not available in your area
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mb-2">{courier.tagline}</p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                              <span className="flex items-center gap-1 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300">🕐 {courier.deliveryDays}</span>
+                              <span className="flex items-center gap-1 text-xs text-charcoal-500 dark:text-cool-gray-400">📅 Est. <strong className="text-charcoal-700 dark:text-cool-gray-300">{courier.estimatedDate}</strong></span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{TRACKING_LABEL[courier.tracking || 'standard']}</span>
+                              {courier.insurance && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">🛡️ Insured</span>}
+                              {courier.signature && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">✍️ Signature</span>}
+                              {Array.isArray(courier.features) && courier.features.slice(2).map((f: string, i: number) => (
+                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{f}</span>
+                              ))}
+                            </div>
                           </div>
-                          <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mb-2">{courier.tagline}</p>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-                            <span className="flex items-center gap-1 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300">🕐 {courier.deliveryDays}</span>
-                            <span className="flex items-center gap-1 text-xs text-charcoal-500 dark:text-cool-gray-400">📅 Est. <strong className="text-charcoal-700 dark:text-cool-gray-300">{courier.estimatedDate}</strong></span>
+                          <div className="text-right shrink-0 ml-2">
+                            <div className={`font-bold text-lg leading-tight ${
+                              courier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
+                            }`}>
+                              {courier.price === 0 ? 'FREE' : `$${courier.price.toFixed(2)}`}
+                            </div>
+                            <div className="text-[10px] text-charcoal-500 dark:text-cool-gray-400 mt-0.5 max-w-20 text-right leading-tight">{courier.carrier}</div>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{TRACKING_LABEL[courier.tracking]}</span>
-                            {courier.insurance && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">🛡️ Insured</span>}
-                            {courier.signature && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">✍️ Signature</span>}
-                            {courier.features.slice(2).map((f, i) => (
-                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{f}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0 ml-2">
-                          <div className={`font-bold text-lg leading-tight ${
-                            courier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
-                          }`}>
-                            {courier.price === 0 ? 'FREE' : `$${courier.price.toFixed(2)}`}
-                          </div>
-                          <div className="text-[10px] text-charcoal-500 dark:text-cool-gray-400 mt-0.5 max-w-20 text-right leading-tight">{courier.carrier}</div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="mt-4 p-3 rounded-lg bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700 flex items-start gap-2">
                   <span className="text-sm mt-0.5 shrink-0">ℹ️</span>
                   <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">

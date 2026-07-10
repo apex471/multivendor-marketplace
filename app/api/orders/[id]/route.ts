@@ -28,7 +28,20 @@ export async function PATCH(
     const payload = verifyToken(auth.slice(7));
     if (!payload) return sendError('Invalid token', 401);
 
+    const order = await Order.findById(id);
+    if (!order) return sendError('Order not found', 404);
+
     const body = await request.json().catch(() => ({}));
+
+    // Authorize customer or admin for 'completed' status transition
+    if (body.status === 'completed') {
+      const isAdmin = payload.role === 'admin';
+      const isCustomer = payload.userId === order.customerId;
+      if (!isAdmin && !isCustomer) {
+        return sendError('Access denied: Only the customer who placed this order or an admin can mark it as completed', 403);
+      }
+    }
+
     const mongoUpdates: Record<string, unknown> = {};
     if (body.status) mongoUpdates.status = body.status;
     if (body.paymentStatus) mongoUpdates.paymentStatus = body.paymentStatus;
@@ -38,6 +51,19 @@ export async function PATCH(
     if (body.acceptedAt) mongoUpdates.acceptedAt = new Date(body.acceptedAt);
     if (body.pickedUpAt) mongoUpdates.pickedUpAt = new Date(body.pickedUpAt);
     if (body.deliveredAt) mongoUpdates.deliveredAt = new Date(body.deliveredAt);
+
+    // Trigger escrow release if transition to completed
+    if (body.status === 'completed' && order.status !== 'completed') {
+      const { releaseEscrow } = await import('@/backend/utils/escrow');
+      await releaseEscrow(order.orderId);
+      mongoUpdates.paymentStatus = 'paid';
+      
+      // Sync in-memory store
+      try {
+        const OrderStore = await import('@/lib/store/orders');
+        OrderStore.update(order.orderId, { status: 'completed', paymentStatus: 'paid' });
+      } catch {}
+    }
 
     await Order.updateOne(id, mongoUpdates);
     const updated = await Order.findById(id);

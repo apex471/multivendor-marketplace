@@ -152,6 +152,10 @@ export async function POST(request: NextRequest) {
       return sendError('Post content is required', 400);
     }
 
+    if (!Array.isArray(hashtags) || hashtags.map((t: any) => String(t || '').trim()).filter(Boolean).length === 0) {
+      return sendError('Please add at least one tag to your post.', 400);
+    }
+
     // Build the post
     const post = await Post.create({
       authorId:     decoded.userId,

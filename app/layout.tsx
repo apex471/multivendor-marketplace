@@ -10,6 +10,7 @@ import { CartProvider } from "../contexts/CartContext";
 import GoogleOAuthProviderWrapper from "@/components/providers/GoogleOAuthProvider";
 import { ToastProvider } from "@/components/common/Toast";
 import ScrollRevealInitializer from "@/components/common/ScrollRevealInitializer";
+import CookieConsent from "@/components/common/CookieConsent";
 import { LocalizationProvider } from "../contexts/LocalizationContext";
 
 const inter = Inter({ 
@@ -97,6 +98,7 @@ export default function RootLayout({
                       <LogisticsProvider>
                         <ToastProvider>
                           <ScrollRevealInitializer />
+                          <CookieConsent />
                           {children}
                         </ToastProvider>
                       </LogisticsProvider>

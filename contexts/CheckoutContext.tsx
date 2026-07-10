@@ -1,7 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
-import { COURIERS } from '../lib/couriers';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface CartItem {
   id: string;
@@ -51,6 +50,8 @@ interface CheckoutData {
 
 interface CheckoutContextType {
   checkoutData: CheckoutData;
+  couriers: any[];
+  loadingCouriers: boolean;
   updateCartItems: (items: CartItem[]) => void;
   updateCartItem: (itemId: string, quantity: number) => void;
   removeCartItem: (itemId: string) => void;
@@ -69,7 +70,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     cartItems: [],
     shippingAddress: null,
     paymentMethod: null,
-    selectedCourierId: 'quickbox',
+    selectedCourierId: '',
     couponCode: '',
     discount: 0,
     subtotal: 0,
@@ -78,9 +79,55 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     total: 0
   });
 
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [loadingCouriers, setLoadingCouriers] = useState(true);
+
+  // Fetch real logistics providers on mount
+  useEffect(() => {
+    fetch('/api/logistics/providers')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data?.providers?.length > 0) {
+          const mapped = d.data.providers.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            carrier: p.name,
+            tagline: p.description || 'Reliable logistics services',
+            icon: p.logo ? '🚚' : '📦',
+            price: Number(p.baseFee || 10),
+            deliveryDays: p.estimatedDelivery || '3-5 business days',
+            estimatedDate: p.estimatedDelivery || '3-5 business days',
+            features: p.features || [],
+            tracking: 'standard',
+            insurance: true,
+            signature: true,
+            available: p.isActive !== false,
+          }));
+          setCouriers(mapped);
+          
+          // Set default selected courier ID
+          setCheckoutData(prev => {
+            const defaultId = mapped[0]?.id || '';
+            const courier = mapped.find((c: any) => c.id === defaultId) || { price: 0 };
+            const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const discountAmount = (subtotal * prev.discount) / 100;
+            const tax = (subtotal - discountAmount) * 0.08;
+            return {
+              ...prev,
+              selectedCourierId: defaultId,
+              shippingCost: courier.price,
+              total: subtotal - discountAmount + courier.price + tax
+            };
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCouriers(false));
+  }, []);
+
   const updateCartItems = (items: CartItem[]) => {
     setCheckoutData(prev => ({ ...prev, cartItems: items }));
-    calculateTotals();
+    setTimeout(calculateTotals, 0);
   };
 
   const updateCartItem = (itemId: string, quantity: number) => {
@@ -131,7 +178,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     setCheckoutData(prev => {
       const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
-      const courier = COURIERS.find(c => c.id === prev.selectedCourierId) ?? COURIERS[2];
+      const courier = couriers.find(c => c.id === prev.selectedCourierId) || { price: 0 };
       const shippingCost = courier.price;
       
       const discountAmount = (subtotal * prev.discount) / 100;
@@ -153,11 +200,11 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       cartItems: [],
       shippingAddress: null,
       paymentMethod: null,
-      selectedCourierId: 'quickbox',
+      selectedCourierId: couriers[0]?.id || '',
       couponCode: '',
       discount: 0,
       subtotal: 0,
-      shippingCost: 0,
+      shippingCost: couriers[0]?.price || 0,
       tax: 0,
       total: 0
     });
@@ -172,6 +219,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     <CheckoutContext.Provider
       value={{
         checkoutData,
+        couriers,
+        loadingCouriers,
         updateCartItems,
         updateCartItem,
         removeCartItem,

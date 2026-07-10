@@ -178,7 +178,7 @@ We do not sell personal information. To exercise your rights, contact us at priv
 • Right to object to processing
 • Rights related to automated decision-making
 
-Contact our Data Protection Officer at dpo@fashionmarketplace.com.`,
+Contact our Data Protection Officer at dpo@clwmarketplace.com.`,
     },
     {
       title: '13. Changes to Privacy Policy',
@@ -192,17 +192,36 @@ Contact our Data Protection Officer at dpo@fashionmarketplace.com.`,
 Your continued use after changes constitutes acceptance of the updated policy.`,
     },
     {
-      title: '14. Contact Us',
-      content: `For questions or concerns about this Privacy Policy or our data practices:
+      title: '14. Nigeria Data Protection Regulations (NDPR & NDPA)',
+      content: `If you are using our services in Nigeria, your personal data is protected under the Nigeria Data Protection Act (NDPA) 2023 and the Nigeria Data Protection Regulation (NDPR).
 
-**Email:** privacy@fashionmarketplace.com
-**Mail:** Privacy Team, 123 Fashion Avenue, New York, NY 10001
-**Phone:** +1 (234) 567-890
+**Legal Bases for Processing:**
+• **Consent:** You explicitly agree to the collection and use of your data (e.g. fashion preferences, profile information).
+• **Contractual Obligation:** Processing is required to perform our contract with you, including checkout verification, seller escrow payouts, and logistics dispatch/pickup/delivery.
+• **Legitimate Interest:** To prevent fraud, ensure platform security, and improve marketplace services.
+• **Legal Compliance:** To satisfy tax, financial audit, and anti-money laundering regulations in Nigeria.
 
-**Data Protection Officer:**
-Email: dpo@fashionmarketplace.com
+**Data Subject Rights in Nigeria:**
+• Right to be informed about how we collect and process your data.
+• Right of access to request a copy of your personal data.
+• Right to object to processing or restrict use.
+• Right to rectification and erasure of incorrect or obsolete records.
+• Right to data portability.
+• Right to withdraw consent at any time.
 
-We will respond to your inquiry within 30 days.`,
+**Redress Mechanism:**
+If you believe your data privacy rights have been violated, you have the right to lodge a formal complaint with the Nigeria Data Protection Commission (NDPC) at info@ndpc.gov.ng.`,
+    },
+    {
+      title: '15. Contact Us & Data Protection Officer (DPO)',
+      content: `For questions, concerns, or requests regarding this Privacy Policy:
+
+**Email:** privacy@clwmarketplace.com
+**Address:** CLW Marketplace HQ, Victoria Island, Lagos, Nigeria.
+**Data Protection Officer (DPO):**
+Email: dpo@clwmarketplace.com
+
+We will respond to all queries within 30 days as required under the NDPA.`,
     },
   ];
 
@@ -273,23 +292,23 @@ We will respond to your inquiry within 30 days.`,
         <div className="max-w-4xl mx-auto mt-12">
           <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-8">
             <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6 text-center">
-              Our Privacy Commitments
+              Our Data Protection Commitments
             </h2>
             <div className="grid sm:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="text-5xl mb-3">🔒</div>
-                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">SSL Encrypted</h3>
-                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">All data transmission secured</p>
+                <div className="text-5xl mb-3">🇳🇬</div>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">NDPA Compliant</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Nigeria Data Protection Act 2023</p>
               </div>
               <div className="text-center">
                 <div className="text-5xl mb-3">🛡️</div>
-                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">GDPR Compliant</h3>
-                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">EU data protection standards</p>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">NDPR Aligned</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Data protection directives by NITDA</p>
               </div>
               <div className="text-center">
-                <div className="text-5xl mb-3">✅</div>
-                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">CCPA Compliant</h3>
-                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">California privacy rights</p>
+                <div className="text-5xl mb-3">🔒</div>
+                <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">Secure & Encrypted</h3>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">SSL encryption on all transactions</p>
               </div>
             </div>
           </div>

@@ -8,14 +8,13 @@ import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
 import { useCart } from '../../../contexts/CartContext';
-import { getCourierById } from '../../../lib/couriers';
 
 export default function ReviewPage() {
   const router = useRouter();
-  const { checkoutData, clearCheckout } = useCheckout();
+  const { checkoutData, couriers, clearCheckout } = useCheckout();
   const { clearCart } = useCart();
   const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total, couponCode } = checkoutData;
-  const selectedCourier = getCourierById(selectedCourierId);
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: selectedCourierId, name: 'Standard Delivery', price: shippingCost, icon: '📦', carrier: 'Courier', estimatedDate: '3-5 days', deliveryDays: '3-5 days', tracking: 'standard' };
 
   const [isPlacing, setIsPlacing] = useState(false);
   const [placeError, setPlaceError] = useState('');

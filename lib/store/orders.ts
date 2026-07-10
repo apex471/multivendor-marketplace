@@ -9,6 +9,7 @@ export type OrderStatus =
   | 'processing'
   | 'shipped'
   | 'delivered'
+  | 'completed'
   | 'cancelled';
 
 export interface StoredOrderCourier {

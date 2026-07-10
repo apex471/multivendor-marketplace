@@ -114,16 +114,6 @@ async function verifyOrderPayment(orderId: string, docId: string) {
     paymentStatus: 'paid',
   });
 
-  // Update Firestore Escrow Transaction
-  const txns = await Transaction.find({ orderId, type: 'order_payment' });
-  if (txns.length > 0) {
-    for (const txn of txns) {
-      await Transaction.updateOne(txn.id, {
-        status: 'completed',
-      });
-    }
-  }
-
   // Update in-memory order store
   const memOrder = OrderStore.getById(orderId);
   if (memOrder) {

@@ -104,11 +104,84 @@ export default function LogisticsDashboard() {
     }
   }, []);
 
+  // ── Withdrawal & Balance State ───────────────────────────────────────────
+  const [withdrawableBalance, setWithdrawableBalance] = useState(0);
+  const [txHistory, setTxHistory] = useState<any[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [withdrawError, setWithdrawError] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  const loadEarningsAndWithdrawals = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setLoadingTx(true);
+    try {
+      const res = await fetch('/api/logistics/withdraw', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setWithdrawableBalance(json.data.balance || 0);
+        setTxHistory(json.data.history || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingTx(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'notifications') {
       loadBeepsNotifications();
     }
   }, [activeTab, loadBeepsNotifications]);
+
+  useEffect(() => {
+    if (activeTab === 'earnings') {
+      loadEarningsAndWithdrawals();
+    }
+  }, [activeTab, loadEarningsAndWithdrawals]);
+
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWithdrawError('');
+    setIsWithdrawing(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/logistics/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: Number(withdrawAmount),
+          bankName,
+          accountNumber,
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('🟢 Withdrawal processed successfully!');
+        setShowWithdrawModal(false);
+        setWithdrawAmount('');
+        setBankName('');
+        setAccountNumber('');
+        loadEarningsAndWithdrawals();
+      } else {
+        setWithdrawError(json.message || 'Failed to request withdrawal');
+      }
+    } catch {
+      setWithdrawError('Network error — please try again');
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
   const [incomingOrder,   setIncomingOrder]   = useState<DeliveryOrder | null>(null);
   const [activeOrder,     setActiveOrder]     = useState<DeliveryOrder | null>(null);
   const [history,         setHistory]         = useState<DeliveryOrder[]>([]);
@@ -516,6 +589,74 @@ export default function LogisticsDashboard() {
             <div className="text-8xl mb-3 animate-bounce">🎉</div>
             <p className="text-3xl font-black text-white">Delivered!</p>
             <p className="text-yellow-400 font-semibold mt-1">+${activeOrder?.deliveryFee.toFixed(2)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => { setShowWithdrawModal(false); setWithdrawError(''); }}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white text-lg"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-bold text-white">Withdraw Funds</h3>
+            <p className="text-xs text-gray-400">Request payout directly to your bank account.</p>
+
+            <form onSubmit={handleWithdrawSubmit} className="space-y-4 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5">Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  placeholder="Enter amount"
+                  value={withdrawAmount}
+                  onChange={e => setWithdrawAmount(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-yellow-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5">Bank Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Chase, GTBank"
+                  value={bankName}
+                  onChange={e => setBankName(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-yellow-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5">Account Number</label>
+                <input
+                  type="text"
+                  placeholder="Enter account number"
+                  value={accountNumber}
+                  onChange={e => setAccountNumber(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-yellow-600"
+                />
+              </div>
+
+              {withdrawError && (
+                <p className="text-xs text-red-500 bg-red-950/20 border border-red-900/50 rounded-lg p-2.5">{withdrawError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isWithdrawing}
+                className="w-full py-3.5 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg"
+              >
+                {isWithdrawing ? 'Processing...' : 'Submit Request'}
+              </button>
+            </form>
           </div>
         </div>
       )}
@@ -1157,52 +1298,78 @@ export default function LogisticsDashboard() {
         {/* ── EARNINGS TAB ─────────────────────────────────────────────── */}
         {activeTab === 'earnings' && (
           <div className="p-4 space-y-4 max-w-lg mx-auto">
-            <h2 className="text-lg font-black text-white pt-1">Earnings</h2>
+            <h2 className="text-lg font-black text-white pt-1">Balance & Earnings</h2>
+            
+            {/* Withdrawable Balance Card */}
+            <div className="rounded-3xl bg-gradient-to-br from-yellow-700 to-yellow-900 border border-yellow-600/50 p-6 text-white shadow-xl relative overflow-hidden">
+              <p className="text-xs text-yellow-200/80 font-medium">Withdrawable Balance</p>
+              <h3 className="text-3xl font-black mt-1">${withdrawableBalance.toFixed(2)}</h3>
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => setShowWithdrawModal(true)}
+                  className="px-5 py-2.5 bg-white text-yellow-900 font-bold rounded-xl hover:bg-yellow-50 transition-colors text-xs shadow-md"
+                >
+                  💳 Withdraw Funds
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Today',      value: todayEarnings,  highlight: true  },
+                { label: 'Today',      value: todayEarnings,  highlight: false },
                 { label: 'This Week',  value: weekEarnings,   highlight: false },
                 { label: 'This Month', value: monthEarnings,  highlight: false },
               ].map(p => (
-                <div key={p.label} className={`rounded-2xl p-4 border ${
-                  p.highlight ? 'bg-yellow-700 border-yellow-600' : 'bg-gray-800 border-gray-700'
-                }`}>
-                  <p className="text-[11px] text-yellow-200/60 mb-1">{p.label}</p>
+                <div key={p.label} className="rounded-2xl p-4 border bg-gray-800 border-gray-700">
+                  <p className="text-[11px] text-gray-400 mb-1">{p.label}</p>
                   <p className="text-xl font-black text-white">${p.value.toFixed(2)}</p>
                 </div>
               ))}
             </div>
+
+            {/* Transaction & Withdrawal History */}
             <div className="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-700">
-                <p className="text-sm font-bold text-white">Delivery Breakdown</p>
+              <div className="px-4 py-3 border-b border-gray-700 flex justify-between items-center bg-gray-700/30">
+                <p className="text-sm font-bold text-white">Transaction History</p>
+                {loadingTx && <span className="text-xs text-yellow-500 animate-pulse">loading...</span>}
               </div>
-              {deliveredHistory.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 text-sm">No completed deliveries yet</div>
+              {txHistory.length === 0 ? (
+                <div className="text-center py-10 text-gray-500 text-sm">No transaction records found</div>
               ) : (
-                <>
-                  {deliveredHistory.map(order => (
-                    <div key={order.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-700/50 last:border-0">
-                      <span className="text-2xl shrink-0">{order.courierIcon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">
-                          {order.pickupStore} → {order.customer.split(' ')[0]}
-                        </p>
-                        <p className="text-[11px] text-gray-400">
-                          {order.distance} · {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </p>
+                <div className="divide-y divide-gray-700/50">
+                  {txHistory.map((tx, idx) => {
+                    const isIncome = tx.type === 'escrow_release' || tx.type === 'logistics_release';
+                    return (
+                      <div key={tx.id || idx} className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-700/20 transition-colors">
+                        <span className="text-2xl shrink-0">{isIncome ? '💰' : '💳'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">
+                            {isIncome ? `Delivery Payout` : 'Withdrawal Request'}
+                          </p>
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {tx.description || (isIncome ? `Order delivery fee` : `Bank account transfer`)}
+                          </p>
+                          <p className="text-[9px] text-gray-500">
+                            {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'Recent'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-sm font-black ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+                            {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+                          </p>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            tx.status === 'completed' ? 'bg-green-950 text-green-400' : tx.status === 'pending' ? 'bg-yellow-950 text-yellow-400' : 'bg-red-950 text-red-400'
+                          }`}>
+                            {tx.status}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-base font-bold text-yellow-400 shrink-0">+${order.deliveryFee.toFixed(2)}</p>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between px-4 py-3.5 bg-gray-700/50">
-                    <p className="text-sm font-bold text-white">Total ({deliveredHistory.length} deliveries)</p>
-                    <p className="text-base font-black text-yellow-400">
-                      ${deliveredHistory.reduce((s, o) => s + o.deliveryFee, 0).toFixed(2)}
-                    </p>
-                  </div>
-                </>
+                    );
+                  })}
+                </div>
               )}
             </div>
+
             <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 space-y-4">
               <p className="text-sm font-bold text-white">Performance</p>
               {[

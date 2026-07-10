@@ -18,7 +18,7 @@ interface OrderItem {
 interface Order {
   id: string;
   date: string;
-  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'returned';
   total: number;
   items: OrderItem[];
   itemCount: number;
@@ -96,11 +96,14 @@ export default function OrdersPage() {
       return 0;
     });
 
-  const statusConfig = {
+  const statusConfig: Record<string, { color: string; icon: string; label: string }> = {
+    pending: { color: 'bg-gray-100 text-gray-800', icon: '🕐', label: 'Pending' },
     processing: { color: 'bg-yellow-100 text-yellow-800', icon: '⏳', label: 'Processing' },
     shipped: { color: 'bg-blue-100 text-blue-800', icon: '🚚', label: 'Shipped' },
     delivered: { color: 'bg-green-100 text-green-800', icon: '✓', label: 'Delivered' },
+    completed: { color: 'bg-green-100 text-green-800', icon: '🎉', label: 'Completed' },
     cancelled: { color: 'bg-red-100 text-red-800', icon: '✕', label: 'Cancelled' },
+    returned: { color: 'bg-orange-100 text-orange-800', icon: '🔄', label: 'Returned' },
   };
 
   const filters = [
@@ -108,6 +111,7 @@ export default function OrdersPage() {
     { value: 'processing', label: 'Processing' },
     { value: 'shipped', label: 'Shipped' },
     { value: 'delivered', label: 'Delivered' },
+    { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
   ];
 
@@ -326,6 +330,33 @@ export default function OrdersPage() {
 
                   {/* Order Actions */}
                   <div className="p-4 sm:p-6 border-t dark:border-charcoal-700 bg-gray-50 dark:bg-charcoal-900 flex flex-wrap gap-2">
+                    {(order.status === 'shipped' || order.status === 'delivered') && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Are you sure you want to mark this order as completed and release the escrow payment?')) return;
+                          try {
+                            const token = getAuthToken();
+                            const res = await fetch(`/api/orders/${order.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                              body: JSON.stringify({ status: 'completed' }),
+                            });
+                            const json = await res.json();
+                            if (json.success) {
+                              setAllOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed' } : o));
+                              alert('Order completed successfully! Escrow payments released.');
+                            } else {
+                              alert(json.message ?? 'Failed to complete order');
+                            }
+                          } catch {
+                            alert('Network error — please try again');
+                          }
+                        }}
+                        className="px-4 py-2 bg-gold-600 text-white rounded-lg text-sm font-semibold hover:bg-gold-700 transition-colors"
+                      >
+                        Confirm Receipt / Complete
+                      </button>
+                    )}
                     {order.status === 'shipped' && (
                       <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
                         Track Package

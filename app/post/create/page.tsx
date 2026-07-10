@@ -149,6 +149,11 @@ export default function CreatePostPage() {
       alert('Please add a caption');
       return;
     }
+    const tagsList = hashtags.split(',').map(t => t.trim()).filter(t => t);
+    if (tagsList.length === 0) {
+      setPublishError('Please add at least one tag to your post.');
+      return;
+    }
 
     const token = getAuthToken();
     if (!token) {

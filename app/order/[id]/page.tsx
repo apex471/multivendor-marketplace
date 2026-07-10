@@ -19,7 +19,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'returned';
   date: string;
   items: OrderItem[];
   subtotal: number;
@@ -153,20 +153,23 @@ export default function OrderDetailPage() {
     processing: { color: 'bg-yellow-100 text-yellow-800', icon: '⏳', label: 'Processing' },
     shipped: { color: 'bg-blue-100 text-blue-800', icon: '🚚', label: 'Shipped' },
     delivered: { color: 'bg-green-100 text-green-800', icon: '✓', label: 'Delivered' },
+    completed: { color: 'bg-green-100 text-green-800', icon: '🎉', label: 'Completed' },
     cancelled: { color: 'bg-red-100 text-red-800', icon: '✕', label: 'Cancelled' },
+    returned:  { color: 'bg-orange-100 text-orange-800', icon: '🔄', label: 'Returned' },
   };
 
-  const currentStatus = statusConfig[order.status];
+  const currentStatus = statusConfig[order.status] || { color: 'bg-gray-100 text-gray-800', icon: '📦', label: order.status };
 
   const orderSteps = [
     { status: 'processing', label: 'Order Placed',  date: new Date(order.date).toLocaleDateString() },
     { status: 'processing', label: 'Processing',    date: new Date(order.date).toLocaleDateString() },
-    { status: 'shipped',    label: 'Shipped',       date: order.pickedUpAt   ? new Date(order.pickedUpAt).toLocaleDateString()  : order.status === 'shipped'    || order.status === 'delivered' ? new Date(order.date).toLocaleDateString() : '' },
-    { status: 'delivered',  label: 'Delivered',     date: order.deliveredAt  ? new Date(order.deliveredAt).toLocaleDateString() : order.status === 'delivered' ? new Date(order.date).toLocaleDateString() : '' },
+    { status: 'shipped',    label: 'Shipped',       date: order.pickedUpAt   ? new Date(order.pickedUpAt).toLocaleDateString()  : order.status === 'shipped'    || order.status === 'delivered' || order.status === 'completed' ? new Date(order.date).toLocaleDateString() : '' },
+    { status: 'delivered',  label: 'Delivered',     date: order.deliveredAt  ? new Date(order.deliveredAt).toLocaleDateString() : order.status === 'delivered' || order.status === 'completed' ? new Date(order.date).toLocaleDateString() : '' },
+    { status: 'completed',  label: 'Completed',     date: order.status === 'completed' ? new Date(order.date).toLocaleDateString() : '' },
   ];
 
   const getStepStatus = (stepStatus: string) => {
-    const statusOrder = ['processing', 'shipped', 'delivered'];
+    const statusOrder = ['processing', 'shipped', 'delivered', 'completed'];
     const currentIndex = statusOrder.indexOf(order.status);
     const stepIndex = statusOrder.indexOf(stepStatus);
     
@@ -390,8 +393,36 @@ export default function OrderDetailPage() {
 
             {/* Actions */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-charcoal-900 mb-4">Need Help?</h3>
+              <h3 className="text-xl font-bold text-charcoal-900 mb-4">Actions</h3>
               <div className="space-y-3">
+                {(order.status === 'shipped' || order.status === 'delivered') && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Are you sure you want to mark this order as completed and release the escrow payment?')) return;
+                      try {
+                        const { getAuthToken } = await import('@/lib/api/auth');
+                        const token = getAuthToken();
+                        const res = await fetch(`/api/orders/${order.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                          body: JSON.stringify({ status: 'completed' }),
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                          setOrder(prev => prev ? { ...prev, status: 'completed' } : prev);
+                          alert('Order completed successfully! Escrow payments released.');
+                        } else {
+                          alert(json.message ?? 'Failed to complete order');
+                        }
+                      } catch {
+                        alert('Network error — please try again');
+                      }
+                    }}
+                    className="block w-full px-4 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-center"
+                  >
+                    ✓ Confirm Receipt / Complete Order
+                  </button>
+                )}
                 <Link
                   href="/contact"
                   className="block w-full px-4 py-3 bg-gray-100 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-center"

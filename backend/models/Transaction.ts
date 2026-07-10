@@ -7,7 +7,8 @@ export type TransactionType =
   | 'stripe_fee'          // stripe processing fee absorbed by platform (2.9%)
   | 'refund'
   | 'commission_payout'
-  | 'withdrawal';
+  | 'withdrawal'
+  | 'logistics_release';
 
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
