@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/admin/orders', label: 'Orders', icon: '📦', desc: 'Order tracking' },
   { href: '/admin/products', label: 'Products', icon: '🏷️', desc: 'Catalog control' },
   { href: '/admin/escrow', label: 'Escrow', icon: '🔒', desc: 'Payment releases', badgeKey: 'escrow' as const },
+  { href: '/admin/payouts', label: 'Payouts', icon: '💸', desc: 'Approve vendor payouts', badgeKey: 'payouts' as const },
   { href: '/admin/support', label: 'Support', icon: '💬', desc: 'Customer tickets', badgeKey: 'tickets' as const },
   { href: '/admin/reports', label: 'Reports', icon: '📊', desc: 'Analytics & exports' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️', desc: 'Platform config' },
@@ -28,13 +29,14 @@ interface BadgeCounts {
   tickets: number;
   escrow: number;
   waitlist: number;
+  payouts: number;
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [badges, setBadges] = useState<BadgeCounts>({ approvals: 0, tickets: 0, escrow: 0, waitlist: 0 });
+  const [badges, setBadges] = useState<BadgeCounts>({ approvals: 0, tickets: 0, escrow: 0, waitlist: 0, payouts: 0 });
   const [adminName, setAdminName] = useState('Administrator');
   const [adminInitial, setAdminInitial] = useState('A');
   const [isVerifying, setIsVerifying] = useState(true);
@@ -92,6 +94,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             tickets: statsData.data.pending.tickets || 0,
             escrow: statsData.data.pending.escrow || 0,
             waitlist: statsData.data.pending.waitlist || 0,
+            payouts: statsData.data.pending.payouts || 0,
           });
         }
       })
@@ -129,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const totalBadge = badges.approvals + badges.tickets + badges.escrow + badges.waitlist;
+  const totalBadge = badges.approvals + badges.tickets + badges.escrow + badges.waitlist + badges.payouts;
 
   return (
     <div className="flex h-screen bg-cool-gray-50 dark:bg-charcoal-900 overflow-hidden">

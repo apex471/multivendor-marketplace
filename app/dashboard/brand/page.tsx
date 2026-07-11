@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
 
-type TabType = 'overview' | 'products' | 'affiliates' | 'analytics' | 'settings' | 'logistics';
+type TabType = 'overview' | 'products' | 'affiliates' | 'analytics' | 'payouts' | 'settings' | 'logistics';
 
 interface AffiliateRequest {
   id: string;
@@ -50,6 +50,107 @@ export default function BrandDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
+
+  // ── Payout & Wallet state ──
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutBankName, setPayoutBankName] = useState('');
+  const [payoutAccHolder, setPayoutAccHolder] = useState('');
+  const [payoutAccNumber, setPayoutAccNumber] = useState('');
+  const [payoutRouting, setPayoutRouting] = useState('');
+  const [payoutError, setPayoutError] = useState('');
+  const [payoutSuccess, setPayoutSuccess] = useState('');
+  const [isSubmittingPayout, setIsSubmittingPayout] = useState(false);
+
+  const loadPayoutData = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      const res = await fetch('/api/withdraw', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      if (json.success) {
+        setWalletBalance(json.data.balance || 0);
+        setTotalEarned(json.data.totalEarned || 0);
+        setTotalWithdrawn(json.data.totalWithdrawn || 0);
+        setPayoutHistory(json.data.history || []);
+      }
+    } catch (err) {
+      console.error('Failed to load wallet data', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'payouts') {
+      loadPayoutData();
+    }
+  }, [activeTab, loadPayoutData]);
+
+  const handlePayoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPayoutError('');
+    setPayoutSuccess('');
+    setIsSubmittingPayout(true);
+
+    const amount = Number(payoutAmount);
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      setPayoutError('Please enter a valid amount');
+      setIsSubmittingPayout(false);
+      return;
+    }
+
+    if (!payoutBankName || !payoutAccHolder || !payoutAccNumber) {
+      setPayoutError('Please fill in all required fields');
+      setIsSubmittingPayout(false);
+      return;
+    }
+
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount,
+          bankName: payoutBankName,
+          accountHolderName: payoutAccHolder,
+          accountNumber: payoutAccNumber,
+          routingNumber: payoutRouting,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Withdrawal failed');
+
+      setPayoutSuccess('🟢 Payout request submitted! Awaiting admin approval.');
+      setPayoutAmount('');
+      setPayoutBankName('');
+      setPayoutAccHolder('');
+      setPayoutAccNumber('');
+      setPayoutRouting('');
+      
+      // Reload balance
+      loadPayoutData();
+      
+      setTimeout(() => {
+        setShowPayoutModal(false);
+        setPayoutSuccess('');
+      }, 2500);
+    } catch (err: any) {
+      setPayoutError(err.message || 'Failed to submit withdrawal request');
+    } finally {
+      setIsSubmittingPayout(false);
+    }
+  };
   const [brandStats, setBrandStats] = useState<BrandStats>({
     totalProducts: 0, activeProducts: 0, pendingProducts: 0,
     totalRevenue: 0, monthRevenue: 0,
@@ -884,6 +985,7 @@ export default function BrandDashboard() {
                 { id: 'affiliates', label: 'Affiliates', icon: '🤝' },
                 { id: 'analytics',  label: 'Analytics',  icon: '📈' },
                 { id: 'logistics',  label: 'Logistics',  icon: '🚚' },
+                { id: 'payouts',    label: 'Payouts',    icon: '💸' },
                 { id: 'settings',   label: 'Settings',   icon: '⚙️' },
               ].map((tab) => (
                 <button
@@ -913,6 +1015,235 @@ export default function BrandDashboard() {
           {activeTab === 'analytics' && analyticsTab}
           {activeTab === 'logistics' && logisticsTab}
           {activeTab === 'settings' && settingsTab}
+
+          {/* Payouts & Wallet */}
+          {activeTab === 'payouts' && (
+            <div className="space-y-6 text-white">
+              {/* Financial Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
+                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
+                  <h3 className="text-3xl font-black text-white mt-2">${walletBalance.toFixed(2)}</h3>
+                  <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
+                  <button
+                    onClick={() => {
+                      setPayoutError('');
+                      setPayoutSuccess('');
+                      setShowPayoutModal(true);
+                    }}
+                    disabled={walletBalance <= 0}
+                    className="mt-4 w-full bg-gold-600 hover:bg-gold-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    💳 Request Payout
+                  </button>
+                </div>
+
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
+                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
+                  <h3 className="text-3xl font-black text-white mt-2">${totalEarned.toFixed(2)}</h3>
+                  <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
+                </div>
+
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
+                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
+                  <h3 className="text-3xl font-black text-white mt-2">${totalWithdrawn.toFixed(2)}</h3>
+                  <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
+                </div>
+              </div>
+
+              {/* Transactions History */}
+              <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl overflow-hidden shadow-lg">
+                <div className="px-5 py-4 border-b border-charcoal-700">
+                  <h3 className="text-lg font-bold text-white">Transaction & Payout History</h3>
+                  <p className="text-xs text-cool-gray-500 mt-0.5">List of incoming earnings and outgoing payout requests</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-charcoal-900/60 text-cool-gray-400 border-b border-charcoal-700">
+                      <tr>
+                        <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider">Details</th>
+                        <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider">Type</th>
+                        <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-right">Amount</th>
+                        <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-charcoal-750">
+                      {payoutHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-5 py-12 text-center text-cool-gray-500">
+                            No transactions recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        payoutHistory.map((tx: any) => {
+                          const isIncome = tx.type === 'escrow_release';
+                          return (
+                            <tr key={tx.id} className="hover:bg-charcoal-750/30 transition-colors">
+                              <td className="px-5 py-4">
+                                <div className="font-semibold text-white text-sm">
+                                  {isIncome ? 'Order Escrow Release' : 'Withdrawal Request'}
+                                </div>
+                                <div className="text-xs text-cool-gray-400 mt-0.5">
+                                  {tx.description}
+                                </div>
+                                <div className="text-[10px] text-cool-gray-500 mt-1">
+                                  ID: {tx.transactionId} · {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                  isIncome ? 'bg-green-950/60 text-green-300 border border-green-900/50' : 'bg-yellow-950/60 text-yellow-300 border border-yellow-900/50'
+                                }`}>
+                                  {isIncome ? 'Income' : 'Withdrawal'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                <div className={`font-bold ${isIncome ? 'text-green-400' : 'text-white'}`}>
+                                  {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+                                </div>
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                  tx.status === 'completed' ? 'bg-green-950/60 text-green-300 border border-green-900/50' :
+                                  tx.status === 'pending' ? 'bg-yellow-950/60 text-yellow-300 border border-yellow-900/50 animate-pulse' :
+                                  'bg-red-950/60 text-red-300 border border-red-900/50'
+                                }`}>
+                                  {tx.status}
+                                </span>
+                                {tx.metadata?.adminNotes && (
+                                  <div className="text-cool-gray-400 text-[11px] mt-1 max-w-[150px] break-words">
+                                    {tx.metadata.adminNotes}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Request Payout Modal */}
+              {showPayoutModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+                  <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-md shadow-2xl p-6">
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-charcoal-700">
+                      <h3 className="text-lg font-bold text-white">Request Payout</h3>
+                      <button
+                        onClick={() => setShowPayoutModal(false)}
+                        className="text-cool-gray-400 hover:text-white text-2xl leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <form onSubmit={handlePayoutSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
+                          Amount to Withdraw ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={payoutAmount}
+                          onChange={e => setPayoutAmount(e.target.value)}
+                          max={walletBalance}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-semibold"
+                        />
+                        <p className="text-[11px] text-cool-gray-400 mt-1">
+                          Available: ${walletBalance.toFixed(2)} (Min. withdrawal $50.00)
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
+                          Bank Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. JPMorgan Chase"
+                          value={payoutBankName}
+                          onChange={e => setPayoutBankName(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
+                          Account Holder Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Acme Corp LLC"
+                          value={payoutAccHolder}
+                          onChange={e => setPayoutAccHolder(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
+                          Account Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Bank account number"
+                          value={payoutAccNumber}
+                          onChange={e => setPayoutAccNumber(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
+                          Routing Number (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="9-digit routing number"
+                          value={payoutRouting}
+                          onChange={e => setPayoutRouting(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-mono"
+                        />
+                      </div>
+
+                      {payoutError && (
+                        <div className="p-3 bg-red-950/60 text-red-300 border border-red-900/50 rounded-xl text-xs font-semibold">
+                          {payoutError}
+                        </div>
+                      )}
+
+                      {payoutSuccess && (
+                        <div className="p-3 bg-green-950/60 text-green-300 border border-green-900/50 rounded-xl text-xs font-semibold">
+                          {payoutSuccess}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowPayoutModal(false)}
+                          className="py-2.5 bg-charcoal-700 hover:bg-charcoal-600 text-cool-gray-300 font-semibold rounded-xl text-sm min-h-11"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingPayout}
+                          className="py-2.5 bg-gold-600 hover:bg-gold-500 text-white font-semibold rounded-xl text-sm min-h-11 disabled:opacity-50"
+                        >
+                          {isSubmittingPayout ? 'Submitting...' : 'Submit Request'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>

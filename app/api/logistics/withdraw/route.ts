@@ -95,13 +95,14 @@ export async function POST(request: NextRequest) {
       type:          'withdrawal',
       amount,
       currency:      'USD',
-      status:        'completed', // auto-completed for mockup verification convenience
+      status:        'pending', // Stays pending until Admin approves it
       fromUser:      payload.userId,
       description:   `Withdrawal to bank account: ${bankName} (${accountNumber})`,
       metadata: {
         bankName,
         accountNumber,
-        processedAt: new Date().toISOString(),
+        role: 'logistics',
+        submittedAt: new Date().toISOString(),
       },
     });
 

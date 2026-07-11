@@ -167,7 +167,7 @@ export default function LogisticsDashboard() {
       });
       const json = await res.json();
       if (json.success) {
-        showToast('🟢 Withdrawal processed successfully!');
+        showToast('🟢 Withdrawal request submitted! Awaiting admin approval.');
         setShowWithdrawModal(false);
         setWithdrawAmount('');
         setBankName('');
@@ -1362,6 +1362,11 @@ export default function LogisticsDashboard() {
                           }`}>
                             {tx.status}
                           </span>
+                          {tx.metadata?.adminNotes && (
+                            <p className="text-[9px] text-gray-400 mt-1 max-w-[100px] truncate-2-lines">
+                              {tx.metadata.adminNotes}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );

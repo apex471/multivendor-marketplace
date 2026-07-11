@@ -60,7 +60,10 @@ export async function POST(request: NextRequest) {
       applicationStatus: action === 'approve' ? 'approved' : 'rejected',
       applicationNotes: notes || (action === 'reject' ? 'Application rejected by administrator' : undefined),
     };
-    if (action === 'approve') updates.isActive = true;
+    if (action === 'approve') {
+      updates.isActive = true;
+      updates.isEmailVerified = true;
+    }
 
     await User.updateOne(userId, updates);
 

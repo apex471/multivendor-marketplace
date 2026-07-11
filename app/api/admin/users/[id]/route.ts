@@ -36,6 +36,11 @@ export async function PATCH(
       if (body[f] !== undefined) updates[f] = body[f];
     }
 
+    if (updates.applicationStatus === 'approved') {
+      updates.isEmailVerified = true;
+      updates.isActive = true;
+    }
+
     const user = await User.findById(id);
     if (!user) return sendNotFound('User not found');
 

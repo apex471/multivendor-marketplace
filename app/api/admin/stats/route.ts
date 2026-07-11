@@ -127,6 +127,7 @@ export async function GET(request: NextRequest) {
         tickets: openTickets,
         escrow: pendingEscrowCount,
         waitlist: waitlistSnap.filter(e => e.status === 'pending').length,
+        payouts: allTxs.filter(t => t.type === 'withdrawal' && t.status === 'pending').length,
       },
       financials: {
         totalRevenue,
