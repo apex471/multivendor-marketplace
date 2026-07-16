@@ -24,78 +24,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Order already verified as paid' });
     }
 
-    if (gateway === 'korapay') {
-      const koraSecretKey = process.env.KORAPAY_SECRET_KEY;
-      if (!koraSecretKey) {
-        // Mock success if key is not configured for testing
-        await verifyOrderPayment(order.orderId, order.id!);
-        return NextResponse.json({ success: true, message: 'Mock Korapay payment verified successfully' });
-      }
+    // Default: Flutterwave
+    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    if (!flwSecretKey) {
+      // Mock success if key is not configured for testing
+      await verifyOrderPayment(order.orderId, order.id!);
+      return NextResponse.json({ success: true, message: 'Mock payment verified successfully' });
+    }
 
-      // Verify transaction with Korapay
-      const koraRes = await fetch(`https://api.korapay.com/merchant/api/v1/charges/${orderId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${koraSecretKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    if (!transactionId) {
+      return NextResponse.json({ success: false, message: 'Missing transaction_id for Flutterwave verification' }, { status: 400 });
+    }
 
-      const koraData = await koraRes.json();
-      if (!koraRes.ok || koraData.status !== true) {
-        return NextResponse.json({ success: false, message: koraData.message || 'Korapay verification failed' }, { status: 400 });
-      }
+    // Verify transaction with Flutterwave
+    const flwRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${flwSecretKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-      const tx = koraData.data;
-      if (tx.status !== 'success') {
-        return NextResponse.json({ success: false, message: `Payment state: ${tx.status}` }, { status: 400 });
-      }
+    const flwData = await flwRes.json();
+    if (!flwRes.ok || flwData.status !== 'success') {
+      return NextResponse.json({ success: false, message: flwData.message || 'Flutterwave verification failed' }, { status: 400 });
+    }
 
-      // Validate amount matches
-      const orderTotal = Number(order.total);
-      const txAmount = Number(tx.amount);
-      if (Math.abs(txAmount - orderTotal) > 0.05) {
-        return NextResponse.json({ success: false, message: `Payment amount mismatch. Expected: ${orderTotal}, Received: ${txAmount}` }, { status: 400 });
-      }
-    } else {
-      // Default: Flutterwave
-      const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-      if (!flwSecretKey) {
-        // Mock success if key is not configured for testing
-        await verifyOrderPayment(order.orderId, order.id!);
-        return NextResponse.json({ success: true, message: 'Mock payment verified successfully' });
-      }
+    const tx = flwData.data;
+    // Validate transaction details
+    if (tx.status !== 'successful' || tx.tx_ref !== orderId) {
+      return NextResponse.json({ success: false, message: 'Invalid transaction details' }, { status: 400 });
+    }
 
-      if (!transactionId) {
-        return NextResponse.json({ success: false, message: 'Missing transaction_id for Flutterwave verification' }, { status: 400 });
-      }
-
-      // Verify transaction with Flutterwave
-      const flwRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${flwSecretKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const flwData = await flwRes.json();
-      if (!flwRes.ok || flwData.status !== 'success') {
-        return NextResponse.json({ success: false, message: flwData.message || 'Flutterwave verification failed' }, { status: 400 });
-      }
-
-      const tx = flwData.data;
-      // Validate transaction details
-      if (tx.status !== 'successful' || tx.tx_ref !== orderId) {
-        return NextResponse.json({ success: false, message: 'Invalid transaction details' }, { status: 400 });
-      }
-
-      // Validate amount matches
-      const orderTotal = Number(order.total);
-      const txAmount = Number(tx.amount);
-      if (Math.abs(txAmount - orderTotal) > 0.05) {
-        return NextResponse.json({ success: false, message: `Payment amount mismatch. Expected: ${orderTotal}, Received: ${txAmount}` }, { status: 400 });
-      }
+    // Validate amount matches
+    const orderTotal = Number(order.total);
+    const txAmount = Number(tx.amount);
+    if (Math.abs(txAmount - orderTotal) > 0.05) {
+      return NextResponse.json({ success: false, message: `Payment amount mismatch. Expected: ${orderTotal}, Received: ${txAmount}` }, { status: 400 });
     }
 
     // Success - update the order status

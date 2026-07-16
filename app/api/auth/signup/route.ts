@@ -38,6 +38,22 @@ export async function POST(request: NextRequest) {
       return sendError('User with this email already exists', 409, { email: 'Email is already registered' });
     }
 
+    let subdomain: string | undefined = undefined;
+    if (storeName && (role === UserRole.VENDOR || role === UserRole.BRAND)) {
+      const baseSlug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      let tempSubdomain = baseSlug || 'store';
+      let counter = 1;
+      while (true) {
+        const exists = await User.findOne({ subdomain: tempSubdomain });
+        if (!exists) {
+          subdomain = tempSubdomain;
+          break;
+        }
+        tempSubdomain = `${baseSlug || 'store'}-${counter}`;
+        counter++;
+      }
+    }
+
     // Create user
     const newUser = await User.create({
       firstName,
@@ -47,6 +63,7 @@ export async function POST(request: NextRequest) {
       role,
       phoneNumber: body.phoneNumber || undefined,
       ...(storeName ? { storeName } : {}),
+      ...(subdomain ? { subdomain } : {}),
       ...(businessDescription ? { businessDescription } : {}),
       ...(website ? { website } : {}),
       ...(taxId ? { taxId } : {}),

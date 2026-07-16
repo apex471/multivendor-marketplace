@@ -54,6 +54,7 @@ export interface IUser {
   socialLinks?: Record<string, string>;
   businessCity?: string;
   businessState?: string;
+  subdomain?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

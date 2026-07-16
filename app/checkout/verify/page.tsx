@@ -31,15 +31,10 @@ function VerifyPaymentContent() {
         setErrorMsg('Payment was not completed successfully.');
         return;
       }
-    } else if (gateway === 'korapay') {
-      if (!txRef) {
-        setErrorMsg('Missing order reference for Korapay verification.');
-        return;
-      }
     }
 
     const verify = async () => {
-      setStatusMsg(`Verifying your payment with ${gateway === 'korapay' ? 'Korapay' : 'Flutterwave'}...`);
+      setStatusMsg(`Verifying your payment with Flutterwave...`);
       try {
         const queryParams = new URLSearchParams();
         queryParams.set('gateway', gateway);
