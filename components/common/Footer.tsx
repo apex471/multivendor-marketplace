@@ -226,6 +226,15 @@ export default function Footer() {
             </a>
           </div>
         </div>
+
+        {/* ── Powered by watermark ───────────────────────────────────────── */}
+        <div className="border-t border-charcoal-800/60 mt-4 pt-4 flex items-center justify-center gap-2">
+          <span className="text-[10px] text-cool-gray-600 uppercase tracking-[0.2em] select-none">Powered by</span>
+          <span className="text-[11px] font-bold tracking-[0.15em] uppercase bg-gradient-to-r from-gold-500 via-gold-300 to-gold-500 bg-clip-text text-transparent select-none">
+            CLUXURIOUS WORLD
+          </span>
+          <span className="text-gold-600 text-xs select-none">✦</span>
+        </div>
       </div>
     </footer>
   );

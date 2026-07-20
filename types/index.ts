@@ -205,6 +205,7 @@ export type OrderStatus =
 
 export type PaymentStatus = 
   | 'pending' 
+  | 'pending_manual'
   | 'paid' 
   | 'failed' 
   | 'refunded';

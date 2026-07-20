@@ -4,34 +4,58 @@ import { getAuthToken } from '@/lib/api/auth';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCart } from '../../../contexts/CartContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { useToast } from '@/components/common/Toast';
+
+interface VendorInfo {
+  id: string;
+  name: string;
+  logo: string | null;
+  banner: string | null;
+  description: string;
+  rating: number;
+  reviews: number;
+  productCount: number;
+  followers: number;
+  verified: boolean;
+  location: string;
+  joinedDate: string;
+  email: string;
+  phone: string;
+  storeName: string;
+  role: string;
+}
+
+interface VendorProduct {
+  id: string;
+  name: string;
+  price: number;
+  oldPrice?: number;
+  image: string;
+  rating: number;
+  sales: number;
+  inStock: boolean;
+}
 
 export default function VendorDetailPage() {
   const params = useParams();
   const vendorId = params.id as string;
   const router = useRouter();
   const { addItem: addToCart } = useCart();
+  const { formatPrice } = useLocalization();
   const { success: toastSuccess, info: toastInfo } = useToast();
-  const [activeTab, setActiveTab] = useState<'products' | 'posts' | 'about'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'about'>('products');
   const [isFollowing, setIsFollowing] = useState(false);
-
-  interface VendorInfo {
-    id: string; name: string; logo: string; banner: string; description: string;
-    category: string; rating: number; reviews: number; products: number;
-    followers: number; verified: boolean; location: string; distance: number;
-    responseTime: string; joinedDate: string;
-  }
-  interface VendorProduct {
-    id: string; name: string; price: number; oldPrice?: number;
-    image: string; rating: number; sales: number; inStock: boolean;
-  }
 
   const [vendor, setVendor] = useState<VendorInfo | null>(null);
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [bannerError, setBannerError] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     fetch(`/api/vendors/${vendorId}`)
@@ -41,28 +65,31 @@ export default function VendorDetailPage() {
         const v = json.data.vendor;
         setVendor({
           id:           String(v.id),
-          name:         v.name,
-          logo:         v.avatar || '/images/placeholder.jpg',
-          banner:       v.banner || '/images/placeholder.jpg',
-          description:  v.bio || `Welcome to ${v.name}'s store.`,
-          category:     'Vendor',
-          rating:       0,
-          reviews:      0,
-          products:     v.productCount,
-          followers:    0,
+          name:         v.storeName || v.name,
+          logo:         v.avatar || null,
+          banner:       v.banner || null,
+          description:  v.bio || `Welcome to ${v.storeName || v.name}'s store.`,
+          rating:       v.rating ?? 0,
+          reviews:      v.reviewCount ?? 0,
+          productCount: v.productCount,
+          followers:    v.followerCount ?? 0,
           verified:     true,
-          location:     '',
-          distance:     0,
-          responseTime: 'N/A',
+          location:     v.businessCity ? `${v.businessCity}${v.businessState ? ', ' + v.businessState : ''}` : '',
           joinedDate:   new Date(v.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          email:        v.email || '',
+          phone:        v.phoneNumber || '',
+          storeName:    v.storeName || v.name,
+          role:         v.role || 'vendor',
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setProducts((json.data.products ?? []).map((p: any) => ({
+        setProducts((json.data.products ?? []).map((p: {
+          id: string; name: string; price: number; oldPrice?: number;
+          image?: string; rating?: number; salesCount?: number; inStock?: boolean;
+        }) => ({
           id:      String(p.id),
           name:    p.name,
           price:   p.price,
           oldPrice: p.oldPrice,
-          image:   p.image,
+          image:   p.image || '/images/placeholder.jpg',
           rating:  p.rating ?? 0,
           sales:   p.salesCount ?? 0,
           inStock: p.inStock ?? true,
@@ -74,7 +101,7 @@ export default function VendorDetailPage() {
 
   useEffect(() => {
     if (vendor?.name) {
-      document.title = `${vendor.name} | Certified Luxury World`;
+      document.title = `${vendor.storeName || vendor.name} | Certified Luxury World`;
     }
   }, [vendor]);
 
@@ -89,6 +116,7 @@ export default function VendorDetailPage() {
       color:     '',
       quantity:  1,
     });
+    toastSuccess('Added to cart!');
   };
 
   const handleFollow = async () => {
@@ -103,226 +131,254 @@ export default function VendorDetailPage() {
     if (!isFollowing) opts.body = JSON.stringify({ followingId: params.id });
     await fetch(url, opts);
     setIsFollowing(!isFollowing);
-    toastSuccess(isFollowing ? 'Unfollowed vendor' : 'Now following vendor! 🎉');
+    toastSuccess(isFollowing ? 'Unfollowed' : 'Now following! 🎉');
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
-        <div className="text-center"><div className="text-6xl mb-4">⏳</div><p>Loading...</p></div>
+      <div className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-gold-600 border-t-transparent animate-spin" />
+          <p className="text-charcoal-600 dark:text-cool-gray-400">Loading store…</p>
+        </div>
       </div>
     );
   }
 
   if (!vendor) {
     return (
-      <div className="min-h-screen bg-white dark:bg-charcoal-900 flex items-center justify-center">
-        <div className="text-center"><div className="text-6xl mb-4">❌</div><p>Vendor not found</p></div>
+      <div className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🔍</div>
+          <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">Store not found</h2>
+          <p className="text-charcoal-500 dark:text-cool-gray-400 mb-6">This store may have moved or been deactivated.</p>
+          <Link href="/vendors" className="px-6 py-3 bg-gold-600 text-white rounded-xl font-semibold hover:bg-gold-700 transition-colors">
+            Browse All Stores
+          </Link>
+        </div>
       </div>
     );
   }
 
+  const showBanner = !!vendor.banner && !bannerError;
+  const showLogo   = !!vendor.logo   && !logoError;
+
   return (
-    <div className="min-h-screen bg-white dark:bg-charcoal-900">
+    <div className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-900">
       <Header />
 
-      {/* Vendor Banner */}
-      <div className="relative h-48 sm:h-64 md:h-80 bg-linear-to-r from-primary-600 to-secondary-600">
-        <Image
-          src={vendor.banner}
-          alt={vendor.name}
-          fill
-          className="object-cover opacity-50"
-        />
+      {/* ── Banner ────────────────────────────────────────────────────────── */}
+      <div className="relative h-52 sm:h-72 md:h-80 overflow-hidden">
+        {showBanner ? (
+          <Image
+            src={vendor.banner!}
+            alt={`${vendor.name} banner`}
+            fill
+            className="object-cover"
+            priority
+            onError={() => setBannerError(true)}
+            unoptimized
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-charcoal-700 via-charcoal-800 to-charcoal-950">
+            <div className="absolute inset-0 opacity-30"
+              style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #B8962E 0%, transparent 55%), radial-gradient(circle at 80% 20%, #6B4E0A 0%, transparent 55%)' }} />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
       </div>
 
-      <div className="container mx-auto px-4">
-        {/* Vendor Header */}
-        <div className="relative -mt-16 sm:-mt-20 mb-8">
-          <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* ── Profile Card ───────────────────────────────────────────────── */}
+        <div className="relative -mt-20 sm:-mt-24 mb-8 z-10">
+          <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-xl border border-cool-gray-100 dark:border-charcoal-700 p-5 sm:p-8">
+            <div className="flex flex-col sm:flex-row gap-5 sm:gap-8">
+
               {/* Logo */}
-              <div className="shrink-0 mx-auto sm:mx-0">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
-                  <Image
-                    src={vendor.logo}
-                    alt={vendor.name}
-                    width={128}
-                    height={128}
-                    className="object-cover w-full h-full"
-                  />
+              <div className="shrink-0 mx-auto sm:mx-0 relative">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white dark:border-charcoal-800 shadow-xl overflow-hidden bg-gradient-to-br from-gold-600 to-gold-800 ring-2 ring-gold-500/20">
+                  {showLogo ? (
+                    <Image
+                      src={vendor.logo!}
+                      alt={vendor.name}
+                      width={144}
+                      height={144}
+                      className="object-cover w-full h-full"
+                      onError={() => setLogoError(true)}
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold select-none">
+                      {vendor.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
+                {vendor.verified && (
+                  <div className="absolute bottom-1 right-1 w-7 h-7 bg-blue-600 rounded-full border-2 border-white dark:border-charcoal-800 flex items-center justify-center shadow" title="Verified">
+                    <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
               </div>
 
               {/* Info */}
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-3">
                   <div>
-                    <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
-                      <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900">
-                        {vendor.name}
-                      </h1>
-                      {vendor.verified && (
-                        <span className="text-blue-600 text-2xl sm:text-3xl" title="Verified">✓</span>
-                      )}
+                    <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 flex-wrap">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-charcoal-900 dark:text-white">{vendor.name}</h1>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400 font-bold uppercase tracking-wide shrink-0">
+                        {vendor.role === 'brand' ? 'Brand' : 'Vendor'}
+                      </span>
                     </div>
-                    <p className="text-sm sm:text-base text-gray-600 flex items-center justify-center sm:justify-start gap-1 mb-2">
-                      <span>📍</span> {vendor.location} • {vendor.distance} km away
-                    </p>
-                    <p className="text-sm sm:text-base text-gray-500">Member since {vendor.joinedDate}</p>
+                    {vendor.location && (
+                      <p className="text-sm text-charcoal-500 dark:text-cool-gray-400 flex items-center justify-center sm:justify-start gap-1 mb-1">
+                        <span>📍</span>{vendor.location}
+                      </p>
+                    )}
+                    <p className="text-xs text-charcoal-400 dark:text-cool-gray-500">Member since {vendor.joinedDate}</p>
                   </div>
                   <button
                     onClick={handleFollow}
-                    className={`px-6 py-3 min-h-11 rounded-lg font-semibold transition-all text-sm sm:text-base touch-manipulation ${
+                    className={`shrink-0 px-6 py-2.5 rounded-xl font-semibold transition-all text-sm shadow-sm hover:shadow-md active:scale-95 ${
                       isFollowing
-                        ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        : 'bg-primary-700 text-white hover:bg-primary-800'
+                        ? 'bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-700 dark:text-white hover:bg-cool-gray-200'
+                        : 'bg-gold-600 text-white hover:bg-gold-700'
                     }`}
                   >
                     {isFollowing ? '✓ Following' : '+ Follow'}
                   </button>
                 </div>
 
-                <p className="text-sm sm:text-base text-gray-700 mb-4">{vendor.description}</p>
+                <p className="text-sm text-charcoal-600 dark:text-cool-gray-300 mb-5 max-w-prose">{vendor.description}</p>
 
                 {/* Stats */}
-                <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-6 text-sm sm:text-base">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-yellow-500">⭐</span>
-                    <span className="font-semibold">{vendor.rating}</span>
-                    <span className="text-gray-500">({vendor.reviews} reviews)</span>
-                  </div>
-                  <div className="text-gray-700">
-                    <span className="font-semibold">{vendor.products}</span> Products
-                  </div>
-                  <div className="text-gray-700">
-                    <span className="font-semibold">{vendor.followers.toLocaleString()}</span> Followers
-                  </div>
-                  <div className="text-gray-700">
-                    Response: <span className="font-semibold">{vendor.responseTime}</span>
-                  </div>
+                <div className="flex flex-wrap justify-center sm:justify-start gap-5">
+                  {[
+                    { label: 'Products', value: vendor.productCount },
+                    { label: 'Followers', value: vendor.followers.toLocaleString() },
+                    { label: 'Rating', value: vendor.rating > 0 ? `${vendor.rating.toFixed(1)} ⭐` : '— ⭐' },
+                    { label: 'Reviews', value: vendor.reviews },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="text-center sm:text-left min-w-[60px]">
+                      <p className="text-lg font-bold text-charcoal-900 dark:text-white leading-none">{value}</p>
+                      <p className="text-xs text-charcoal-400 dark:text-cool-gray-500 mt-0.5">{label}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex gap-2 sm:gap-4 border-b border-gray-200 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('products')}
-              className={`px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap transition-colors touch-manipulation text-sm sm:text-base ${
-                activeTab === 'products'
-                  ? 'text-primary-700 border-b-2 border-primary-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Products ({vendor.products})
-            </button>
-            <button
-              onClick={() => setActiveTab('posts')}
-              className={`px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap transition-colors touch-manipulation text-sm sm:text-base ${
-                activeTab === 'posts'
-                  ? 'text-primary-700 border-b-2 border-primary-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Posts
-            </button>
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`px-4 sm:px-6 py-3 sm:py-4 font-semibold whitespace-nowrap transition-colors touch-manipulation text-sm sm:text-base ${
-                activeTab === 'about'
-                  ? 'text-primary-700 border-b-2 border-primary-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              About
-            </button>
+        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+        <div className="mb-6">
+          <div className="flex gap-1 bg-white dark:bg-charcoal-800 rounded-xl border border-cool-gray-100 dark:border-charcoal-700 p-1 shadow-sm w-fit">
+            {(['products', 'about'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 rounded-lg font-semibold text-sm capitalize transition-all ${
+                  activeTab === tab
+                    ? 'bg-gold-600 text-white shadow-sm'
+                    : 'text-charcoal-600 dark:text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white'
+                }`}
+              >
+                {tab === 'products' ? `Products (${vendor.productCount})` : 'About'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="pb-12">
+        {/* ── Content ─────────────────────────────────────────────────────── */}
+        <div className="pb-16">
           {activeTab === 'products' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-              {products.map(product => (
-                <div key={product.id} className="group bg-white rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
-                  <a
-                    href={`/product/${product.id}`}
-                    className="relative aspect-square overflow-hidden w-full touch-manipulation block"
-                  >
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    {product.oldPrice && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">
-                        SALE
-                      </span>
-                    )}
-                  </a>
-                  <div className="p-2 sm:p-3">
-                    <h3 className="font-semibold text-xs sm:text-sm text-gray-900 mb-1 sm:mb-2 line-clamp-2 leading-tight">
-                      {product.name}
-                    </h3>
-                    <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
-                      <span className="text-yellow-500 text-[10px] sm:text-xs">⭐</span>
-                      <span className="text-[10px] sm:text-xs font-medium text-gray-700">{product.rating}</span>
-                      <span className="text-[10px] sm:text-xs text-gray-500">({product.sales})</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2 mb-1.5 sm:mb-2">
-                      <span className="font-bold text-sm sm:text-base text-gray-900">${product.price}</span>
+            products.length === 0 ? (
+              <div className="text-center py-20 bg-white dark:bg-charcoal-800 rounded-2xl border border-cool-gray-100 dark:border-charcoal-700">
+                <div className="text-5xl mb-4">🛍️</div>
+                <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">No products yet</h3>
+                <p className="text-charcoal-500 dark:text-cool-gray-400">This store hasn't listed any products yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                {products.map(product => (
+                  <div key={product.id} className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-cool-gray-100 dark:border-charcoal-700 flex flex-col">
+                    <Link href={`/product/${product.id}`} className="relative aspect-square overflow-hidden block">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        unoptimized
+                      />
                       {product.oldPrice && (
-                        <span className="text-[10px] sm:text-xs text-gray-500 line-through">${product.oldPrice}</span>
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded-full">SALE</span>
                       )}
+                      {!product.inStock && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-xs font-bold bg-black/60 px-3 py-1 rounded-full">Out of Stock</span>
+                        </div>
+                      )}
+                    </Link>
+                    <div className="p-3 flex flex-col flex-1">
+                      <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1.5 line-clamp-2 leading-tight flex-1">
+                        {product.name}
+                      </h3>
+                      <div className="flex items-center gap-1 mb-2">
+                        <span className="text-yellow-500 text-xs">⭐</span>
+                        <span className="text-xs text-charcoal-600 dark:text-cool-gray-400">{product.rating > 0 ? product.rating.toFixed(1) : 'New'}</span>
+                        {product.sales > 0 && <span className="text-xs text-charcoal-400 dark:text-cool-gray-500">({product.sales} sold)</span>}
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <span className="font-bold text-sm text-charcoal-900 dark:text-white">{formatPrice(product.price)}</span>
+                        {product.oldPrice && (
+                          <span className="text-xs text-charcoal-400 line-through">{formatPrice(product.oldPrice)}</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        disabled={!product.inStock}
+                        className="w-full py-2 bg-gold-600 hover:bg-gold-700 disabled:bg-cool-gray-200 dark:disabled:bg-charcoal-700 text-white disabled:text-charcoal-400 rounded-lg transition-all font-semibold text-xs active:scale-95 disabled:cursor-not-allowed"
+                      >
+                        {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleAddToCart(product);
-                      }}
-                      className="w-full py-1.5 sm:py-2 min-h-9 bg-primary-700 text-white rounded-lg hover:bg-primary-800 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
-                    >
-                      Add to Cart
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === 'posts' && (
-            <div className="text-center py-12 bg-white rounded-xl">
-              <div className="text-5xl mb-4">📝</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No posts yet</h3>
-              <p className="text-gray-600">This vendor has not shared any posts yet</p>
-            </div>
+                ))}
+              </div>
+            )
           )}
 
           {activeTab === 'about' && (
-            <div className="bg-white rounded-xl p-6 sm:p-8 shadow-md">
-              <h2 className="text-xl sm:text-2xl font-display font-bold text-gray-900 mb-4">About {vendor.name}</h2>
-              <p className="text-sm sm:text-base text-gray-700 mb-6">{vendor.description}</p>
-              
-              <div className="grid sm:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3 text-base sm:text-lg">Contact Information</h3>
-                  <div className="space-y-2 text-sm sm:text-base">
-                    <p className="text-gray-700">📍 {vendor.location}</p>
-                    <p className="text-gray-700">📧 contact@luxuryfashionco.com</p>
-                    <p className="text-gray-700">📞 +1 (555) 123-4567</p>
+            <div className="bg-white dark:bg-charcoal-800 rounded-2xl border border-cool-gray-100 dark:border-charcoal-700 p-6 sm:p-8 shadow-sm">
+              <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">About {vendor.name}</h2>
+              <p className="text-charcoal-600 dark:text-cool-gray-300 leading-relaxed mb-8">{vendor.description}</p>
+
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div className="p-4 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
+                  <h3 className="font-semibold text-charcoal-900 dark:text-white mb-3 flex items-center gap-2 text-sm">
+                    <span>📬</span> Contact
+                  </h3>
+                  <div className="space-y-2 text-sm text-charcoal-600 dark:text-cool-gray-400">
+                    {vendor.location && <p>📍 {vendor.location}</p>}
+                    {vendor.email && <p>✉️ {vendor.email}</p>}
+                    {vendor.phone && <p>📞 {vendor.phone}</p>}
+                    {!vendor.location && !vendor.email && !vendor.phone && (
+                      <p className="text-charcoal-400 italic text-xs">No contact info provided</p>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3 text-base sm:text-lg">Business Hours</h3>
-                  <div className="space-y-2 text-sm sm:text-base text-gray-700">
-                    <p>Monday - Friday: 9:00 AM - 8:00 PM</p>
-                    <p>Saturday: 10:00 AM - 6:00 PM</p>
-                    <p>Sunday: Closed</p>
+                <div className="p-4 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
+                  <h3 className="font-semibold text-charcoal-900 dark:text-white mb-3 flex items-center gap-2 text-sm">
+                    <span>📊</span> Store Stats
+                  </h3>
+                  <div className="space-y-2 text-sm text-charcoal-600 dark:text-cool-gray-400">
+                    <p>🗓️ Joined {vendor.joinedDate}</p>
+                    <p>📦 {vendor.productCount} active product{vendor.productCount !== 1 ? 's' : ''}</p>
+                    <p>👥 {vendor.followers.toLocaleString()} follower{vendor.followers !== 1 ? 's' : ''}</p>
+                    {vendor.rating > 0 && <p>⭐ {vendor.rating.toFixed(1)} avg. rating ({vendor.reviews} reviews)</p>}
                   </div>
                 </div>
               </div>

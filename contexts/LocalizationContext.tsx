@@ -191,52 +191,37 @@ interface LocalizationContextType {
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
 export function LocalizationProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
-  const [currency, setCurrencyState] = useState<Currency>('USD');
-  const [rates, setRates] = useState<Record<Currency, { rate: number; symbol: string }>>({
-    USD: { rate: 1.0, symbol: '$' },
-    EUR: { rate: 0.92, symbol: '€' },
-    GBP: { rate: 0.78, symbol: '£' },
-    NGN: { rate: 1500.0, symbol: '₦' },
-    CNY: { rate: 7.25, symbol: '¥' },
+  // ── Lazy initialisers — run synchronously on client, skip on SSR ──────────
+  // This eliminates the hydration flash where currency starts as USD then
+  // switches to NGN after the first useEffect runs.
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === 'undefined') return 'en';
+    const saved = localStorage.getItem('pref_lang') as Language | null;
+    if (saved && Object.keys(translationMap).includes(saved)) return saved;
+    const navLang = navigator.language.split('-')[0] as Language;
+    return Object.keys(translationMap).includes(navLang) ? navLang : 'en';
   });
 
-  // Detect and set local settings on mount, and load live rates
+  const [currency, setCurrencyState] = useState<Currency>(() => {
+    if (typeof window === 'undefined') return 'USD';
+    const saved = localStorage.getItem('pref_curr') as Currency | null;
+    if (saved && saved in currencyRates) return saved;
+    // Timezone-based inference
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz.includes('Lagos') || tz.includes('Africa')) return 'NGN';
+      if (tz.includes('London') || tz === 'Europe/London') return 'GBP';
+      if (tz.startsWith('Europe/')) return 'EUR';
+      if (tz.startsWith('Asia/Shanghai') || tz.startsWith('Asia/Hong_Kong')) return 'CNY';
+    } catch { /* ignore */ }
+    return 'USD';
+  });
+
+  const [rates, setRates] = useState<Record<Currency, { rate: number; symbol: string }>>(currencyRates);
+
+  // Fetch live exchange rates once on mount
   useEffect(() => {
-    const savedLang = localStorage.getItem('pref_lang') as Language | null;
-    const savedCurr = localStorage.getItem('pref_curr') as Currency | null;
-
-    if (savedLang && Object.keys(translationMap).includes(savedLang)) {
-      setLanguageState(savedLang);
-    } else {
-      // Browser detection
-      const navLang = navigator.language.split('-')[0] as Language;
-      if (Object.keys(translationMap).includes(navLang)) {
-        setLanguageState(navLang);
-      }
-    }
-
-    if (savedCurr && savedCurr in rates) {
-      setCurrencyState(savedCurr);
-    } else {
-      // Region/Timezone currency inference
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz.includes('Europe')) {
-          setCurrencyState('EUR');
-        } else if (tz.includes('London') || tz.includes('Europe/London')) {
-          setCurrencyState('GBP');
-        } else if (tz.includes('Lagos') || tz.includes('Africa/Lagos') || tz.includes('Africa/Cairo')) {
-          setCurrencyState('NGN');
-        } else if (tz.includes('Shanghai') || tz.includes('Asia/Shanghai') || tz.includes('Asia/Hong_Kong')) {
-          setCurrencyState('CNY');
-        }
-      } catch (e) {
-        console.warn('Could not auto-detect local currency, defaulting to USD', e);
-      }
-    }
-
-    // Fetch real-time market conversion rates
+    if (typeof window === 'undefined') return;
     fetch('https://open.er-api.com/v6/latest/USD')
       .then((r) => r.json())
       .then((data) => {

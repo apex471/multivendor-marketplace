@@ -8,6 +8,7 @@ import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCheckout } from '../../contexts/CheckoutContext';
 import { useCart } from '../../contexts/CartContext';
+import { useLocalization } from '../../contexts/LocalizationContext';
 
 interface CartItem {
   id: string;
@@ -25,6 +26,7 @@ export default function CartPage() {
   const router = useRouter();
   const { updateCartItems, calculateTotals } = useCheckout();
   const { items: cartContextItems, removeItem: removeCartItem, updateQuantity: updateCartQuantity } = useCart();
+  const { formatPrice } = useLocalization();
 
   // Map CartContext items to CartItem shape for this page
   const cartItems: CartItem[] = cartContextItems.map(i => ({
@@ -60,7 +62,7 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
-    router.push('/checkout/cart-review');
+    router.push('/checkout');
   };
 
   return (
@@ -154,7 +156,7 @@ export default function CartPage() {
                           </button>
                         </div>
                         <div className="font-bold text-base sm:text-lg text-charcoal-900 dark:text-white">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {formatPrice(item.price * item.quantity)}
                         </div>
                       </div>
                     </div>
@@ -181,7 +183,7 @@ export default function CartPage() {
                 <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-charcoal-600 dark:text-cool-gray-400">Subtotal ({cartItems.reduce((n, i) => n + i.quantity, 0)} items)</span>
-                    <span className="font-semibold text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
+                    <span className="font-semibold text-charcoal-900 dark:text-white">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-charcoal-600 dark:text-cool-gray-400">Shipping</span>
@@ -194,7 +196,7 @@ export default function CartPage() {
                   <div className="border-t border-cool-gray-300 dark:border-charcoal-700 pt-3 sm:pt-4">
                     <div className="flex justify-between text-base sm:text-lg">
                       <span className="font-bold text-charcoal-900 dark:text-white">Estimated Total</span>
-                      <span className="font-bold text-charcoal-900 dark:text-white">${subtotal.toFixed(2)}</span>
+                      <span className="font-bold text-charcoal-900 dark:text-white">{formatPrice(subtotal)}</span>
                     </div>
                     <p className="text-xs text-charcoal-500 dark:text-cool-gray-500 mt-1">Final total including shipping &amp; taxes shown at checkout</p>
                   </div>

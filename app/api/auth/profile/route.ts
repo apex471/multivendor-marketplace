@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
-    const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar', 'banner'];
+    const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar', 'banner', 'storeName', 'businessCity', 'businessState', 'businessDescription', 'website'];
     const updateData: Record<string, unknown> = {};
 
     for (const field of allowedFields) {

@@ -16,7 +16,7 @@ export async function GET(
   try {
     const vendor = await User.findById(id);
 
-    if (!vendor || vendor.role !== 'vendor' || vendor.applicationStatus !== 'approved' || !vendor.isActive) {
+    if (!vendor || !['vendor', 'brand'].includes(vendor.role) || vendor.applicationStatus !== 'approved' || !vendor.isActive) {
       return sendNotFound('Vendor not found');
     }
 
@@ -27,16 +27,20 @@ export async function GET(
 
     return sendSuccess({
       vendor: {
-        id:          vendor.id,
-        name:        `${vendor.firstName} ${vendor.lastName ?? ''}`.trim(),
-        firstName:   vendor.firstName,
-        lastName:    vendor.lastName,
-        email:       vendor.email,
-        avatar:      vendor.avatar ?? null,
-        banner:      vendor.banner ?? null,
-        bio:         vendor.bio ?? '',
-        phoneNumber: vendor.phoneNumber ?? '',
-        joinedAt:    vendor.createdAt,
+        id:           vendor.id,
+        name:         `${vendor.firstName} ${vendor.lastName ?? ''}`.trim(),
+        storeName:    vendor.storeName || `${vendor.firstName} ${vendor.lastName ?? ''}`.trim(),
+        firstName:    vendor.firstName,
+        lastName:     vendor.lastName,
+        email:        vendor.email,
+        avatar:       vendor.avatar ?? null,
+        banner:       vendor.banner ?? null,
+        bio:          vendor.bio ?? '',
+        phoneNumber:  vendor.phoneNumber ?? '',
+        businessCity: vendor.businessCity ?? '',
+        businessState:vendor.businessState ?? '',
+        role:         vendor.role,
+        joinedAt:     vendor.createdAt,
         productCount: products.length,
       },
       products: products.map(p => ({

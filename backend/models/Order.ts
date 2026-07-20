@@ -33,7 +33,7 @@ export interface IOrderCourier {
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'pending_manual' | 'paid' | 'failed' | 'refunded';
 
 export interface IOrder {
   id?: string;

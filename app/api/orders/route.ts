@@ -65,7 +65,10 @@ export async function POST(request: NextRequest) {
       total:        buyerTotal,
       couponCode:   couponCode || undefined,
       status:       'pending',
-      paymentStatus: process.env.FLUTTERWAVE_SECRET_KEY ? 'pending' : 'paid',
+      // IMPORTANT: Never auto-mark as 'paid' without a confirmed gateway response.
+      // 'pending_manual' = admin must manually verify payment (e.g. bank transfer screenshot)
+      // This prevents orders from being fulfilled without actual payment when gateway is not configured.
+      paymentStatus: process.env.FLUTTERWAVE_SECRET_KEY ? 'pending' : 'pending_manual',
     });
 
     // ── Record escrow transaction (buyer charge) ─────────────────────────────────
@@ -92,46 +95,60 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // ── Payment Link Initialization (Flutterwave for Card / Korapay for Bank) ─────
+    // ── Payment Link Initialization (Flutterwave — card or bank transfer) ────────
     let paymentLink: string | undefined;
     const paymentType = paymentMethod?.type ?? 'card';
     const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
     if (flwSecretKey) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // Flutterwave bank transfer virtual accounts only work in NGN.
+        // If prices are stored in USD, convert at an approximate rate.
+        // In production: use a live FX API or store product prices in NGN.
+        const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+        const flwAmount = paymentType === 'bank' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
+        const flwCurrency = paymentType === 'bank' ? 'NGN' : 'NGN';
+
+        const flwPayload: Record<string, unknown> = {
+          tx_ref: orderId,
+          amount: flwAmount,
+          currency: flwCurrency,
+          redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
+          payment_options: paymentType === 'bank' ? 'banktransfer' : 'card',
+          customer: {
+            email: customerEmail || 'guest@example.com',
+            phonenumber: shippingInfo.phone || '08000000000',
+            name: shippingInfo.fullName,
+          },
+          customizations: {
+            title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
+            description: `Payment for order ${orderId}`,
+            logo: `${appUrl}/images/brand/clw-logo.png`,
+          },
+          meta: {
+            order_id: orderId,
+            payment_type: paymentType,
+            usd_equivalent: buyerTotal,
+          },
+        };
+
         const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${flwSecretKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            tx_ref: orderId,
-            amount: buyerTotal,
-            currency: 'USD',
-            redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
-            payment_options: paymentType === 'bank' ? 'banktransfer' : 'card',
-            customer: {
-              email: customerEmail || 'guest@example.com',
-              phonenumber: shippingInfo.phone || '0000000000',
-              name: shippingInfo.fullName,
-            },
-            customizations: {
-              title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
-              description: `Payment for order ${orderId}`,
-              logo: `${appUrl}/images/brand/clw-logo.png`,
-            },
-          }),
+          body: JSON.stringify(flwPayload),
         });
 
         const flwData = await flwResponse.json();
         if (flwResponse.ok && flwData.status === 'success') {
           paymentLink = flwData.data.link;
         } else {
-          console.error('[Flutterwave] Init failed:', flwData);
+          console.error('[Flutterwave] Init failed — status:', flwData.status, 'message:', flwData.message);
         }
       } catch (err) {
-        console.error('[Flutterwave] Init error:', err);
+        console.error('[Flutterwave] Network error during payment init:', err);
       }
     }
 
@@ -150,7 +167,7 @@ export async function POST(request: NextRequest) {
       subtotal:      fees.subtotal,
       tax:           fees.tax,
       status:        'pending' as const,
-      paymentStatus: (paymentLink ? 'pending' : 'paid') as 'pending' | 'paid',
+      paymentStatus: (paymentLink ? 'pending' : 'pending_manual') as 'pending' | 'pending_manual',
       orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',

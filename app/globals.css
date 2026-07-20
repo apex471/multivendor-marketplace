@@ -202,26 +202,8 @@ body {
   background-color: #6b7280;
 }
 
-/* Ensure text contrast for accessibility */
-.dark {
-  /* Override any potential dark text on dark backgrounds */
-  color: #ffffff;
-}
-
-/* Prevent dark text on dark backgrounds */
-.dark .text-gray-900:not(.dark\:text-white),
-.dark .text-gray-800:not(.dark\:text-white),
-.dark .text-gray-700:not(.dark\:text-cool-gray-300) {
-  color: #ffffff !important;
-}
-
-.dark .text-gray-600:not(.dark\:text-cool-gray-400) {
-  color: #9b9b9b !important;
-}
-
-.dark .text-gray-500:not(.dark\:text-cool-gray-400) {
-  color: #9b9b9b !important;
-}
+/* Ensure text contrast for accessibility — only within explicit .dark scope */
+/* NOTE: Do NOT use !important overrides outside .dark; they corrupt light mode */
 
 /* Confetti Animation */
 @keyframes confetti {
@@ -241,18 +223,29 @@ body {
 
 /* ─── Scroll Reveal Animation (Modern CSS + IntersectionObserver Fallback) ─── */
 @media (prefers-reduced-motion: no-preference) {
-  /* Default fallback: transition state */
+  /*
+   * IMPORTANT: Cards begin visible (opacity: 1) by default so they never
+   * appear as blank white boxes when the IntersectionObserver hasn't fired
+   * yet (e.g. SSR, slow JS, or items already in viewport on load).
+   * The JS initialiser in ScrollRevealInitializer adds .will-reveal to
+   * elements that are genuinely below the fold, enabling the animation.
+   */
   .scroll-reveal {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s cubic-bezier(0.215, 0.61, 0.355, 1), transform 0.6s cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  /* Only hide elements the JS has explicitly marked as off-screen */
+  .scroll-reveal.will-reveal {
     opacity: 0;
     transform: translateY(24px);
-    transition: opacity 0.6s cubic-bezier(0.215, 0.61, 0.355, 1), transform 0.6s cubic-bezier(0.215, 0.61, 0.355, 1);
   }
   .scroll-reveal.reveal-visible {
     opacity: 1;
     transform: translateY(0);
   }
 
-  /* Native scroll-timeline enhancement (Chrome, Edge, Safari 19+) */
+  /* Native scroll-timeline enhancement (Chrome 115+, Edge, Safari 19+) */
   @supports ((animation-timeline: view()) and (animation-range: entry)) {
     @keyframes reveal-up {
       from {
@@ -264,11 +257,11 @@ body {
         transform: translateY(0);
       }
     }
-    .scroll-reveal {
+    /* Only animate elements below the fold — already-visible ones skip this */
+    .scroll-reveal.will-reveal {
       animation: reveal-up linear both;
       animation-timeline: view();
       animation-range: entry 5% entry 35%;
-      /* Reset fallback transitions so they don't fight native timeline */
       transition: none !important;
     }
   }
