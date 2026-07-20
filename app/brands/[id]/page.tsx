@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Product {
   id: string;
@@ -36,6 +37,7 @@ export default function BrandPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const { formatPrice } = useLocalization();
 
   useEffect(() => {
     if (!brandId) return;
@@ -203,9 +205,9 @@ export default function BrandPage() {
                       <span className="text-xs text-charcoal-600 dark:text-cool-gray-400">({product.reviewCount})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-lg font-bold text-gold-600">${product.price.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-gold-600">{formatPrice(product.price)}</p>
                       {product.oldPrice && (
-                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 line-through">${product.oldPrice.toFixed(2)}</p>
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 line-through">{formatPrice(product.oldPrice)}</p>
                       )}
                     </div>
                   </div>

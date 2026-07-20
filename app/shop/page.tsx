@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
@@ -8,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useToast } from '@/components/common/Toast';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ApiProduct {
@@ -100,6 +102,10 @@ function Stars({ rating }: { rating: number }) {
 export default function ShopPage() {
   const router  = useRouter();
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+  const { formatPrice, currency } = useLocalization();
+
+  // Currency symbol for price filter labels
+  const sym = currency === 'NGN' ? '₦' : currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$';
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [priceRange,  setPriceRange]  = useState('all');
@@ -294,10 +300,10 @@ export default function ShopPage() {
                 <div className="space-y-1">
                   {[
                     { value: 'all',        label: 'All Prices' },
-                    { value: 'under200',   label: 'Under $200' },
-                    { value: '200-500',    label: '$200 – $500' },
-                    { value: '500-1000',   label: '$500 – $1,000' },
-                    { value: 'over1000',   label: 'Over $1,000' },
+                    { value: 'under200',   label: `Under ${sym}200` },
+                    { value: '200-500',    label: `${sym}200 – ${sym}500` },
+                    { value: '500-1000',   label: `${sym}500 – ${sym}1,000` },
+                    { value: 'over1000',   label: `Over ${sym}1,000` },
                   ].map(o => (
                     <label key={o.value} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors text-sm ${
                       priceRange === o.value
@@ -393,8 +399,9 @@ export default function ShopPage() {
               {products.map(product => (
                 <div key={product.id} className="group bg-white dark:bg-charcoal-900 rounded-2xl overflow-hidden border border-cool-gray-100 dark:border-charcoal-800 hover:border-gold-400 dark:hover:border-gold-700 hover:shadow-xl hover:shadow-charcoal-900/10 dark:hover:shadow-gold-900/10 transition-all duration-300">
                   {/* Image */}
-                  <button onClick={() => router.push(`/product/${product.id}`)}
-                    className="relative aspect-square w-full overflow-hidden block">
+                  <Link href={`/product/${product.id}`}
+                    className="relative aspect-square w-full overflow-hidden block"
+                    aria-label={`View ${product.name}`}>
                     <Image
                       src={product.image || '/images/placeholder-product.jpg'}
                       alt={product.name} fill
@@ -412,7 +419,7 @@ export default function ShopPage() {
                     )}
 
                     {/* Wishlist */}
-                    <button onClick={(e) => { e.stopPropagation(); handleAddToWishlist(product.id); }}
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product.id); }}
                       className="absolute top-2.5 right-2.5 w-8 h-8 bg-white dark:bg-charcoal-800 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200 hover:scale-110"
                       aria-label="Save to wishlist">
                       <svg className="w-4 h-4 text-charcoal-600 dark:text-cool-gray-300 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,7 +433,7 @@ export default function ShopPage() {
                         View Product
                       </span>
                     </div>
-                  </button>
+                  </Link>
 
                   {/* Details */}
                   <div className="p-3 sm:p-4">
@@ -442,11 +449,11 @@ export default function ShopPage() {
 
                     <div className="flex items-center gap-2 mb-3">
                       <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">
-                        ${product.price.toFixed(2)}
+                        {formatPrice(product.price)}
                       </span>
                       {product.oldPrice && (
                         <span className="text-[10px] sm:text-xs text-cool-gray-400 line-through">
-                          ${product.oldPrice.toFixed(2)}
+                          {formatPrice(product.oldPrice)}
                         </span>
                       )}
                     </div>

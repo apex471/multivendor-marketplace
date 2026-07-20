@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Product {
   id: string;
@@ -28,6 +29,7 @@ function CompareContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const { formatPrice } = useLocalization();
 
   useEffect(() => {
     const ids = searchParams.getAll('id');
@@ -114,7 +116,7 @@ function CompareContent() {
                           <Image src={product.image} alt={product.name} fill className="object-contain rounded-lg" />
                         </div>
                         <h3 className="font-bold text-charcoal-900 dark:text-white text-center mb-2">{product.name}</h3>
-                        <p className="text-xl font-bold text-gold-600 mb-2">${product.price.toFixed(2)}</p>
+                        <p className="text-xl font-bold text-gold-600 mb-2">{formatPrice(product.price)}</p>
                         <div className="flex gap-2">
                           <Link href={`/product/${product.id}`} className="px-3 py-1 bg-gold-600 text-white rounded text-sm font-semibold hover:bg-gold-700">
                             View

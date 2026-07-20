@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useToast } from '@/components/common/Toast';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import Link from 'next/link';
 
 interface ApiProduct {
@@ -26,6 +27,7 @@ export default function FeaturedProductsPage() {
   const router = useRouter();
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const { addItem } = useCart();
+  const { formatPrice } = useLocalization();
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -134,10 +136,10 @@ export default function FeaturedProductsPage() {
                 </div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="font-bold text-sm text-charcoal-900 dark:text-white">
-                    ${(product.salePrice ?? product.price).toFixed(2)}
+                    {formatPrice(product.salePrice ?? product.price)}
                   </span>
                   {product.salePrice && product.salePrice < product.price && (
-                    <span className="text-xs text-cool-gray-500 line-through">${product.price.toFixed(2)}</span>
+                    <span className="text-xs text-cool-gray-500 line-through">{formatPrice(product.price)}</span>
                   )}
                 </div>
                 <button

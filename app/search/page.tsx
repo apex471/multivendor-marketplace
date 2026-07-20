@@ -6,10 +6,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { formatPrice } = useLocalization();
   const initialQuery = searchParams.get('q') || '';
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -233,7 +235,7 @@ function SearchContent() {
                       <div className="p-4">
                         <h3 className="font-semibold text-charcoal-900 dark:text-white mb-2">{product.name}</h3>
                         <div className="flex items-center justify-between">
-                          <span className="text-xl font-bold text-gold-600">${product.price}</span>
+                          <span className="text-xl font-bold text-gold-600">{formatPrice(product.price)}</span>
                           <div className="flex items-center gap-1">
                             <span className="text-yellow-500">⭐</span>
                             <span className="text-sm font-semibold text-charcoal-900 dark:text-white">{product.rating}</span>

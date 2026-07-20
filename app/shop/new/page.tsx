@@ -8,10 +8,12 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useToast } from '@/components/common/Toast';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import Link from 'next/link';
 
 interface ApiProduct {
   _id: string;
+  id?: string;
   name: string;
   price: number;
   salePrice?: number;
@@ -26,6 +28,7 @@ export default function NewArrivalsPage() {
   const router = useRouter();
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const { addItem } = useCart();
+  const { formatPrice } = useLocalization();
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -112,10 +115,11 @@ export default function NewArrivalsPage() {
           ))}
 
           {products.map(product => (
-            <div key={product._id} className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
-              <button
-                onClick={() => router.push(`/product/${product._id}`)}
-                className="relative aspect-square overflow-hidden w-full"
+            <div key={product._id ?? product.id} className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all">
+              <Link
+                href={`/product/${product.id ?? product._id}`}
+                className="relative aspect-square overflow-hidden w-full block"
+                aria-label={`View ${product.name}`}
               >
                 <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded">NEW</span>
                 <Image
@@ -128,11 +132,11 @@ export default function NewArrivalsPage() {
                   <span className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">SALE</span>
                 )}
                 <button
-                  onClick={e => { e.stopPropagation(); handleAddToWishlist(product._id); }}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product._id ?? product.id); }}
                   className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 transition-colors text-sm z-10"
                   aria-label="Add to wishlist"
                 >❤️</button>
-              </button>
+              </Link>
               <div className="p-3">
                 <p className="text-[10px] text-cool-gray-500 mb-1 truncate">{product.vendorName}</p>
                 <h3 className="font-semibold text-sm text-charcoal-900 dark:text-white mb-2 line-clamp-2 leading-tight">
@@ -144,10 +148,10 @@ export default function NewArrivalsPage() {
                 </div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="font-bold text-sm text-charcoal-900 dark:text-white">
-                    ${(product.salePrice ?? product.price).toFixed(2)}
+                    {formatPrice(product.salePrice ?? product.price)}
                   </span>
                   {product.salePrice && product.salePrice < product.price && (
-                    <span className="text-xs text-cool-gray-500 line-through">${product.price.toFixed(2)}</span>
+                    <span className="text-xs text-cool-gray-500 line-through">{formatPrice(product.price)}</span>
                   )}
                 </div>
                 <button

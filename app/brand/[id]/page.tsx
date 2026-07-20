@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { useToast } from '@/components/common/Toast';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Product {
   id: string;
@@ -39,6 +40,7 @@ export default function BrandDetailPage() {
   const brandId = params.id as string;
   const router = useRouter();
   const { success: toastSuccess, info: toastInfo } = useToast();
+  const { formatPrice } = useLocalization();
   const [activeTab, setActiveTab] = useState<'all' | 'direct' | 'affiliate'>('all');
   const [isFollowing, setIsFollowing] = useState(false);
   const [brand, setBrand] = useState<BrandData | null>(null);
@@ -324,9 +326,9 @@ export default function BrandDetailPage() {
                   <span className="text-sm font-semibold text-charcoal-900 dark:text-white">{product.rating}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-charcoal-900 dark:text-white">${product.price}</span>
+                  <span className="text-lg font-bold text-charcoal-900 dark:text-white">{formatPrice(product.price)}</span>
                   {product.oldPrice && (
-                    <span className="text-sm text-cool-gray-500 dark:text-cool-gray-400 line-through">${product.oldPrice}</span>
+                    <span className="text-sm text-cool-gray-500 dark:text-cool-gray-400 line-through">{formatPrice(product.oldPrice)}</span>
                   )}
                 </div>
               </div>
