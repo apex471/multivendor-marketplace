@@ -8,6 +8,7 @@ import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type OrderRow = { id: string; date: string; items: number; total: number; status: string; image: string };
 type WishlistItem = { wishlistId: string; productId: string; name: string; price: number; image: string; vendor: string };
@@ -16,6 +17,7 @@ export default function CustomerDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { formatPrice } = useLocalization();
 
   // Auth guard — wait for AuthContext to rehydrate before redirecting
   useEffect(() => {
@@ -153,7 +155,7 @@ export default function CustomerDashboard() {
               <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Total Orders</div>
             </div>
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">${stats.totalSpent.toFixed(2)}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-primary-700 dark:text-gold-400 mb-1">{formatPrice(stats.totalSpent)}</div>
               <div className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400">Total Spent</div>
             </div>
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
@@ -225,7 +227,7 @@ export default function CustomerDashboard() {
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-1">{order.items} items • {order.date}</p>
-                        <p className="font-bold text-primary-700 dark:text-gold-400 text-sm sm:text-base">${order.total.toFixed(2)}</p>
+                        <p className="font-bold text-primary-700 dark:text-gold-400 text-sm sm:text-base">{formatPrice(order.total)}</p>
                       </div>
                     </div>
                   ))}
@@ -301,7 +303,7 @@ export default function CustomerDashboard() {
                         <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm sm:text-base">{item.name}</h3>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{item.vendor}</p>
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">${item.price.toFixed(2)}</span>
+                          <span className="font-bold text-primary-700 dark:text-gold-400 text-base sm:text-lg">{formatPrice(item.price)}</span>
                           <Link
                             href={`/product/${item.productId}`}
                             className="px-3 sm:px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors text-xs sm:text-sm font-semibold min-h-9"
@@ -351,7 +353,7 @@ export default function CustomerDashboard() {
                         </div>
                         <p className="text-gray-700 dark:text-cool-gray-300 mb-3">{order.items} items</p>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <span className="text-xl font-bold text-primary-700 dark:text-gold-400">${order.total.toFixed(2)}</span>
+                          <span className="text-xl font-bold text-primary-700 dark:text-gold-400">{formatPrice(order.total)}</span>
                           <div className="flex gap-2">
                             <button className="flex-1 sm:flex-none px-4 py-2 border border-primary-700 text-primary-700 rounded-lg hover:bg-primary-50 transition-colors font-semibold min-h-10">
                               View Details

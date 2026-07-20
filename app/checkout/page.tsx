@@ -500,7 +500,7 @@ export default function CheckoutPage() {
                               ? 'text-green-600 dark:text-green-400'
                               : 'text-charcoal-900 dark:text-white'
                           }`}>
-                            {courier.price === 0 ? 'FREE' : `$${courier.price.toFixed(2)}`}
+                            {courier.price === 0 ? 'FREE' : formatPrice(courier.price)}
                           </span>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                             isSelected
@@ -547,7 +547,7 @@ export default function CheckoutPage() {
                       <p className={`text-lg font-bold leading-tight ${
                         selectedCourier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
                       }`}>
-                        {selectedCourier.price === 0 ? 'FREE' : `$${selectedCourier.price.toFixed(2)}`}
+                        {selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)}
                       </p>
                       <p className="text-[11px] text-charcoal-400 dark:text-cool-gray-500">delivery fee</p>
                     </div>
@@ -833,7 +833,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="text-right shrink-0">
                           <span className={`font-bold text-sm ${selectedCourier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'}`}>
-                            {selectedCourier.price === 0 ? 'FREE' : `$${selectedCourier.price.toFixed(2)}`}
+                            {selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)}
                           </span>
                         </div>
                       </div>

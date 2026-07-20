@@ -7,6 +7,7 @@ import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { getAuthToken } from '@/lib/api/auth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
 export default function FeedPage() {
   const router   = useRouter();
   const { addItem } = useCart();
+  const { formatPrice } = useLocalization();
 
   const [currentUser,       setCurrentUser]       = useState<CurrentUser | null>(null);
   const [posts,             setPosts]             = useState<Post[]>([]);
@@ -523,7 +525,7 @@ export default function FeedPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm text-charcoal-900 dark:text-white truncate">{post.product.name || 'Tagged Product'}</p>
                       <p className="text-gold-600 dark:text-gold-400 font-bold text-base">
-                        ${typeof post.product.price === 'number' ? post.product.price.toFixed(2) : Number(post.product.price || 0).toFixed(2)}
+                        {formatPrice(typeof post.product.price === 'number' ? post.product.price : Number(post.product.price || 0))}
                       </p>
                       {post.product.vendor && (
                         <p className="text-xs text-cool-gray-500 truncate">by {post.product.vendor}</p>

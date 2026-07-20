@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface OrderItem {
   id: string;
@@ -26,6 +27,7 @@ interface Order {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { formatPrice } = useLocalization();
   useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/orders'); }, [router]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -285,7 +287,7 @@ export default function OrdersPage() {
                           </span>
                           <span>📦 {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}</span>
                           <span className="font-semibold text-charcoal-900 dark:text-white">
-                            💰 ${order.total.toFixed(2)}
+                            💰 {formatPrice(order.total)}
                           </span>
                         </div>
                       </div>

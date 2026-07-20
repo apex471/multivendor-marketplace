@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type TabType = 'overview' | 'products' | 'affiliates' | 'analytics' | 'payouts' | 'settings' | 'logistics';
 
@@ -47,6 +48,7 @@ interface BrandStats {
 export default function BrandDashboard() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
+  const { formatPrice } = useLocalization();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
@@ -413,7 +415,7 @@ export default function BrandDashboard() {
             <h3 className="text-sm font-medium text-cool-gray-400">Total Revenue</h3>
             <span className="text-2xl">💰</span>
           </div>
-          <p className="text-3xl font-bold text-white">${brandStats.totalRevenue.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white">{formatPrice(brandStats.totalRevenue)}</p>
           <p className="text-xs text-cool-gray-500 mt-2">Total revenue earned</p>
         </div>
 
@@ -422,7 +424,7 @@ export default function BrandDashboard() {
             <h3 className="text-sm font-medium text-cool-gray-400">Monthly Revenue</h3>
             <span className="text-2xl">📈</span>
           </div>
-          <p className="text-3xl font-bold text-white">${brandStats.monthRevenue.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white">{formatPrice(brandStats.monthRevenue)}</p>
           <p className="text-xs text-cool-gray-500 mt-2">Current month</p>
         </div>
 
@@ -431,7 +433,7 @@ export default function BrandDashboard() {
             <h3 className="text-sm font-medium text-cool-gray-400">Affiliate Earnings</h3>
             <span className="text-2xl">💸</span>
           </div>
-          <p className="text-3xl font-bold text-white">${brandStats.affiliateEarnings.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white">{formatPrice(brandStats.affiliateEarnings)}</p>
           <p className="text-xs text-cool-gray-500 mt-2">Paid to partners</p>
         </div>
 
@@ -543,7 +545,7 @@ export default function BrandDashboard() {
                     </div>
                   </td>
                   <td className="py-3 pr-4 text-cool-gray-300">{p.category}</td>
-                  <td className="py-3 pr-4 text-white font-semibold">${p.price.toFixed(2)}</td>
+                  <td className="py-3 pr-4 text-white font-semibold">{formatPrice(p.price)}</td>
                   <td className="py-3 pr-4 text-cool-gray-300">{p.stock}</td>
                   <td className="py-3 pr-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -674,7 +676,7 @@ export default function BrandDashboard() {
                     <span className="text-white">{partner.productsListed}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="font-semibold text-emerald-400">${partner.totalSales.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-400">{formatPrice(partner.totalSales)}</span>
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-sm text-cool-gray-400">{new Date(partner.joinedDate).toLocaleDateString()}</span>
@@ -1023,7 +1025,7 @@ export default function BrandDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
-                  <h3 className="text-3xl font-black text-white mt-2">${walletBalance.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
                   <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
                   <button
                     onClick={() => {
@@ -1040,13 +1042,13 @@ export default function BrandDashboard() {
 
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
-                  <h3 className="text-3xl font-black text-white mt-2">${totalEarned.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalEarned)}</h3>
                   <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
                 </div>
 
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
-                  <h3 className="text-3xl font-black text-white mt-2">${totalWithdrawn.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
                   <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
                 </div>
               </div>
@@ -1099,7 +1101,7 @@ export default function BrandDashboard() {
                               </td>
                               <td className="px-5 py-4 text-right">
                                 <div className={`font-bold ${isIncome ? 'text-green-400' : 'text-white'}`}>
-                                  {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+                                  {isIncome ? '+' : '-'}{formatPrice(tx.amount)}
                                 </div>
                               </td>
                               <td className="px-5 py-4">
@@ -1154,7 +1156,7 @@ export default function BrandDashboard() {
                           className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-semibold"
                         />
                         <p className="text-[11px] text-cool-gray-400 mt-1">
-                          Available: ${walletBalance.toFixed(2)} (Min. withdrawal $50.00)
+                          Available: {formatPrice(walletBalance)} (Min. withdrawal {formatPrice(50)})
                         </p>
                       </div>
 

@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { useCart } from '@/contexts/CartContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface WishlistItem {
   wishlistId: string;
@@ -25,6 +26,7 @@ interface WishlistItem {
 export default function WishlistPage() {
   const router = useRouter();
   const { addItem: addToCart } = useCart();
+  const { formatPrice } = useLocalization();
   useEffect(() => { if (!getAuthToken()) router.replace('/auth/login?redirect=/wishlist'); }, [router]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,10 +181,10 @@ export default function WishlistPage() {
                         </div>
 
                         <div className="flex items-center gap-2 mb-4">
-                          <span className="text-xl font-bold text-charcoal-900 dark:text-white">${item.price.toFixed(2)}</span>
+                          <span className="text-xl font-bold text-charcoal-900 dark:text-white">{formatPrice(item.price)}</span>
                           {item.oldPrice && (
                             <>
-                              <span className="text-sm text-gray-500 dark:text-cool-gray-500 line-through">${item.oldPrice.toFixed(2)}</span>
+                              <span className="text-sm text-gray-500 dark:text-cool-gray-500 line-through">{formatPrice(item.oldPrice)}</span>
                               <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">
                                 SALE
                               </span>
@@ -246,7 +248,7 @@ export default function WishlistPage() {
                   <div className="border-t dark:border-charcoal-700 mt-4 pt-4">
                     <div className="flex justify-between">
                       <span className="font-semibold text-charcoal-900 dark:text-white">Total Value</span>
-                      <span className="text-xl font-bold text-gold-600">${totalValue.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-gold-600">{formatPrice(totalValue)}</span>
                     </div>
                   </div>
                 </div>

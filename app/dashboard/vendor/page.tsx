@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { buildLogisticsReferralUrl } from '@/lib/utils/referral';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 'payouts' | 'settings';
 
@@ -14,6 +15,7 @@ export default function VendorDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const { user, isLoading, isAuthenticated, updateUser } = useAuth();
+  const { formatPrice } = useLocalization();
   const [referralLink, setReferralLink] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
 
@@ -350,7 +352,7 @@ export default function VendorDashboard() {
               <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-cool-gray-400">Monthly Revenue</p>
               <span className="text-2xl">💰</span>
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">${stats.revenue.toLocaleString()}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{formatPrice(stats.revenue)}</p>
             <p className="text-xs text-green-600 mt-1">Current month</p>
           </div>
           <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100 dark:border-charcoal-700">
@@ -408,7 +410,7 @@ export default function VendorDashboard() {
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-1">{order.customer} · {order.date}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-xs sm:text-sm text-gray-700 dark:text-cool-gray-300">{order.items} items</span>
-                        <span className="font-bold text-purple-600 text-sm sm:text-base">${order.total.toFixed(2)}</span>
+                        <span className="font-bold text-purple-600 text-sm sm:text-base">{formatPrice(order.total)}</span>
                       </div>
                     </div>
                   ))}
@@ -505,7 +507,7 @@ export default function VendorDashboard() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                           <div className="flex-1">
                             <h3 className="font-bold text-base sm:text-lg mb-1 text-gray-900 dark:text-white">{product.name}</h3>
-                            <p className="text-xl font-bold text-purple-600">${product.price.toFixed(2)}</p>
+                            <p className="text-xl font-bold text-purple-600">{formatPrice(product.price)}</p>
                           </div>
                           <span className={`text-xs px-3 py-1.5 rounded-full w-fit font-semibold ${
                             product.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -563,7 +565,7 @@ export default function VendorDashboard() {
                         </div>
                         <p className="text-sm text-gray-600 dark:text-cool-gray-400 mb-1">Customer: {order.customer}</p>
                         <p className="text-sm text-gray-600 dark:text-cool-gray-400 mb-2">{order.items} items · {order.date}</p>
-                        <p className="text-xl font-bold text-purple-600">${order.total.toFixed(2)}</p>
+                        <p className="text-xl font-bold text-purple-600">{formatPrice(order.total)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 lg:flex-col">
                         <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold min-h-10">View Details</button>
@@ -693,7 +695,7 @@ export default function VendorDashboard() {
                     </div>
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-center">
                       <p className="text-xs text-gray-600 dark:text-cool-gray-400 mb-1">Monthly Revenue</p>
-                      <p className="text-3xl font-bold text-green-700 dark:text-green-400">${stats.revenue.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-green-700 dark:text-green-400">{formatPrice(stats.revenue)}</p>
                     </div>
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
                       <p className="text-xs text-gray-600 dark:text-cool-gray-400 mb-1">Active Products</p>
@@ -949,7 +951,7 @@ export default function VendorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-5 border border-gray-100 dark:border-charcoal-700 relative overflow-hidden">
                   <p className="text-xs font-semibold text-gray-500 dark:text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
-                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">${walletBalance.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">{formatPrice(walletBalance)}</h3>
                   <p className="text-[11px] text-gray-400 dark:text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
                   <button
                     onClick={() => {
@@ -966,13 +968,13 @@ export default function VendorDashboard() {
 
                 <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-5 border border-gray-100 dark:border-charcoal-700 relative overflow-hidden">
                   <p className="text-xs font-semibold text-gray-500 dark:text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
-                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">${totalEarned.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">{formatPrice(totalEarned)}</h3>
                   <p className="text-[11px] text-gray-400 dark:text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
                 </div>
 
                 <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-lg p-5 border border-gray-100 dark:border-charcoal-700 relative overflow-hidden">
                   <p className="text-xs font-semibold text-gray-500 dark:text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
-                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">${totalWithdrawn.toFixed(2)}</h3>
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
                   <p className="text-[11px] text-gray-400 dark:text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
                 </div>
               </div>
@@ -1025,7 +1027,7 @@ export default function VendorDashboard() {
                               </td>
                               <td className="px-5 py-4 text-right">
                                 <div className={`font-bold ${isIncome ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
-                                  {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+                                  {isIncome ? '+' : '-'}{formatPrice(tx.amount)}
                                 </div>
                               </td>
                               <td className="px-5 py-4">
@@ -1080,7 +1082,7 @@ export default function VendorDashboard() {
                           className="w-full px-4 py-2.5 bg-gray-50 dark:bg-charcoal-700 border border-gray-300 dark:border-charcoal-600 rounded-xl text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold"
                         />
                         <p className="text-[11px] text-gray-500 dark:text-cool-gray-400 mt-1">
-                          Available: ${walletBalance.toFixed(2)} (Min. withdrawal $50.00)
+                          Available: {formatPrice(walletBalance)} (Min. withdrawal {formatPrice(50)})
                         </p>
                       </div>
 
