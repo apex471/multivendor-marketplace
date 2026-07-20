@@ -41,7 +41,7 @@ interface Brand {
 }
 
 interface Product {
-  _id: string;
+  id: string;
   name: string;
   price: number;
   salePrice?: number;
@@ -122,7 +122,7 @@ export default function Home() {
   };
 
   const handleAddToCart = (productId: string) => {
-    const product = products.find(p => p._id === productId);
+    const product = products.find(p => p.id === productId);
     if (!product) return;
     addItem({
       productId,
@@ -469,11 +469,12 @@ export default function Home() {
           ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
             {products.map((product) => (
-              <div key={product._id} className="scroll-reveal group relative isolate">
+              <div key={product.id} className="scroll-reveal group relative isolate">
                 <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow duration-300">
-                  <div
-                    onClick={() => handleProductClick(product._id)}
-                    className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation"
+                  <Link
+                    href={`/product/${product.id}`}
+                    className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation block"
+                    aria-label={`View ${product.name}`}
                   >
                     {product.images?.[0] ? (
                       <Image
@@ -491,15 +492,17 @@ export default function Home() {
                     )}
                     <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex flex-col gap-1.5 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleAddToWishlist(product._id); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product.id); }}
                         className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
                         aria-label="Add to wishlist"
                       >❤️</button>
                     </div>
-                  </div>
+                  </Link>
                   <div className="p-2 sm:p-3">
                     <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5 sm:mb-1 truncate">{product.vendorName}</p>
-                    <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">{product.name}</h3>
+                    <Link href={`/product/${product.id}`} className="block">
+                      <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">{product.name}</h3>
+                    </Link>
                     <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                       <span className="text-yellow-500 text-[10px] sm:text-xs">⭐</span>
                       <span className="text-[10px] sm:text-xs font-medium text-charcoal-700 dark:text-cool-gray-300">{(product.rating ?? 0).toFixed(1)}</span>
@@ -512,12 +515,13 @@ export default function Home() {
                       )}
                     </div>
                     <button
-                      onClick={(e) => { e.preventDefault(); handleAddToCart(product._id); }}
+                      onClick={(e) => { e.preventDefault(); handleAddToCart(product.id); }}
                       className="w-full py-1.5 sm:py-2 min-h-9 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
                     >{t('add_to_cart')}</button>
                   </div>
                 </div>
               </div>
+
             ))}
           </div>
           )}
