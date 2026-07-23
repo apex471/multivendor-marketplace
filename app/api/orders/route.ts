@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
           amount: flwAmount,
           currency: flwCurrency,
           redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
-          payment_options: paymentType === 'bank' ? 'banktransfer' : 'card',
+          payment_options: paymentType === 'bank' ? 'bank_transfer, banktransfer, account' : 'card',
           customer: {
             email: customerEmail || 'guest@example.com',
             phonenumber: shippingInfo.phone || '08000000000',
