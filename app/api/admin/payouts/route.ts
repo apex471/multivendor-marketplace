@@ -69,6 +69,28 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function getBankCode(bankName: string, flwSecretKey: string): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.flutterwave.com/v3/banks/NG', {
+      headers: { Authorization: `Bearer ${flwSecretKey}` }
+    });
+    const data = await res.json();
+    if (data.status === 'success' && Array.isArray(data.data)) {
+      const nameLower = bankName.toLowerCase();
+      // Try exact match first
+      let match = data.data.find((b: any) => b.name.toLowerCase() === nameLower);
+      if (!match) {
+        // Try substring match
+        match = data.data.find((b: any) => b.name.toLowerCase().includes(nameLower) || nameLower.includes(b.name.toLowerCase()));
+      }
+      return match ? match.code : null;
+    }
+  } catch (err) {
+    console.error('Failed to fetch bank list from Flutterwave:', err);
+  }
+  return null;
+}
+
 // POST /api/admin/payouts - Approve or reject a payout request
 export async function POST(request: NextRequest) {
   const { error } = await verifyAdminAuth(request);
@@ -99,13 +121,77 @@ export async function POST(request: NextRequest) {
 
     // 2. Perform approve or reject
     const now = new Date();
-    const updatedMetadata = {
+    const updatedMetadata: any = {
       ...(targetPayout.metadata || {}),
       adminNotes: notes || (action === 'approve' ? 'Approved' : 'Rejected by Admin'),
       processedAt: now.toISOString(),
     };
 
     if (action === 'approve') {
+      // Initiate payout via Flutterwave if secret key is present
+      const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+      if (!flwSecretKey) {
+        return sendError('Flutterwave secret key is not configured. Cannot process payout.', 500);
+      }
+
+      const meta = targetPayout.metadata || {};
+      const bankName = String(meta.bankName || '').trim();
+      const accountNumber = String(meta.accountNumber || '').trim();
+
+      if (!bankName || !accountNumber) {
+        return sendError('Payout request is missing bank name or account number.', 400);
+      }
+
+      // 1. Resolve Bank Name to Bank Code
+      const bankCode = await getBankCode(bankName, flwSecretKey);
+      if (!bankCode) {
+        return sendError(`Could not resolve bank code for bank name: "${bankName}". Please reject or edit details.`, 400);
+      }
+
+      // 2. Convert USD amount to NGN
+      const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+      const payoutAmountNGN = Math.round(targetPayout.amount * NGN_RATE);
+
+      // 3. Call Flutterwave Transfer API
+      try {
+        const transferRes = await fetch('https://api.flutterwave.com/v3/transfers', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${flwSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            account_bank: bankCode,
+            account_number: accountNumber,
+            amount: payoutAmountNGN,
+            currency: 'NGN',
+            narration: `Payout for ${targetPayout.transactionId || payoutId} - Multivendor Marketplace`,
+            reference: targetPayout.transactionId || `WDL-${Date.now()}`,
+            debit_currency: 'NGN',
+          }),
+        });
+
+        const transferData = await transferRes.json();
+        if (transferData.status !== 'success') {
+          console.error('[Flutterwave Transfer API Error]', transferData);
+          return sendError(
+            `Flutterwave transfer failed: ${transferData.message || 'Unknown error'}`,
+            400
+          );
+        }
+
+        // Add Flutterwave response to transaction metadata
+        updatedMetadata.flutterwaveTransfer = {
+          transferId: transferData.data?.id || null,
+          status: transferData.data?.status || 'unknown',
+          fee: transferData.data?.fee || 0,
+          rawResponse: transferData,
+        };
+      } catch (err: any) {
+        console.error('[Flutterwave Transfer Exception]', err);
+        return sendError(`Failed to connect to Flutterwave: ${err.message}`, 500);
+      }
+
       await Transaction.updateOne(payoutId, {
         status: 'completed',
         metadata: updatedMetadata,
