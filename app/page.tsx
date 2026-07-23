@@ -18,8 +18,8 @@ interface Post {
   authorAvatar?: string;
   images?: string[];
   caption?: string;
-  likesCount?: number;
-  commentsCount?: number;
+  likes?: number;
+  comments?: number;
 }
 
 interface Vendor {
@@ -304,8 +304,8 @@ export default function Home() {
                   </div>
                   {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-2 sm:mb-3 text-sm sm:text-base line-clamp-2">{post.caption}</p>}
                   <div className="flex items-center gap-3 sm:gap-4 text-charcoal-600 dark:text-cool-gray-400 text-xs sm:text-sm">
-                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">❤️</span> <span>{post.likesCount ?? 0}</span></span>
-                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">💬</span> <span>{post.commentsCount ?? 0}</span></span>
+                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">❤️</span> <span>{post.likes ?? 0}</span></span>
+                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">💬</span> <span>{post.comments ?? 0}</span></span>
                   </div>
                 </div>
               </div>

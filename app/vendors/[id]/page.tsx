@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocation } from '../../../contexts/LocationContext';
+import Header from '@/components/common/Header';
+import Footer from '@/components/common/Footer';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Product {
   id: string;
@@ -52,6 +56,7 @@ interface VendorData {
 export default function VendorStorePage() {
   const params = useParams();
   const vendorId = params?.id as string;
+  const { formatPrice } = useLocalization();
   
   const { 
     userLocation, 
@@ -85,7 +90,7 @@ export default function VendorStorePage() {
           id:           String(v.id),
           name:         v.name,
           description:  v.bio || `Welcome to ${v.name}'s store.`,
-          logo:         v.avatar ? '' : '🏪',
+          logo:         v.avatar || '',
           banner:       '',
           category:     'Vendor',
           rating:       0,
@@ -139,15 +144,25 @@ export default function VendorStorePage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-charcoal-900">
+    <div className="min-h-screen bg-white dark:bg-charcoal-900 transition-colors duration-200">
+      <Header />
       {/* Banner */}
       <div className="h-64 bg-linear-to-r from-charcoal-800 via-charcoal-900 to-charcoal-950 dark:from-charcoal-900 dark:via-charcoal-950 dark:to-black relative overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-br from-gold-600/10 to-transparent"></div>
         <div className="absolute inset-0 flex items-end">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             <div className="flex items-end gap-6">
-              <div className="w-32 h-32 bg-white dark:bg-charcoal-800 rounded-xl flex items-center justify-center text-6xl border-4 border-white shadow-xl">
-                {vendor.logo}
+              <div className="w-32 h-32 bg-white dark:bg-charcoal-800 rounded-xl flex items-center justify-center text-6xl border-4 border-white shadow-xl overflow-hidden relative shrink-0">
+                {vendor.logo ? (
+                  <Image
+                    src={vendor.logo}
+                    alt={vendor.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span>🏪</span>
+                )}
               </div>
               <div className="flex-1 pb-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -209,11 +224,11 @@ export default function VendorStorePage() {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="p-3 bg-white dark:bg-charcoal-800 rounded-lg">
                         <div className="text-charcoal-600 dark:text-cool-gray-400">Delivery Fee</div>
-                        <div className="font-bold text-charcoal-900 dark:text-white">${vendor.deliveryFee}</div>
+                        <div className="font-bold text-charcoal-900 dark:text-white">{formatPrice(vendor.deliveryFee)}</div>
                       </div>
                       <div className="p-3 bg-white dark:bg-charcoal-800 rounded-lg">
                         <div className="text-charcoal-600 dark:text-cool-gray-400">Min. Order</div>
-                        <div className="font-bold text-charcoal-900 dark:text-white">${vendor.minOrder}</div>
+                        <div className="font-bold text-charcoal-900 dark:text-white">{formatPrice(vendor.minOrder)}</div>
                       </div>
                     </div>
                   )}
@@ -276,19 +291,29 @@ export default function VendorStorePage() {
                     key={product.id}
                     className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    <div className="h-48 bg-linear-to-br from-purple-200 to-pink-200 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center text-6xl">
-                      📸
+                    <div className="h-48 bg-linear-to-br from-purple-200 to-pink-200 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center text-6xl relative overflow-hidden">
+                      {product.image ? (
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 33vw"
+                          className="object-cover object-center"
+                        />
+                      ) : (
+                        <span>📸</span>
+                      )}
                     </div>
                     <div className="p-4">
                       <div className="text-xs text-charcoal-600 dark:text-cool-gray-400 mb-1">
                         {product.category}
                       </div>
-                      <h3 className="font-bold text-charcoal-900 dark:text-white mb-2">
+                      <h3 className="font-bold text-charcoal-900 dark:text-white mb-2 line-clamp-1">
                         {product.name}
                       </h3>
                       <div className="flex items-center justify-between">
                         <div className="text-xl font-bold text-gold-600">
-                          ${product.price}
+                          {formatPrice(product.price)}
                         </div>
                         <Link
                           href={`/product/${product.id}`}
@@ -396,7 +421,7 @@ export default function VendorStorePage() {
                   <span className="text-2xl">💰</span>
                   <div>
                     <div className="font-semibold text-charcoal-900 dark:text-white">
-                      ${vendor.minOrder} minimum
+                      {formatPrice(vendor.minOrder)} minimum
                     </div>
                     <div className="text-charcoal-600 dark:text-cool-gray-400">
                       Order requirement
@@ -421,6 +446,7 @@ export default function VendorStorePage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

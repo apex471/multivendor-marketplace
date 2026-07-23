@@ -74,9 +74,9 @@ export default function ProfilePage() {
           isFollowing: u.isFollowing,
         });
         setIsFollowing(u.isFollowing);
-        setPosts((json.data.posts ?? []).map((p: { _id: string; images?: string[]; likes: number; comments: number }) => ({
-          id:       String(p._id),
-          image:    p.images?.[0] ?? null,
+        setPosts((json.data.posts ?? []).map((p: { id?: string; _id?: string; image?: string | null; images?: string[]; likes: number; comments: number }) => ({
+          id:       String(p.id || p._id),
+          image:    p.image || p.images?.[0] || null,
           likes:    p.likes,
           comments: p.comments,
         })));
