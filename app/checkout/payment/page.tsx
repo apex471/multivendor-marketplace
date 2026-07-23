@@ -9,7 +9,7 @@ import { useCheckout } from '../../../contexts/CheckoutContext';
 export default function PaymentPage() {
   const router = useRouter();
   const { checkoutData, updatePaymentMethod } = useCheckout();
-  const [paymentType, setPaymentType] = useState<'new' | 'paypal'>('new');
+  const [paymentType, setPaymentType] = useState<'new' | 'bank' | 'paypal'>('new');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
 
   const handleNewCardSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -66,7 +66,7 @@ export default function PaymentPage() {
           <div className="lg:col-span-2">
             {/* Payment Type Selection */}
             <div className="mb-6">
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-3 gap-3">
                 <button
                   onClick={() => setPaymentType('new')}
                   className={`p-4 rounded-lg border-2 text-left transition-all ${
@@ -76,8 +76,20 @@ export default function PaymentPage() {
                   }`}
                 >
                   <div className="text-2xl mb-1">💳</div>
-                  <div className="font-semibold text-charcoal-900 dark:text-white">Credit / Debit Card</div>
+                  <div className="font-semibold text-charcoal-900 dark:text-white">Card Payment</div>
                   <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">Pay with card</div>
+                </button>
+                <button
+                  onClick={() => setPaymentType('bank')}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    paymentType === 'bank'
+                      ? 'border-gold-600 bg-gold-50 dark:bg-gold-900/10'
+                      : 'border-cool-gray-300 dark:border-charcoal-700 hover:border-gold-400'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">🏛️</div>
+                  <div className="font-semibold text-charcoal-900 dark:text-white">Bank Transfer</div>
+                  <div className="text-xs text-charcoal-600 dark:text-cool-gray-400">Pay with bank transfer</div>
                 </button>
                 <button
                   onClick={() => setPaymentType('paypal')}
@@ -94,123 +106,65 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            {/* New Card Form */}
+            {/* Hosted Card Payment Redirect */}
             {paymentType === 'new' && (
               <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">
-                  Add New Card
+                  Pay with Credit / Debit Card (Flutterwave)
                 </h3>
+                <div className="bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800 rounded-xl p-5 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-gold-600 text-xl">💳</span>
+                    <h3 className="font-semibold text-gold-900 dark:text-gold-300 text-sm">Secure Card Payment</h3>
+                  </div>
+                  <p className="text-xs text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
+                    You will be securely redirected to Flutterwave's checkout portal to process your card payment. No card information is stored on our site.
+                  </p>
+                </div>
                 <form onSubmit={handleNewCardSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      required
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
-                      Cardholder Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="cardHolder"
-                      required
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
-                        Expiry Date *
-                      </label>
-                      <input
-                        type="text"
-                        name="expiryDate"
-                        required
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
-                        CVV *
-                      </label>
-                      <input
-                        type="text"
-                        name="cvv"
-                        required
-                        placeholder="123"
-                        maxLength={4}
-                        className="w-full px-4 py-3 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="saveCard"
-                      id="saveCard"
-                      className="w-4 h-4 text-gold-600 border-cool-gray-300 rounded"
-                      defaultChecked
-                    />
-                    <label htmlFor="saveCard" className="text-sm text-charcoal-700 dark:text-cool-gray-300">
-                      Save this card for future purchases
-                    </label>
-                  </div>
-
-                  {/* Billing Address */}
-                  <div className="pt-4 border-t border-cool-gray-300 dark:border-charcoal-700">
-                    <div className="flex items-center gap-2 mb-4">
-                      <input
-                        type="checkbox"
-                        id="billingAddressSame"
-                        checked={billingAddressSame}
-                        onChange={(e) => setBillingAddressSame(e.target.checked)}
-                        className="w-4 h-4 text-gold-600 border-cool-gray-300 rounded"
-                      />
-                      <label htmlFor="billingAddressSame" className="text-sm text-charcoal-700 dark:text-cool-gray-300">
-                        Billing address same as shipping
-                      </label>
-                    </div>
-                    {!billingAddressSame && (
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          placeholder="Address"
-                          className="w-full px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                        />
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="City"
-                            className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                          />
-                          <input
-                            type="text"
-                            placeholder="ZIP Code"
-                            className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+                  <input type="hidden" name="cardNumber" value="1111222233334444" />
+                  <input type="hidden" name="cardHolder" value="Flutterwave Checkout" />
+                  <input type="hidden" name="expiryDate" value="12/30" />
+                  <input type="hidden" name="cvv" value="123" />
                   <button
                     type="submit"
                     className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
                   >
-                    Continue to Review
+                    Continue to Review Order
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* Bank Transfer Redirect */}
+            {paymentType === 'bank' && (
+              <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">
+                  Pay with Bank Transfer (Flutterwave)
+                </h3>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-blue-600 text-xl">🏛️</span>
+                    <h3 className="font-semibold text-blue-900 dark:text-blue-300 text-sm">Secure Bank Transfer</h3>
+                  </div>
+                  <p className="text-xs text-charcoal-700 dark:text-cool-gray-300 leading-relaxed">
+                    A secure virtual account will be generated for you on Flutterwave. You can transfer funds directly from any banking application.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updatePaymentMethod({
+                      id: 'bank',
+                      type: 'bank',
+                      cardHolder: 'Bank Transfer Client',
+                    });
+                    router.push('/checkout/review');
+                  }}
+                  className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
+                >
+                  Continue to Review Order
+                </button>
               </div>
             )}
 

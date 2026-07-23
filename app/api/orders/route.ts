@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       shippingInfo, cartItems,
       courierId, courierName, courierIcon, courierPrice, courierEta, courierCarrier, courierTracking,
       subtotal: rawSubtotal, shippingCost: rawShipping, discount, couponCode, paymentMethod,
+      currency,
     } = body;
 
     if (!shippingInfo || !cartItems?.length) {
@@ -101,13 +102,12 @@ export async function POST(request: NextRequest) {
     const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
     if (flwSecretKey) {
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        // Flutterwave bank transfer virtual accounts only work in NGN.
-        // If prices are stored in USD, convert at an approximate rate.
-        // In production: use a live FX API or store product prices in NGN.
+        const appUrl = request.nextUrl.origin;
+        const orderCurrency = (currency || 'USD').toUpperCase();
         const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
-        const flwAmount = paymentType === 'bank' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
-        const flwCurrency = paymentType === 'bank' ? 'NGN' : 'NGN';
+        
+        const flwCurrency = (paymentType === 'bank' || orderCurrency === 'NGN') ? 'NGN' : 'USD';
+        const flwAmount = flwCurrency === 'NGN' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
 
         const flwPayload: Record<string, unknown> = {
           tx_ref: orderId,

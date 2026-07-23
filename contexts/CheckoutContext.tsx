@@ -27,7 +27,7 @@ interface ShippingAddress {
 
 interface PaymentMethod {
   id: string;
-  type: 'card' | 'paypal';
+  type: 'card' | 'paypal' | 'bank';
   cardNumber?: string;
   cardHolder?: string;
   expiryDate?: string;

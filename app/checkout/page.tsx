@@ -60,7 +60,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items: cartItems, clearCart } = useCart();
   const { warning: toastWarning, success: toastSuccess } = useToast();
-  const { formatPrice } = useLocalization();
+  const { formatPrice, currency } = useLocalization();
 
   // Auth guard — redirect unauthenticated users to login
   useEffect(() => {
@@ -156,19 +156,6 @@ export default function CheckoutPage() {
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (paymentMethodType === 'card') {
-      if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiryDate || !paymentInfo.cvv) {
-        toastWarning('Please fill in all payment details'); return;
-      }
-      if (cardError) {
-        toastWarning('Please enter a valid card number'); return;
-      }
-      const [mm] = paymentInfo.expiryDate.split('/');
-      const month = parseInt(mm, 10);
-      if (!mm || month < 1 || month > 12) {
-        toastWarning('Please enter a valid expiry date (MM/YY)'); return;
-      }
-    }
     // Bank transfer: no card fields needed — Flutterwave handles everything on their page
     // Phone number is required by Flutterwave for virtual account generation
     if (paymentMethodType === 'bank' && !shippingInfo.phone) {
@@ -190,15 +177,16 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           shippingInfo,
+          currency,
           paymentInfo: {
-            cardNumber: paymentMethodType === 'card' ? paymentInfo.cardNumber.slice(-4) : 'Bank',
-            cardName: paymentMethodType === 'card' ? paymentInfo.cardName : 'Bank Transfer Client',
-            expiryDate: paymentMethodType === 'card' ? paymentInfo.expiryDate : 'N/A',
+            cardNumber: paymentMethodType === 'card' ? '1111' : 'Bank',
+            cardName: paymentMethodType === 'card' ? 'Flutterwave Checkout' : 'Bank Transfer Client',
+            expiryDate: paymentMethodType === 'card' ? '12/30' : 'N/A',
           },
           paymentMethod: {
             type: paymentMethodType,
-            cardNumber: paymentMethodType === 'card' ? paymentInfo.cardNumber : undefined,
-            cardHolder: paymentMethodType === 'card' ? paymentInfo.cardName : 'Bank Transfer Client',
+            cardNumber: undefined,
+            cardHolder: paymentMethodType === 'card' ? 'Flutterwave Checkout' : 'Bank Transfer Client',
           },
           cartItems,
           courierId:       selectedCourier.id,
@@ -606,91 +594,29 @@ export default function CheckoutPage() {
 
                 <form onSubmit={handlePaymentSubmit} className="space-y-4">
                   {paymentMethodType === 'card' ? (
-                    <>
-                      {/* Card Number with type detection */}
-                      <div>
-                        <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Card Number *</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            required
-                            value={paymentInfo.cardNumber}
-                            onChange={(e) => handleCardNumberChange(e.target.value)}
-                            className={`w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent font-mono tracking-widest pr-24 ${
-                              cardError ? 'border-red-500 dark:border-red-500' : 'border-cool-gray-300 dark:border-charcoal-600'
-                            }`}
-                            placeholder="1234 5678 9012 3456"
-                            maxLength={19}
-                            inputMode="numeric"
-                          />
-                          {/* Card type badge */}
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-charcoal-400 dark:text-cool-gray-500 select-none">
-                            {CARD_LOGOS[cardType]}
-                          </span>
+                    <div className="space-y-4">
+                      <div className="bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800 rounded-xl p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-gold-600 text-xl">💳</span>
+                          <h3 className="font-semibold text-gold-900 dark:text-gold-300 text-sm">Flutterwave Secure Card Payment</h3>
                         </div>
-                        {cardError && (
-                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
-                            {cardError}
-                          </p>
-                        )}
+                        <ol className="space-y-2.5">
+                          {[
+                            { step: '1', text: "Click 'Review Order' then 'Place Order' below" },
+                            { step: '2', text: "You'll be securely redirected to Flutterwave's checkout page" },
+                            { step: '3', text: 'Enter your card details securely on the Flutterwave hosted form' },
+                            { step: '4', text: 'Complete any 3D Secure verification (OTP) from your bank' },
+                          ].map(({ step, text }) => (
+                            <li key={step} className="flex items-start gap-3">
+                              <span className="shrink-0 w-5 h-5 rounded-full bg-gold-600 dark:bg-gold-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                                {step}
+                              </span>
+                              <span className="text-xs text-gold-800 dark:text-gold-300 leading-relaxed">{text}</span>
+                            </li>
+                          ))}
+                        </ol>
                       </div>
-
-                      {/* Cardholder Name */}
-                      <div>
-                        <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Cardholder Name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={paymentInfo.cardName}
-                          onChange={(e) => setPaymentInfo({ ...paymentInfo, cardName: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                          placeholder="Name as it appears on card"
-                          autoComplete="cc-name"
-                        />
-                      </div>
-
-                      {/* Expiry + CVV */}
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">Expiry Date *</label>
-                          <input
-                            type="text"
-                            required
-                            value={paymentInfo.expiryDate}
-                            onChange={(e) => handleExpiryChange(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent font-mono"
-                            placeholder="MM/YY"
-                            maxLength={5}
-                            inputMode="numeric"
-                            autoComplete="cc-exp"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-charcoal-700 dark:text-cool-gray-300 mb-2">CVV *</label>
-                          <input
-                            type="password"
-                            required
-                            value={paymentInfo.cvv}
-                            onChange={(e) => setPaymentInfo({ ...paymentInfo, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                            className="w-full px-4 py-2.5 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent font-mono"
-                            placeholder="•••"
-                            maxLength={4}
-                            inputMode="numeric"
-                            autoComplete="cc-csc"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input type="checkbox" id="saveCard" checked={paymentInfo.saveCard}
-                          onChange={(e) => setPaymentInfo({ ...paymentInfo, saveCard: e.target.checked })}
-                          className="w-4 h-4 text-gold-600 rounded focus:ring-gold-500" />
-                        <label htmlFor="saveCard" className="text-sm text-charcoal-700 dark:text-cool-gray-300">
-                          Save card for future purchases
-                        </label>
-                      </div>
-                    </>
+                    </div>
                   ) : (
                     /* Bank Transfer via Flutterwave */
                     <div className="space-y-4">

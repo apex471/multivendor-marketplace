@@ -8,11 +8,13 @@ import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
 import { useCart } from '../../../contexts/CartContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 export default function ReviewPage() {
   const router = useRouter();
   const { checkoutData, couriers, clearCheckout } = useCheckout();
   const { clearCart } = useCart();
+  const { currency } = useLocalization();
   const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total, couponCode } = checkoutData;
   const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: selectedCourierId, name: 'Standard Delivery', price: shippingCost, icon: '📦', carrier: 'Courier', estimatedDate: '3-5 days', deliveryDays: '3-5 days', tracking: 'standard' };
 
@@ -27,6 +29,7 @@ export default function ReviewPage() {
 
       const body = {
         shippingInfo: shippingAddress,
+        currency,
         cartItems,
         courierId:       selectedCourier.id,
         courierName:     selectedCourier.name,
@@ -62,12 +65,19 @@ export default function ReviewPage() {
       }
 
       const orderId: string = data.data.orderId;
+      const paymentLink: string | undefined = data.paymentLink;
+
       localStorage.setItem('lastOrderNumber', orderId);
       localStorage.setItem('lastOrderData', JSON.stringify(data.data.order));
 
       clearCheckout();
       clearCart();
-      router.push('/checkout/confirmation');
+
+      if (paymentLink) {
+        window.location.href = paymentLink;
+      } else {
+        router.push('/checkout/confirmation');
+      }
     } catch {
       setPlaceError('Network error. Please check your connection and try again.');
     } finally {
