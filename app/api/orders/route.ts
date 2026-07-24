@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
     let paymentLink: string | undefined;
     const paymentType = paymentMethod?.type ?? 'card';
     const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    if (flwSecretKey) {
+    const isRealKey = flwSecretKey && (flwSecretKey.startsWith('FLWSECK-') || flwSecretKey.startsWith('FLWSECK_TEST-'));
+    if (isRealKey) {
       try {
         const appUrl = request.nextUrl.origin;
         const orderCurrency = (currency || 'USD').toUpperCase();

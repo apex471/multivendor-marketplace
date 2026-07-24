@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
 
     // Default: Flutterwave
     const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    if (!flwSecretKey) {
+    const isRealKey = flwSecretKey && (flwSecretKey.startsWith('FLWSECK-') || flwSecretKey.startsWith('FLWSECK_TEST-'));
+    if (!isRealKey) {
       // Mock success if key is not configured for testing
       await verifyOrderPayment(order.orderId, order.id!);
-      return NextResponse.json({ success: true, message: 'Mock payment verified successfully' });
+      return NextResponse.json({ success: true, message: 'Mock payment verified successfully (Dev Mode)' });
     }
 
     if (!transactionId) {
