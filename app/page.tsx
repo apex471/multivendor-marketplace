@@ -118,6 +118,11 @@ export default function Home() {
     return found?.images?.[0] || null;
   };
 
+  const getBrandProductPreview = (brandName: string): string | null => {
+    const brandProducts = products.filter(p => p.vendorName === brandName);
+    return brandProducts[0]?.images?.[0] || null;
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -267,92 +272,63 @@ export default function Home() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12 md:py-16">
 
-        {/* 1. Featured Brands (Slider) */}
+        {/* 1. Fashion Feed / Community Posts (Grid) */}
         <section className="mb-14 sm:mb-16 md:mb-20">
           <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Featured Brands</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1">Shop from official brand stores and authorized retailers</p>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('feed')}</h2>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">{t('latest_posts')}</p>
             </div>
             <Link 
-              href="/brands"
+              href="/feed"
               className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
             >
-              <span>View All</span>
+              <span>{t('view_all')}</span>
               <span>→</span>
             </Link>
           </div>
 
-          {brands.length === 0 ? (
+          {posts.length === 0 ? (
             <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
-              <p className="text-4xl mb-3">🏷️</p>
-              <p>No brands registered yet. <Link href="/become-brand" className="text-gold-600 hover:underline">Register yours!</Link></p>
+              <p className="text-4xl mb-3">📸</p>
+              <p>No posts yet. Be the first to share your style!</p>
             </div>
           ) : (
-            <div className="relative group/slider">
-              {/* Navigation Arrows */}
-              <button 
-                onClick={() => scrollContainer(brandsRef, 'left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
-                aria-label="Scroll Left"
-              >
-                <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
-              </button>
-              <button 
-                onClick={() => scrollContainer(brandsRef, 'right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
-                aria-label="Scroll Right"
-              >
-                <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
-              </button>
-
-              <div 
-                ref={brandsRef}
-                className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
-              >
-                {brands.map((brand) => (
-                  <div key={brand.id} className="snap-start shrink-0 w-[260px] sm:w-[320px]">
-                    <Link
-                      href={`/brand/${brand.id}`}
-                      className="group block bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750/70 hover:border-gold-500/50 dark:hover:border-gold-600/50 transition-all duration-300"
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
+              {posts.map((post) => {
+                const postId = post.id || post._id;
+                return (
+                  <div key={postId || Math.random().toString()} className="bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750 transition-shadow">
+                    <button
+                      onClick={() => postId && router.push(`/post/${postId}`)}
+                      className="relative aspect-square w-full"
                     >
-                      <div className="relative h-28 sm:h-36 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center overflow-hidden">
-                        {brand.banner ? (
-                          <>
-                            <Image src={brand.banner} alt={brand.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                            <div className="absolute inset-0 bg-black/30" />
-                          </>
+                      {post.images?.[0] ? (
+                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
+                      )}
+                    </button>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        {post.authorAvatar ? (
+                          <Image src={post.authorAvatar} alt={post.authorName || 'Author'} width={32} height={32} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
                         ) : (
-                          <div className="absolute inset-0 bg-linear-to-br from-gold-900/20 to-charcoal-800" />
-                        )}
-                        <div className="absolute top-3 right-3 z-10 px-2 py-0.5 bg-blue-600/90 text-white text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
-                          <span>✓</span><span>Official</span>
-                        </div>
-                        {brand.avatar ? (
-                          <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-800 shadow-md relative z-10 transition-transform group-hover:scale-105" />
-                        ) : (
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-md relative z-10">
-                            {brand.name.charAt(0)}
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-xs font-bold text-gold-600">
+                            {(post.authorName || 'U').charAt(0)}
                           </div>
                         )}
+                        <span className="font-semibold text-charcoal-900 dark:text-white text-sm">{post.authorName || 'Anonymous'}</span>
                       </div>
-                      <div className="p-4 sm:p-5">
-                        <h3 className="font-display font-bold text-base text-charcoal-900 dark:text-white mb-1 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors truncate">{brand.name}</h3>
-                        {brand.bio ? (
-                          <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-3 line-clamp-2 h-8 leading-relaxed">{brand.bio}</p>
-                        ) : (
-                          <div className="h-8" />
-                        )}
-                        <div className="flex items-center gap-1.5 text-xs text-cool-gray-550 dark:text-cool-gray-450 mt-1">
-                          <span>📦</span>
-                          <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
-                          <span>products</span>
-                        </div>
+                      {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-3 text-sm line-clamp-2 leading-relaxed">{post.caption}</p>}
+                      <div className="flex items-center gap-4 text-cool-gray-500 dark:text-cool-gray-400 text-xs font-medium">
+                        <span className="flex items-center gap-1">❤️ <span>{post.likes ?? 0}</span></span>
+                        <span className="flex items-center gap-1">💬 <span>{post.comments ?? 0}</span></span>
                       </div>
-                    </Link>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -459,7 +435,148 @@ export default function Home() {
           )}
         </section>
 
-        {/* 3. Top Curated Vendors (Slider) */}
+        {/* 3. Featured Brands (Slider) */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Featured Brands</h2>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1">Shop from official brand stores and authorized retailers</p>
+            </div>
+            <Link 
+              href="/brands"
+              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
+            >
+              <span>View All</span>
+              <span>→</span>
+            </Link>
+          </div>
+
+          {brands.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
+              <p className="text-4xl mb-3">🏷️</p>
+              <p>No brands registered yet. <Link href="/become-brand" className="text-gold-600 hover:underline">Register yours!</Link></p>
+            </div>
+          ) : (
+            <div className="relative group/slider">
+              {/* Navigation Arrows */}
+              <button 
+                onClick={() => scrollContainer(brandsRef, 'left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Left"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
+              </button>
+              <button 
+                onClick={() => scrollContainer(brandsRef, 'right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Right"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
+              </button>
+
+              <div 
+                ref={brandsRef}
+                className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
+              >
+                {brands.map((brand) => {
+                  const brandProductImage = getBrandProductPreview(brand.name);
+                  const displayBanner = brand.banner || brandProductImage;
+                  const displayAvatar = brand.avatar || brandProductImage;
+
+                  return (
+                    <div key={brand.id} className="snap-start shrink-0 w-[260px] sm:w-[320px]">
+                      <Link
+                        href={`/brand/${brand.id}`}
+                        className="group block bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750/70 hover:border-gold-500/50 dark:hover:border-gold-600/50 transition-all duration-300"
+                      >
+                        <div className="relative h-28 sm:h-36 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center overflow-hidden">
+                          {displayBanner ? (
+                            <>
+                              <Image src={displayBanner} alt={brand.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <div className="absolute inset-0 bg-black/30" />
+                            </>
+                          ) : (
+                            <div className="absolute inset-0 bg-linear-to-br from-gold-900/20 to-charcoal-800" />
+                          )}
+                          <div className="absolute top-3 right-3 z-10 px-2 py-0.5 bg-blue-600/90 text-white text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
+                            <span>✓</span><span>Official</span>
+                          </div>
+                          {displayAvatar ? (
+                            <Image src={displayAvatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-800 shadow-md relative z-10 transition-transform group-hover:scale-105" />
+                          ) : (
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-md relative z-10">
+                              {brand.name.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-4 sm:p-5">
+                          <h3 className="font-display font-bold text-base text-charcoal-900 dark:text-white mb-1 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors truncate">{brand.name}</h3>
+                          {brand.bio ? (
+                            <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-3 line-clamp-2 h-8 leading-relaxed">{brand.bio}</p>
+                          ) : (
+                            <div className="h-8" />
+                          )}
+                          <div className="flex items-center gap-1.5 text-xs text-cool-gray-550 dark:text-cool-gray-450 mt-1">
+                            <span>📦</span>
+                            <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
+                            <span>products</span>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* 4. Editorial Categories Grid */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="mb-6 md:mb-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1">Shop by Category</h2>
+            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-405">Discover premium collections structured for your lifestyle</p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { name: "Women's Fashion", icon: '👗', color: 'from-pink-500 to-rose-500' },
+              { name: "Men's Fashion", icon: '👔', color: 'from-blue-500 to-indigo-500' },
+              { name: 'Accessories', icon: '👜', color: 'from-purple-500 to-pink-500' },
+              { name: 'Footwear', icon: '👟', color: 'from-orange-500 to-red-500' },
+            ].map((category) => {
+              const img = getCategoryImage(category.name);
+              return (
+                <Link
+                  key={category.name}
+                  href={`/shop?category=${category.name}`}
+                  className="group relative overflow-hidden rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation shadow-md"
+                >
+                  {img ? (
+                    <>
+                      <Image
+                        src={img}
+                        alt={category.name}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="absolute inset-0 object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300" />
+                    </>
+                  ) : (
+                    <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-105 transition-transform duration-550`} />
+                  )}
+                  <div className="relative z-10 text-center text-white px-2">
+                    <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2">{category.icon}</div>
+                    <div className="font-display font-bold text-sm sm:text-base md:text-lg leading-tight">{category.name}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 5. Top Curated Vendors (Slider) */}
         <section className="mb-14 sm:mb-16 md:mb-20">
           <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
@@ -523,7 +640,7 @@ export default function Home() {
                         {vendor.avatar ? (
                           <Image src={vendor.avatar} alt={vendor.name} width={64} height={64} className="w-14 h-14 rounded-full shrink-0 object-cover border-2 border-white dark:border-charcoal-800 shadow-md group-hover:scale-105 transition-transform" />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-lg font-bold text-gold-600 shrink-0 border-2 border-white dark:border-charcoal-800 shadow-md">
+                          <div className="w-14 h-14 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-lg font-bold text-gold-650 shrink-0 border-2 border-white dark:border-charcoal-800 shadow-md">
                             {vendor.name.charAt(0)}
                           </div>
                         )}
@@ -540,112 +657,6 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </section>
-
-        {/* 4. Editorial Categories Grid */}
-        <section className="mb-14 sm:mb-16 md:mb-20">
-          <div className="mb-6 md:mb-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1">Shop by Category</h2>
-            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400">Discover premium collections structured for your lifestyle</p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { name: "Women's Fashion", icon: '👗', color: 'from-pink-500 to-rose-500' },
-              { name: "Men's Fashion", icon: '👔', color: 'from-blue-500 to-indigo-500' },
-              { name: 'Accessories', icon: '👜', color: 'from-purple-500 to-pink-500' },
-              { name: 'Footwear', icon: '👟', color: 'from-orange-500 to-red-500' },
-            ].map((category) => {
-              const img = getCategoryImage(category.name);
-              return (
-                <Link
-                  key={category.name}
-                  href={`/shop?category=${category.name}`}
-                  className="group relative overflow-hidden rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation shadow-md"
-                >
-                  {img ? (
-                    <>
-                      <Image
-                        src={img}
-                        alt={category.name}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        className="absolute inset-0 object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300" />
-                    </>
-                  ) : (
-                    <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-105 transition-transform duration-550`} />
-                  )}
-                  <div className="relative z-10 text-center text-white px-2">
-                    <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2">{category.icon}</div>
-                    <div className="font-display font-bold text-sm sm:text-base md:text-lg leading-tight">{category.name}</div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* 5. Fashion Feed / Community Posts (Grid) */}
-        <section className="mb-14 sm:mb-16 md:mb-20">
-          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('feed')}</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">{t('latest_posts')}</p>
-            </div>
-            <Link 
-              href="/feed"
-              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
-            >
-              <span>{t('view_all')}</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          {posts.length === 0 ? (
-            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
-              <p className="text-4xl mb-3">📸</p>
-              <p>No posts yet. Be the first to share your style!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
-              {posts.map((post) => {
-                const postId = post.id || post._id;
-                return (
-                  <div key={postId || Math.random().toString()} className="bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750 transition-shadow">
-                    <button
-                      onClick={() => postId && router.push(`/post/${postId}`)}
-                      className="relative aspect-square w-full"
-                    >
-                      {post.images?.[0] ? (
-                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
-                      )}
-                    </button>
-                    <div className="p-4">
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        {post.authorAvatar ? (
-                          <Image src={post.authorAvatar} alt={post.authorName || 'Author'} width={32} height={32} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
-                        ) : (
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-xs font-bold text-gold-600">
-                            {(post.authorName || 'U').charAt(0)}
-                          </div>
-                        )}
-                        <span className="font-semibold text-charcoal-900 dark:text-white text-sm">{post.authorName || 'Anonymous'}</span>
-                      </div>
-                      {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-3 text-sm line-clamp-2 leading-relaxed">{post.caption}</p>}
-                      <div className="flex items-center gap-4 text-cool-gray-500 dark:text-cool-gray-400 text-xs font-medium">
-                        <span className="flex items-center gap-1">❤️ <span>{post.likes ?? 0}</span></span>
-                        <span className="flex items-center gap-1">💬 <span>{post.comments ?? 0}</span></span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
         </section>
