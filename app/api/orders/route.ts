@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
           amount: flwAmount,
           currency: flwCurrency,
           redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
-          payment_options: paymentType === 'bank' ? 'bank_transfer, banktransfer, account' : 'card',
+          payment_options: paymentType === 'bank' ? 'banktransfer' : 'card',
           customer: {
             email: customerEmail || 'guest@example.com',
             phonenumber: shippingInfo.phone || '08000000000',
@@ -146,9 +146,17 @@ export async function POST(request: NextRequest) {
           paymentLink = flwData.data.link;
         } else {
           console.error('[Flutterwave] Init failed — status:', flwData.status, 'message:', flwData.message);
+          return NextResponse.json({
+            success: false,
+            message: `Payment initialization failed: ${flwData.message || 'Unknown error'}`
+          }, { status: 400 });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[Flutterwave] Network error during payment init:', err);
+        return NextResponse.json({
+          success: false,
+          message: `Could not connect to payment gateway: ${err.message}`
+        }, { status: 500 });
       }
     }
 

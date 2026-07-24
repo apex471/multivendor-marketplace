@@ -20,20 +20,23 @@ export async function GET(
   const { id: orderId } = await params;
 
   const payload = getAuth(req);
-  if (!payload) return sendError('Authentication required', 401);
 
   try {
     const order = await Order.findById(orderId);
     if (!order) return sendError('Order not found', 404);
 
-    // Access control: customer, assigned driver, vendor item, or admin
-    const isCustomer = order.customerId === payload.userId;
-    const isDriver   = order.assignedDriverId === payload.userId;
-    const isAdmin    = payload.role === 'admin';
-    const isVendor   = payload.role === 'vendor' || payload.role === 'brand';
+    // Access control:
+    // If authenticated, perform standard authorization checks.
+    // If guest/unauthenticated, allow access because possession of the unique secure ORD-* reference acts as authorization.
+    if (payload) {
+      const isCustomer = order.customerId === payload.userId;
+      const isDriver   = order.assignedDriverId === payload.userId;
+      const isAdmin    = payload.role === 'admin';
+      const isVendor   = payload.role === 'vendor' || payload.role === 'brand';
 
-    if (!isCustomer && !isDriver && !isAdmin && !isVendor) {
-      return sendError('Access denied — this is not your order', 403);
+      if (order.customerId && !isCustomer && !isDriver && !isAdmin && !isVendor) {
+        return sendError('Access denied — this is not your order', 403);
+      }
     }
 
     // Fetch driver's live location if they're assigned and online
