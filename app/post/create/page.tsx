@@ -206,11 +206,12 @@ export default function CreatePostPage() {
             body: fd,
           });
           let upJson;
+          const upClone = up.clone();
           try {
             upJson = await up.json();
           } catch (e) {
-            const textMsg = await up.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+            const textMsg = await upClone.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
           }
           if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
           return upJson.data.url as string;
@@ -227,11 +228,12 @@ export default function CreatePostPage() {
             body: fd,
           });
           let upJson;
+          const upClone = up.clone();
           try {
             upJson = await up.json();
           } catch (e) {
-            const textMsg = await up.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+            const textMsg = await upClone.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
           }
           if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
           return upJson.data.url as string;
@@ -314,11 +316,12 @@ export default function CreatePostPage() {
             body: fd,
           });
           let upJson;
+          const upClone = up.clone();
           try {
             upJson = await up.json();
           } catch (e) {
-            const textMsg = await up.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+            const textMsg = await upClone.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
           }
           if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
           return upJson.data.url as string;
@@ -335,11 +338,12 @@ export default function CreatePostPage() {
             body: fd,
           });
           let upJson;
+          const upClone = up.clone();
           try {
             upJson = await up.json();
           } catch (e) {
-            const textMsg = await up.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+            const textMsg = await upClone.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
           }
           if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
           return upJson.data.url as string;

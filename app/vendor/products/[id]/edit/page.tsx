@@ -152,11 +152,12 @@ export default function EditProductPage() {
         body,
       });
       let json;
+      const resClone = res.clone();
       try {
         json = await res.json();
       } catch (e) {
-        const textMsg = await res.text().catch(() => '');
-        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+        const textMsg = await resClone.text().catch(() => '');
+        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
       }
       if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
       return json.data.url as string;
@@ -191,11 +192,12 @@ export default function EditProductPage() {
         body,
       });
       let json;
+      const resClone = res.clone();
       try {
         json = await res.json();
       } catch (e) {
-        const textMsg = await res.text().catch(() => '');
-        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+        const textMsg = await resClone.text().catch(() => '');
+        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
       }
       if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
       return json.data.url as string;

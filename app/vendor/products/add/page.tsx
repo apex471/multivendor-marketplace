@@ -115,13 +115,14 @@ export default function AddProductPage() {
       });
       
       let json;
+      const resClone = res.clone();
       try {
         json = await res.json();
       } catch (parseErr) {
-        const textMsg = await res.text().catch(() => '');
+        const textMsg = await resClone.text().catch(() => '');
         setSlots(prev => prev.map(s =>
           s.abortKey === abortKey
-            ? { ...s, status: 'error', error: `Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}` }
+            ? { ...s, status: 'error', error: `Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}` }
             : s
         ));
         return;
