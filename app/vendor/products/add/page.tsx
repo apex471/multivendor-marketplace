@@ -113,7 +113,19 @@ export default function AddProductPage() {
         body:    fd,
         signal:  ctrl.signal,
       });
-      const json = await res.json();
+      
+      let json;
+      try {
+        json = await res.json();
+      } catch (parseErr) {
+        const textMsg = await res.text().catch(() => '');
+        setSlots(prev => prev.map(s =>
+          s.abortKey === abortKey
+            ? { ...s, status: 'error', error: `Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}` }
+            : s
+        ));
+        return;
+      }
 
       if (!res.ok || !json.success) {
         setSlots(prev => prev.map(s =>

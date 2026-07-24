@@ -205,8 +205,14 @@ export default function CreatePostPage() {
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
           });
-          const upJson = await up.json();
-          if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+          let upJson;
+          try {
+            upJson = await up.json();
+          } catch (e) {
+            const textMsg = await up.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+          }
+          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
           return upJson.data.url as string;
         });
 
@@ -220,8 +226,14 @@ export default function CreatePostPage() {
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
           });
-          const upJson = await up.json();
-          if (!upJson.success) throw new Error(upJson.message || 'Video upload failed');
+          let upJson;
+          try {
+            upJson = await up.json();
+          } catch (e) {
+            const textMsg = await up.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+          }
+          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
           return upJson.data.url as string;
         });
 
@@ -301,8 +313,14 @@ export default function CreatePostPage() {
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
           });
-          const upJson = await up.json();
-          if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+          let upJson;
+          try {
+            upJson = await up.json();
+          } catch (e) {
+            const textMsg = await up.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+          }
+          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
           return upJson.data.url as string;
         });
 
@@ -316,8 +334,14 @@ export default function CreatePostPage() {
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
           });
-          const upJson = await up.json();
-          if (!upJson.success) throw new Error(upJson.message || 'Video upload failed');
+          let upJson;
+          try {
+            upJson = await up.json();
+          } catch (e) {
+            const textMsg = await up.text().catch(() => '');
+            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+          }
+          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
           return upJson.data.url as string;
         });
 

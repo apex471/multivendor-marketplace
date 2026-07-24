@@ -151,8 +151,14 @@ export default function EditProductPage() {
         headers: { Authorization: `Bearer ${token}` },
         body,
       });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error ?? 'Upload failed');
+      let json;
+      try {
+        json = await res.json();
+      } catch (e) {
+        const textMsg = await res.text().catch(() => '');
+        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+      }
+      if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
       return json.data.url as string;
     });
 
@@ -184,8 +190,14 @@ export default function EditProductPage() {
         headers: { Authorization: `Bearer ${token}` },
         body,
       });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error ?? 'Upload failed');
+      let json;
+      try {
+        json = await res.json();
+      } catch (e) {
+        const textMsg = await res.text().catch(() => '');
+        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 100) || 'Unknown error'}`);
+      }
+      if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
       return json.data.url as string;
     });
 
