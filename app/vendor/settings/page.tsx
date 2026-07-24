@@ -181,7 +181,7 @@ function UploadZone({
 
 export default function VendorSettingsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'store' | 'profile' | 'password'>('store');
+  const [activeTab, setActiveTab] = useState<'store' | 'profile' | 'password' | 'payout'>('store');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -193,6 +193,18 @@ export default function VendorSettingsPage() {
     avatar: null as string | null,
     banner: null as string | null,
   });
+
+  const [banksList, setBanksList] = useState<{ code: string; name: string }[]>([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [verifyingBank, setVerifyingBank] = useState(false);
+  const [verifiedName, setVerifiedName] = useState<string | null>(null);
+  const [bankData, setBankData] = useState({
+    bankName: '',
+    bankCode: '',
+    accountNumber: '',
+    accountName: '',
+  });
+
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => {
@@ -208,6 +220,15 @@ export default function VendorSettingsPage() {
         avatar:    u.avatar    || null,
         banner:    u.banner    || null,
       });
+      setBankData({
+        bankName:      (u as any).bankName      || '',
+        bankCode:      (u as any).bankCode      || '',
+        accountNumber: (u as any).accountNumber || '',
+        accountName:   (u as any).accountName   || '',
+      });
+      if ((u as any).accountName) {
+        setVerifiedName((u as any).accountName);
+      }
     }
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -223,14 +244,112 @@ export default function VendorSettingsPage() {
             avatar:    u2.avatar    || prev.avatar,
             banner:    u2.banner    || prev.banner,
           }));
+          setBankData(prev => ({
+            ...prev,
+            bankName:      u2.bankName      || prev.bankName,
+            bankCode:      u2.bankCode      || prev.bankCode,
+            accountNumber: u2.accountNumber || prev.accountNumber,
+            accountName:   u2.accountName   || prev.accountName,
+          }));
+          if (u2.accountName) setVerifiedName(u2.accountName);
         }
       })
       .catch(() => {});
   }, [router]);
 
+  useEffect(() => {
+    if (activeTab === 'payout' && banksList.length === 0) {
+      setLoadingBanks(true);
+      fetch('/api/withdraw/banks')
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            setBanksList(d.data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingBanks(false));
+    }
+  }, [activeTab, banksList.length]);
+
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text });
     setTimeout(() => setMsg(null), 4000);
+  };
+
+  const handleVerifyBank = async () => {
+    if (!bankData.bankCode || !bankData.accountNumber) {
+      showMsg('error', 'Please select a bank and enter account number');
+      return;
+    }
+    if (bankData.accountNumber.length !== 10) {
+      showMsg('error', 'Nigerian account numbers must be exactly 10 digits');
+      return;
+    }
+    setVerifyingBank(true);
+    setVerifiedName(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/withdraw/verify-bank', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          accountNumber: bankData.accountNumber,
+          bankCode: bankData.bankCode,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Verification failed');
+      setVerifiedName(data.data.accountName);
+      setBankData(prev => ({ ...prev, accountName: data.data.accountName }));
+      showMsg('success', 'Account details resolved successfully!');
+    } catch (err: any) {
+      showMsg('error', err.message || 'Failed to verify account details');
+    } finally {
+      setVerifyingBank(false);
+    }
+  };
+
+  const handleSavePayoutDetails = async () => {
+    if (!verifiedName) {
+      showMsg('error', 'Please verify your bank details before saving.');
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) { showMsg('error', 'Not authenticated'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          bankName:      bankData.bankName,
+          bankCode:      bankData.bankCode,
+          accountNumber: bankData.accountNumber,
+          accountName:   bankData.accountName,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Save failed');
+      const existing = getStoredUser();
+      if (existing) {
+        storeUser({
+          ...existing,
+          bankName:      bankData.bankName,
+          bankCode:      bankData.bankCode,
+          accountNumber: bankData.accountNumber,
+          accountName:   bankData.accountName,
+        });
+      }
+      showMsg('success', '✅ Payout & Bank details saved successfully!');
+    } catch (err: unknown) {
+      showMsg('error', (err as Error).message || 'Failed to save payout details');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveStore = async () => {
@@ -289,6 +408,7 @@ export default function VendorSettingsPage() {
   const tabs = [
     { id: 'store' as const,    label: 'Store Appearance', icon: '🏪' },
     { id: 'profile' as const,  label: 'Store Info',        icon: '👤' },
+    { id: 'payout' as const,   label: 'Payout Details',    icon: '💳' },
     { id: 'password' as const, label: 'Password',           icon: '🔒' },
   ];
 
@@ -541,6 +661,90 @@ export default function VendorSettingsPage() {
                 >
                   {saving ? 'Saving…' : 'Update Password'}
                 </button>
+              </div>
+            )}
+
+            {activeTab === 'payout' && (
+              <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-sm border border-cool-gray-100 dark:border-charcoal-700 p-6 space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-1">Payout &amp; Bank Details</h3>
+                  <p className="text-sm text-charcoal-500 dark:text-cool-gray-400">
+                    Configure the bank account where your sales revenue and escrow releases will be paid instantly.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Select Bank */}
+                  <div>
+                    <label className="block text-sm font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-2">
+                      Select Bank
+                    </label>
+                    {loadingBanks ? (
+                      <div className="text-xs text-gold-600 animate-pulse">Loading banks list…</div>
+                    ) : (
+                      <select
+                        value={bankData.bankCode}
+                        onChange={e => {
+                          const code = e.target.value;
+                          const name = banksList.find(b => b.code === code)?.name || '';
+                          setBankData(prev => ({ ...prev, bankCode: code, bankName: name, accountName: '' }));
+                          setVerifiedName(null);
+                        }}
+                        className="w-full px-4 py-3 border border-cool-gray-200 dark:border-charcoal-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white text-sm"
+                      >
+                        <option value="">-- Choose Your Bank --</option>
+                        {banksList.map(b => (
+                          <option key={b.code} value={b.code}>{b.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label className="block text-sm font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-2">
+                      Account Number
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        maxLength={10}
+                        value={bankData.accountNumber}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setBankData(prev => ({ ...prev, accountNumber: val, accountName: '' }));
+                          setVerifiedName(null);
+                        }}
+                        placeholder="e.g. 0123456789 (10 digits)"
+                        className="flex-1 px-4 py-3 border border-cool-gray-200 dark:border-charcoal-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyBank}
+                        disabled={verifyingBank || !bankData.bankCode || bankData.accountNumber.length !== 10}
+                        className="px-5 py-3 bg-gold-600 hover:bg-gold-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center gap-1"
+                      >
+                        {verifyingBank ? 'Verifying…' : 'Verify'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Account Name */}
+                  {verifiedName && (
+                    <div className="p-4 bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800/50 rounded-xl">
+                      <p className="text-xs text-gold-600 dark:text-gold-400 font-semibold uppercase tracking-wider">Verified Account Name</p>
+                      <p className="text-sm font-bold text-charcoal-900 dark:text-white mt-0.5">{verifiedName}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleSavePayoutDetails}
+                    disabled={saving || !verifiedName}
+                    className="w-full py-3 bg-gold-600 hover:bg-gold-700 active:scale-[0.99] text-white rounded-xl font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {saving ? 'Saving…' : 'Save Payout Details'}
+                  </button>
+                </div>
               </div>
             )}
           </div>

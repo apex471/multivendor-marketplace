@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
         phoneNumber: user.phoneNumber || null,
         isEmailVerified: user.isEmailVerified,
         createdAt: user.createdAt,
+        bankName: user.bankName || null,
+        accountNumber: user.accountNumber || null,
+        accountName: user.accountName || null,
+        bankCode: user.bankCode || null,
       },
     }, 'User profile retrieved successfully');
   } catch (error) {

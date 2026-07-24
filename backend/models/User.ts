@@ -55,6 +55,10 @@ export interface IUser {
   businessCity?: string;
   businessState?: string;
   subdomain?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  bankCode?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

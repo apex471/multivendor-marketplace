@@ -25,7 +25,11 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
-    const allowedFields = ['firstName', 'lastName', 'phoneNumber', 'bio', 'avatar', 'banner', 'storeName', 'businessCity', 'businessState', 'businessDescription', 'website'];
+    const allowedFields = [
+      'firstName', 'lastName', 'phoneNumber', 'bio', 'avatar', 'banner',
+      'storeName', 'businessCity', 'businessState', 'businessDescription', 'website',
+      'bankName', 'accountNumber', 'accountName', 'bankCode'
+    ];
     const updateData: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
@@ -54,6 +58,10 @@ export async function PUT(request: NextRequest) {
         banner: updated!.banner || null,
         bio: updated!.bio || null,
         phoneNumber: updated!.phoneNumber || null,
+        bankName: updated!.bankName || null,
+        accountNumber: updated!.accountNumber || null,
+        accountName: updated!.accountName || null,
+        bankCode: updated!.bankCode || null,
       },
     }, 'Profile updated successfully');
   } catch (error) {

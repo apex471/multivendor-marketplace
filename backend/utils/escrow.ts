@@ -48,10 +48,68 @@ export async function releaseEscrow(orderId: string, reason?: string) {
   // Find vendor ID
   const vendorName = order.items?.[0]?.vendor ?? null;
   let vendorId: string | null = null;
+  let vendorUserDoc: any = null;
   if (vendorName) {
     const vendorUser = await db.collection('users').where('storeName', '==', vendorName).limit(1).get();
     if (!vendorUser.empty) {
       vendorId = vendorUser.docs[0].id;
+      vendorUserDoc = vendorUser.docs[0].data();
+    }
+  }
+
+  // Check and process direct Flutterwave payout if bank details are set
+  const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  const bankCode = vendorUserDoc?.bankCode || null;
+  const accountNumber = vendorUserDoc?.accountNumber || null;
+
+  let flutterwaveTransfer = null;
+  let payoutStatus: 'wallet' | 'bank_transfer_initiated' | 'bank_transfer_failed' = 'wallet';
+
+  if (flwSecretKey && bankCode && accountNumber) {
+    const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+    const payoutAmountNGN = Math.round(fees.vendorPayout * NGN_RATE);
+
+    try {
+      const transferRes = await fetch('https://api.flutterwave.com/v3/transfers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${flwSecretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_bank: bankCode,
+          account_number: accountNumber,
+          amount: payoutAmountNGN,
+          currency: 'NGN',
+          narration: `Escrow Release for Order ${orderId} - Multivendor Marketplace`,
+          reference: `ESC-REL-${orderId}-${Date.now()}`,
+          debit_currency: 'NGN',
+        }),
+      });
+
+      const transferData = await transferRes.json();
+      if (transferData.status === 'success') {
+        payoutStatus = 'bank_transfer_initiated';
+        flutterwaveTransfer = {
+          transferId: transferData.data?.id || null,
+          status: transferData.data?.status || 'unknown',
+          fee: transferData.data?.fee || 0,
+          rawResponse: transferData,
+        };
+      } else {
+        console.error('[Escrow Release Flutterwave Error]', transferData);
+        payoutStatus = 'bank_transfer_failed';
+        flutterwaveTransfer = {
+          error: transferData.message || 'Unknown error',
+          rawResponse: transferData,
+        };
+      }
+    } catch (err: any) {
+      console.error('[Escrow Release Flutterwave Exception]', err);
+      payoutStatus = 'bank_transfer_failed';
+      flutterwaveTransfer = {
+        error: err.message || 'Network error',
+      };
     }
   }
 
@@ -65,7 +123,15 @@ export async function releaseEscrow(orderId: string, reason?: string) {
     ...(vendorId ? { toUser: vendorId } : {}),
     orderId,
     description:   `Vendor payout for order ${orderId} (subtotal $${fees.subtotal.toFixed(2)} − 10% seller fee $${fees.sellerFee.toFixed(2)})`,
-    metadata: { sellerFee: fees.sellerFee, sellerFeeRate: FEES.SELLER_FEE_RATE * 100 },
+    metadata: {
+      sellerFee: fees.sellerFee,
+      sellerFeeRate: FEES.SELLER_FEE_RATE * 100,
+      payoutStatus,
+      ...(flutterwaveTransfer ? { flutterwaveTransfer } : {}),
+      bankName: vendorUserDoc?.bankName || null,
+      accountNumber: accountNumber || null,
+      accountName: vendorUserDoc?.accountName || null,
+    },
   });
 
   // 4. Create Logistics Payout Transaction (logistics_release)
