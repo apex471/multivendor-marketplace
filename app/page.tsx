@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
@@ -66,6 +66,19 @@ export default function Home() {
   const [vendors,  setVendors]  = useState<Vendor[]>([]);
   const [brands,   setBrands]   = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+
+  const brandsRef = useRef<HTMLDivElement>(null);
+  const productsRef = useRef<HTMLDivElement>(null);
+  const vendorsRef = useRef<HTMLDivElement>(null);
+
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
+    if (!ref.current) return;
+    const scrollAmount = 340;
+    ref.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   useEffect(() => {
     document.title = "Certified Luxury World | Premium Luxury Marketplace";
@@ -231,11 +244,11 @@ export default function Home() {
               >
                 <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
                   <div className={`absolute inset-0 rounded-full ${i % 2 === 0 ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
-                    <div className="w-full h-full rounded-full bg-white p-[2px] sm:p-[3px]">
+                    <div className="w-full h-full rounded-full bg-white dark:bg-charcoal-900 p-[2px] sm:p-[3px]">
                       {vendor.avatar ? (
                         <Image src={vendor.avatar} alt={vendor.name} width={80} height={80} className="w-full h-full rounded-full object-cover" />
                       ) : (
-                        <div className="w-full h-full rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-lg font-bold text-gold-600">
+                        <div className="w-full h-full rounded-full bg-gold-100 dark:bg-charcoal-800 flex items-center justify-center text-lg font-bold text-gold-600">
                           {vendor.name.charAt(0)}
                         </div>
                       )}
@@ -252,313 +265,293 @@ export default function Home() {
       </section>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
-        {/* Fashion Feed / Posts Section */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('feed')}</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">{t('latest_posts')}</p>
-            </div>
-            <Link 
-              href="/feed"
-              className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
-            >
-              <span className="hidden sm:inline">{t('view_all')}</span>
-              <span className="sm:hidden">All</span>
-              <span>→</span>
-            </Link>
-          </div>
+      <div className="container mx-auto px-4 py-12 md:py-16">
 
-          {posts.length === 0 ? (
-            <div className="text-center py-12 text-cool-gray-400">
-              <p className="text-4xl mb-3">📸</p>
-              <p>No posts yet. Be the first to share your style!</p>
-            </div>
-          ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-            {posts.map((post) => {
-              const postId = post.id || post._id;
-              return (
-                <div key={postId || Math.random().toString()} className="scroll-reveal bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow">
-                  <button
-                    onClick={() => postId && router.push(`/post/${postId}`)}
-                    className="relative aspect-square w-full"
-                  >
-                  {post.images?.[0] ? (
-                    <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
-                  )}
-                </button>
-                <div className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                    {post.authorAvatar ? (
-                      <Image src={post.authorAvatar} alt={post.authorName || 'Author'} width={32} height={32} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
-                    ) : (
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-xs font-bold text-gold-600">
-                        {(post.authorName || 'U').charAt(0)}
-                      </div>
-                    )}
-                    <span className="font-semibold text-charcoal-900 dark:text-white text-sm sm:text-base">{post.authorName || 'Anonymous'}</span>
-                  </div>
-                  {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-2 sm:mb-3 text-sm sm:text-base line-clamp-2">{post.caption}</p>}
-                  <div className="flex items-center gap-3 sm:gap-4 text-charcoal-600 dark:text-cool-gray-400 text-xs sm:text-sm">
-                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">❤️</span> <span>{post.likes ?? 0}</span></span>
-                    <span className="flex items-center gap-1"><span className="text-base sm:text-lg">💬</span> <span>{post.comments ?? 0}</span></span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          </div>
-          )}
-        </section>
-
-        {/* Best Selling Vendors */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('top_vendors')}</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Highest-rated sellers</p>
-            </div>
-            <Link 
-              href="/vendors"
-              className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
-            >
-              <span className="hidden sm:inline">{t('explore_all')}</span>
-              <span className="sm:hidden">All</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          {vendors.length === 0 ? (
-            <div className="text-center py-12 text-cool-gray-400">
-              <p className="text-4xl mb-3">🏪</p>
-              <p>No vendors yet. <Link href="/become-vendor" className="text-gold-600 hover:underline">Be the first!</Link></p>
-            </div>
-          ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {vendors.map((vendor) => (
-              <Link
-                key={vendor.id}
-                href={`/vendors/${vendor.id}`}
-                className="group scroll-reveal bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1 touch-manipulation flex flex-col"
-              >
-                {/* Store banner top section */}
-                <div className="relative h-16 sm:h-20 bg-linear-to-br from-purple-900/20 to-charcoal-700 flex items-center justify-center overflow-hidden shrink-0">
-                  {vendor.banner ? (
-                    <>
-                      <Image src={vendor.banner} alt={vendor.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-black/20" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 bg-linear-to-br from-purple-900/20 to-charcoal-700" />
-                  )}
-                </div>
-
-                <div className="p-3 sm:p-4 md:p-5 flex-1 flex flex-col -mt-8 sm:-mt-10 relative z-10">
-                  <div className="flex flex-col items-center sm:items-start sm:flex-row gap-2 sm:gap-4 mb-3">
-                    {vendor.avatar ? (
-                      <Image src={vendor.avatar} alt={vendor.name} width={60} height={60} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full shrink-0 object-cover border-2 border-white dark:border-charcoal-800 shadow-md" />
-                    ) : (
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gold-100 dark:bg-charcoal-700 flex items-center justify-center text-lg sm:text-xl font-bold text-gold-600 shrink-0 border-2 border-white dark:border-charcoal-800 shadow-md">
-                        {vendor.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="sm:pt-6">
-                      <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] sm:text-xs font-semibold rounded whitespace-nowrap">✓ {t('verified')}</span>
-                    </div>
-                  </div>
-                  <h3 className="font-display font-bold text-sm sm:text-base md:text-lg text-charcoal-900 dark:text-white mb-1.5 text-center sm:text-left truncate mt-1">{vendor.name}</h3>
-                  <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400 mt-auto">{vendor.products} {t('products_count')}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          )}
-        </section>
-
-        {/* Featured Brands */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
+        {/* 1. Featured Brands (Slider) */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">Featured Brands</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Shop from official brand stores and authorized retailers</p>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1">Shop from official brand stores and authorized retailers</p>
             </div>
             <Link 
               href="/brands"
-              className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
+              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
             >
-              <span className="hidden sm:inline">View All</span>
-              <span className="sm:hidden">All</span>
+              <span>View All</span>
               <span>→</span>
             </Link>
           </div>
 
           {brands.length === 0 ? (
-            <div className="text-center py-12 text-cool-gray-400">
+            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
               <p className="text-4xl mb-3">🏷️</p>
               <p>No brands registered yet. <Link href="/become-brand" className="text-gold-600 hover:underline">Register yours!</Link></p>
             </div>
           ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-6">
-            {brands.map((brand) => (
-              <Link
-                key={brand.id}
-                href={`/brand/${brand.id}`}
-                className="group bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-2xl dark:hover:shadow-charcoal-950/70 transition-all hover:-translate-y-1"
+            <div className="relative group/slider">
+              {/* Navigation Arrows */}
+              <button 
+                onClick={() => scrollContainer(brandsRef, 'left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Left"
               >
-                <div className="relative h-24 sm:h-32 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center overflow-hidden">
-                  {brand.banner ? (
-                    <>
-                      <Image src={brand.banner} alt={brand.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-black/25" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 bg-linear-to-br from-gold-900/20 to-charcoal-800" />
-                  )}
-                  <div className="absolute top-3 right-3 z-10 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
-                    <span>✓</span><span className="hidden sm:inline">Official</span>
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
+              </button>
+              <button 
+                onClick={() => scrollContainer(brandsRef, 'right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Right"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
+              </button>
+
+              <div 
+                ref={brandsRef}
+                className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
+              >
+                {brands.map((brand) => (
+                  <div key={brand.id} className="snap-start shrink-0 w-[260px] sm:w-[320px]">
+                    <Link
+                      href={`/brand/${brand.id}`}
+                      className="group block bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750/70 hover:border-gold-500/50 dark:hover:border-gold-600/50 transition-all duration-300"
+                    >
+                      <div className="relative h-28 sm:h-36 bg-linear-to-br from-gold-900/20 to-charcoal-800 flex items-center justify-center overflow-hidden">
+                        {brand.banner ? (
+                          <>
+                            <Image src={brand.banner} alt={brand.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-black/30" />
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 bg-linear-to-br from-gold-900/20 to-charcoal-800" />
+                        )}
+                        <div className="absolute top-3 right-3 z-10 px-2 py-0.5 bg-blue-600/90 text-white text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm">
+                          <span>✓</span><span>Official</span>
+                        </div>
+                        {brand.avatar ? (
+                          <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-800 shadow-md relative z-10 transition-transform group-hover:scale-105" />
+                        ) : (
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-md relative z-10">
+                            {brand.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 sm:p-5">
+                        <h3 className="font-display font-bold text-base text-charcoal-900 dark:text-white mb-1 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors truncate">{brand.name}</h3>
+                        {brand.bio ? (
+                          <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-3 line-clamp-2 h-8 leading-relaxed">{brand.bio}</p>
+                        ) : (
+                          <div className="h-8" />
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-cool-gray-550 dark:text-cool-gray-450 mt-1">
+                          <span>📦</span>
+                          <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
+                          <span>products</span>
+                        </div>
+                      </div>
+                    </Link>
                   </div>
-                  {brand.avatar ? (
-                    <Image src={brand.avatar} alt={brand.name} width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-4 border-white dark:border-charcoal-700 shadow-lg relative z-10" />
-                  ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white dark:bg-charcoal-700 flex items-center justify-center text-2xl sm:text-3xl font-bold text-gold-600 border-4 border-white dark:border-charcoal-700 shadow-lg relative z-10">
-                      {brand.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 sm:p-6">
-                  <h3 className="font-display font-bold text-base sm:text-lg text-charcoal-900 dark:text-white mb-1">{brand.name}</h3>
-                  {brand.bio && <p className="text-xs sm:text-sm text-cool-gray-600 dark:text-cool-gray-400 mb-3 line-clamp-2">{brand.bio}</p>}
-                  <div className="flex items-center gap-1 text-xs text-charcoal-600 dark:text-cool-gray-400">
-                    <span>📦</span>
-                    <span className="font-semibold text-charcoal-900 dark:text-white">{brand.products}</span>
-                    <span>products</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
           )}
         </section>
 
-        {/* Top Selling Products */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 md:mb-8 gap-3">
+        {/* 2. Popular Products (Slider) */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('popular_products')}</h2>
-              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">Most popular items</p>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1">Handpicked luxury releases and trending essentials</p>
             </div>
             <Link 
               href="/shop"
-              className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-500 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation"
+              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
             >
-              <span className="hidden sm:inline">Shop All</span>
-              <span className="sm:hidden">All</span>
+              <span>Shop All</span>
               <span>→</span>
             </Link>
           </div>
 
           {products.length === 0 ? (
-            <div className="text-center py-12 text-cool-gray-400">
+            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
               <p className="text-4xl mb-3">🛒</p>
               <p>No products listed yet.</p>
             </div>
           ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
-            {products.map((product) => (
-              <div key={product.id} className="scroll-reveal group relative isolate">
-                <div className="bg-white dark:bg-charcoal-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 transition-shadow duration-300">
-                  <Link
-                    href={`/product/${product.id}`}
-                    className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation block"
-                    aria-label={`View ${product.name}`}
-                  >
-                    {product.images?.[0] ? (
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
-                        className="object-cover object-center group-hover/img:scale-110 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
-                    )}
-                    {product.salePrice && product.salePrice < product.price && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded">SALE</span>
-                    )}
-                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex flex-col gap-1.5 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product.id); }}
-                        className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 dark:bg-charcoal-700/90 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors touch-manipulation text-xs sm:text-sm"
-                        aria-label="Add to wishlist"
-                      >❤️</button>
-                    </div>
-                  </Link>
-                  <div className="p-2 sm:p-3">
-                    <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5 sm:mb-1 truncate">{product.vendorName}</p>
-                    <Link href={`/product/${product.id}`} className="block">
-                      <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-tight">{product.name}</h3>
-                    </Link>
-                    <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
-                      <span className="text-yellow-500 text-[10px] sm:text-xs">⭐</span>
-                      <span className="text-[10px] sm:text-xs font-medium text-charcoal-700 dark:text-cool-gray-300">{(product.rating ?? 0).toFixed(1)}</span>
-                      <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400">({product.salesCount ?? 0})</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2 mb-1.5 sm:mb-2">
-                      <span className="font-bold text-sm sm:text-base text-charcoal-900 dark:text-white">{formatPrice(product.salePrice ?? product.price)}</span>
-                      {product.salePrice && product.salePrice < product.price && (
-                        <span className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-through">{formatPrice(product.price)}</span>
-                      )}
-                    </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); handleAddToCart(product.id); }}
-                      className="w-full py-1.5 sm:py-2 min-h-9 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] sm:text-xs touch-manipulation"
-                    >{t('add_to_cart')}</button>
-                  </div>
-                </div>
-              </div>
+            <div className="relative group/slider">
+              {/* Navigation Arrows */}
+              <button 
+                onClick={() => scrollContainer(productsRef, 'left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Left"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
+              </button>
+              <button 
+                onClick={() => scrollContainer(productsRef, 'right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Right"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
+              </button>
 
-            ))}
-          </div>
+              <div 
+                ref={productsRef}
+                className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
+              >
+                {products.map((product) => (
+                  <div key={product.id} className="snap-start shrink-0 w-[180px] sm:w-[220px]">
+                    <div className="bg-white dark:bg-charcoal-800 rounded-xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-lg dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750 transition-all duration-300">
+                      <Link
+                        href={`/product/${product.id}`}
+                        className="group/img relative aspect-square overflow-hidden w-full cursor-pointer touch-manipulation block"
+                        aria-label={`View ${product.name}`}
+                      >
+                        {product.images?.[0] ? (
+                          <Image
+                            src={product.images[0]}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 640px) 50vw, 220px"
+                            className="object-cover object-center group-hover/img:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
+                        )}
+                        {product.salePrice && product.salePrice < product.price && (
+                          <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-red-650 text-white text-[10px] font-bold rounded shadow-sm">SALE</span>
+                        )}
+                        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-100 sm:opacity-0 sm:group-hover/img:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product.id); }}
+                            className="w-7 h-7 bg-white/95 dark:bg-charcoal-700/95 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors touch-manipulation text-xs"
+                            aria-label="Add to wishlist"
+                          >❤️</button>
+                        </div>
+                      </Link>
+                      <div className="p-3">
+                        <p className="text-[10px] text-cool-gray-400 dark:text-cool-gray-500 mb-0.5 truncate">{product.vendorName}</p>
+                        <Link href={`/product/${product.id}`} className="block">
+                          <h3 className="font-semibold text-xs sm:text-sm text-charcoal-900 dark:text-white mb-1 line-clamp-2 hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors leading-snug h-8 sm:h-9">{product.name}</h3>
+                        </Link>
+                        <div className="flex items-center gap-1 mb-1 sm:mb-1.5">
+                          <span className="text-yellow-500 text-[10px]">⭐</span>
+                          <span className="text-[10px] font-medium text-charcoal-700 dark:text-cool-gray-300">{(product.rating ?? 0).toFixed(1)}</span>
+                          <span className="text-[10px] text-cool-gray-500 dark:text-cool-gray-500">({product.salesCount ?? 0})</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-2.5">
+                          <span className="font-bold text-sm text-charcoal-900 dark:text-white">{formatPrice(product.salePrice ?? product.price)}</span>
+                          {product.salePrice && product.salePrice < product.price && (
+                            <span className="text-[10px] text-cool-gray-450 dark:text-cool-gray-500 line-through">{formatPrice(product.price)}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => { e.preventDefault(); handleAddToCart(product.id); }}
+                          className="w-full py-1.5 min-h-8 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] touch-manipulation"
+                        >{t('add_to_cart')}</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </section>
 
-        {/* Statistics / Trust Section */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="bg-linear-to-r from-gold-600 to-gold-700 dark:from-gold-700 dark:to-gold-800 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-12 text-white shadow-lg dark:shadow-charcoal-950/50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 text-center">
-              <div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">2,500+</div>
-                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm md:text-base">Active Vendors</div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">50K+</div>
-                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm md:text-base">Fashion Products</div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">100K+</div>
-                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm md:text-base">Happy Customers</div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">4.8★</div>
-                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm md:text-base">Average Rating</div>
+        {/* 3. Top Curated Vendors (Slider) */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('top_vendors')}</h2>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1">Shop verified curators and trusted boutiques worldwide</p>
+            </div>
+            <Link 
+              href="/vendors"
+              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
+            >
+              <span>{t('explore_all')}</span>
+              <span>→</span>
+            </Link>
+          </div>
+
+          {vendors.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
+              <p className="text-4xl mb-3">🏪</p>
+              <p>No vendors yet. <Link href="/become-vendor" className="text-gold-600 hover:underline">Be the first!</Link></p>
+            </div>
+          ) : (
+            <div className="relative group/slider">
+              {/* Navigation Arrows */}
+              <button 
+                onClick={() => scrollContainer(vendorsRef, 'left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Left"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
+              </button>
+              <button 
+                onClick={() => scrollContainer(vendorsRef, 'right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                aria-label="Scroll Right"
+              >
+                <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
+              </button>
+
+              <div 
+                ref={vendorsRef}
+                className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0"
+              >
+                {vendors.map((vendor) => (
+                  <div key={vendor.id} className="snap-start shrink-0 w-[220px] sm:w-[260px]">
+                    <Link
+                      href={`/vendors/${vendor.id}`}
+                      className="group block bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 border border-cool-gray-200/60 dark:border-charcoal-750 hover:border-gold-500/50 dark:hover:border-gold-600/50 transition-all duration-300"
+                    >
+                      <div className="relative h-20 bg-linear-to-br from-purple-900/20 to-charcoal-700 flex items-center justify-center overflow-hidden shrink-0">
+                        {vendor.banner ? (
+                          <>
+                            <Image src={vendor.banner} alt={vendor.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-black/20" />
+                          </>
+                        ) : (
+                          <div className="absolute inset-0 bg-linear-to-br from-purple-900/20 to-charcoal-700" />
+                        )}
+                      </div>
+
+                      <div className="p-4 sm:p-5 flex-1 flex flex-col -mt-8 relative z-10 items-center text-center">
+                        {vendor.avatar ? (
+                          <Image src={vendor.avatar} alt={vendor.name} width={64} height={64} className="w-14 h-14 rounded-full shrink-0 object-cover border-2 border-white dark:border-charcoal-800 shadow-md group-hover:scale-105 transition-transform" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-lg font-bold text-gold-600 shrink-0 border-2 border-white dark:border-charcoal-800 shadow-md">
+                            {vendor.name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="mt-2.5 mb-1 flex items-center gap-1">
+                          <h3 className="font-display font-bold text-sm sm:text-base text-charcoal-900 dark:text-white truncate max-w-[140px]">{vendor.name}</h3>
+                          <span className="text-blue-500 text-xs" title="Verified Vendor">✓</span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs text-cool-gray-500 dark:text-cool-gray-400 line-clamp-1 h-4 mb-2">{vendor.bio || 'Curated luxury boutique'}</p>
+                        <span className="text-[11px] font-semibold text-gold-650 dark:text-gold-450 bg-gold-500/10 dark:bg-gold-500/5 px-2.5 py-0.5 rounded-full mt-1">
+                          {vendor.products} products
+                        </span>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
         </section>
 
-        {/* Categories Grid */}
-        <section className="mb-10 sm:mb-12 md:mb-16">
-          <div className="mb-5 sm:mb-6 md:mb-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1 sm:mb-2">Shop by Category</h2>
-            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400">Find exactly what you&apos;re looking for</p>
+        {/* 4. Editorial Categories Grid */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="mb-6 md:mb-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-1">Shop by Category</h2>
+            <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400">Discover premium collections structured for your lifestyle</p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {[
               { name: "Women's Fashion", icon: '👗', color: 'from-pink-500 to-rose-500' },
               { name: "Men's Fashion", icon: '👔', color: 'from-blue-500 to-indigo-500' },
@@ -570,7 +563,7 @@ export default function Home() {
                 <Link
                   key={category.name}
                   href={`/shop?category=${category.name}`}
-                  className="group relative overflow-hidden rounded-lg sm:rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation"
+                  className="group relative overflow-hidden rounded-xl h-32 sm:h-40 md:h-48 flex items-center justify-center touch-manipulation shadow-md"
                 >
                   {img ? (
                     <>
@@ -579,16 +572,16 @@ export default function Home() {
                         alt={category.name}
                         fill
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        className="absolute inset-0 object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="absolute inset-0 object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300" />
                     </>
                   ) : (
-                    <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-110 transition-transform duration-300`} />
+                    <div className={`absolute inset-0 bg-linear-to-br ${category.color} group-hover:scale-105 transition-transform duration-550`} />
                   )}
                   <div className="relative z-10 text-center text-white px-2">
-                    <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2 md:mb-3">{category.icon}</div>
-                    <div className="font-display font-bold text-sm sm:text-base md:text-xl leading-tight">{category.name}</div>
+                    <div className="text-3xl sm:text-4xl md:text-5xl mb-1.5 sm:mb-2">{category.icon}</div>
+                    <div className="font-display font-bold text-sm sm:text-base md:text-lg leading-tight">{category.name}</div>
                   </div>
                 </Link>
               );
@@ -596,26 +589,111 @@ export default function Home() {
           </div>
         </section>
 
+        {/* 5. Fashion Feed / Community Posts (Grid) */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="flex items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-charcoal-900 dark:text-white">{t('feed')}</h2>
+              <p className="text-xs sm:text-sm md:text-base text-cool-gray-500 dark:text-cool-gray-400 mt-0.5 sm:mt-1 pr-2">{t('latest_posts')}</p>
+            </div>
+            <Link 
+              href="/feed"
+              className="text-gold-650 dark:text-gold-450 hover:text-gold-700 dark:hover:text-gold-550 font-semibold flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap touch-manipulation transition-colors"
+            >
+              <span>{t('view_all')}</span>
+              <span>→</span>
+            </Link>
+          </div>
+
+          {posts.length === 0 ? (
+            <div className="text-center py-12 text-cool-gray-400 border border-dashed border-cool-gray-200 dark:border-charcoal-800 rounded-xl">
+              <p className="text-4xl mb-3">📸</p>
+              <p>No posts yet. Be the first to share your style!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
+              {posts.map((post) => {
+                const postId = post.id || post._id;
+                return (
+                  <div key={postId || Math.random().toString()} className="bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750 transition-shadow">
+                    <button
+                      onClick={() => postId && router.push(`/post/${postId}`)}
+                      className="relative aspect-square w-full"
+                    >
+                      {post.images?.[0] ? (
+                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
+                      )}
+                    </button>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        {post.authorAvatar ? (
+                          <Image src={post.authorAvatar} alt={post.authorName || 'Author'} width={32} height={32} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />
+                        ) : (
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-100 dark:bg-charcoal-750 flex items-center justify-center text-xs font-bold text-gold-600">
+                            {(post.authorName || 'U').charAt(0)}
+                          </div>
+                        )}
+                        <span className="font-semibold text-charcoal-900 dark:text-white text-sm">{post.authorName || 'Anonymous'}</span>
+                      </div>
+                      {post.caption && <p className="text-charcoal-700 dark:text-cool-gray-300 mb-3 text-sm line-clamp-2 leading-relaxed">{post.caption}</p>}
+                      <div className="flex items-center gap-4 text-cool-gray-500 dark:text-cool-gray-400 text-xs font-medium">
+                        <span className="flex items-center gap-1">❤️ <span>{post.likes ?? 0}</span></span>
+                        <span className="flex items-center gap-1">💬 <span>{post.comments ?? 0}</span></span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* 6. Statistics / Trust Section */}
+        <section className="mb-14 sm:mb-16 md:mb-20">
+          <div className="bg-linear-to-r from-gold-600 to-gold-700 dark:from-gold-700 dark:to-gold-800 rounded-2xl p-8 sm:p-12 text-white shadow-lg dark:shadow-charcoal-950/50">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 text-center">
+              <div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5">2,500+</div>
+                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm">Active Vendors</div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5">50K+</div>
+                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm">Fashion Products</div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5">100K+</div>
+                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm">Happy Customers</div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1.5">4.8★</div>
+                <div className="text-white/80 dark:text-white/70 text-xs sm:text-sm">Average Rating</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section — hidden for authenticated users */}
         {!user && (
           <section>
-            <div className="bg-white dark:bg-charcoal-800 rounded-xl sm:rounded-2xl shadow-xl dark:shadow-charcoal-950/50 p-6 sm:p-8 md:p-12 text-center">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-2 sm:mb-3 md:mb-4 leading-tight px-2">
+            <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-xl dark:shadow-charcoal-950/50 p-8 sm:p-12 text-center border border-cool-gray-150 dark:border-charcoal-750">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-charcoal-900 dark:text-white mb-3 md:mb-4 leading-tight">
                 Start Your Fashion Business Today
               </h2>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-cool-gray-500 dark:text-cool-gray-400 mb-6 sm:mb-7 md:mb-8 max-w-2xl mx-auto px-2">
+              <p className="text-sm sm:text-base md:text-lg text-cool-gray-500 dark:text-cool-gray-400 mb-8 max-w-2xl mx-auto px-2">
                 Join thousands of vendors selling on our platform. Easy setup, powerful tools, and reach thousands of customers.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                 <Link 
                   href="/auth/signup?role=vendor"
-                  className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-lg font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                  className="px-6 sm:px-8 py-3.5 bg-charcoal-800 dark:bg-charcoal-700 text-white rounded-xl font-semibold hover:bg-charcoal-900 dark:hover:bg-charcoal-600 active:scale-95 transition-all shadow-md text-sm sm:text-base touch-manipulation"
                 >
                   Become a Vendor
                 </Link>
                 <Link 
                   href="/auth/signup?role=customer"
-                  className="px-6 sm:px-8 py-3 sm:py-4 min-h-11 bg-gold-600 dark:bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base touch-manipulation"
+                  className="px-6 sm:px-8 py-3.5 bg-gold-600 dark:bg-gold-600 text-white rounded-xl font-semibold hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all shadow-md text-sm sm:text-base touch-manipulation"
                 >
                   Start Shopping
                 </Link>
