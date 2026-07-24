@@ -56,11 +56,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Invalid transaction details' }, { status: 400 });
     }
 
-    // Validate amount matches
+    // Validate amount matches (taking NGN vs USD currency into account)
     const orderTotal = Number(order.total);
     const txAmount = Number(tx.amount);
-    if (Math.abs(txAmount - orderTotal) > 0.05) {
-      return NextResponse.json({ success: false, message: `Payment amount mismatch. Expected: ${orderTotal}, Received: ${txAmount}` }, { status: 400 });
+    const txCurrency = String(tx.currency || 'USD').toUpperCase();
+
+    if (txCurrency === 'NGN') {
+      const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+      const expectedNGN = Math.round(orderTotal * NGN_RATE);
+      // Allow up to 150 Naira difference due to rounding/fees
+      if (Math.abs(txAmount - expectedNGN) > 150) {
+        return NextResponse.json({
+          success: false,
+          message: `Payment amount mismatch. Expected (NGN): ${expectedNGN}, Received: ${txAmount}`
+        }, { status: 400 });
+      }
+    } else {
+      // USD comparison
+      if (Math.abs(txAmount - orderTotal) > 0.05) {
+        return NextResponse.json({
+          success: false,
+          message: `Payment amount mismatch. Expected (USD): ${orderTotal}, Received: ${txAmount}`
+        }, { status: 400 });
+      }
     }
 
     // Success - update the order status
