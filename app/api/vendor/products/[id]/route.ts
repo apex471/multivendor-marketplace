@@ -33,7 +33,7 @@ export async function PATCH(
     if (!product || product.vendorId !== userId) return sendNotFound('Product not found');
 
     const body = await request.json().catch(() => ({}));
-    const EDITABLE = ['name', 'description', 'category', 'price', 'salePrice', 'costPrice', 'stock', 'images', 'sku', 'tags', 'variants', 'lowStockAlert'] as const;
+    const EDITABLE = ['name', 'description', 'category', 'price', 'salePrice', 'costPrice', 'stock', 'images', 'videos', 'sku', 'tags', 'variants', 'lowStockAlert'] as const;
 
     const updates: Record<string, unknown> = {};
     for (const field of EDITABLE) {

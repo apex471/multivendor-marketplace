@@ -20,6 +20,7 @@ interface Comment {
 interface PostData {
   id: string;
   image: string | null;
+  video: string | null;
   caption: string;
   user: { id: string; username: string; fullName: string; avatar: string | null; verified: boolean };
   location: string;
@@ -55,6 +56,7 @@ export default function PostDetailPage() {
         setPost({
           id:            p.id,
           image:         p.images?.[0] ?? null,
+          video:         p.videos?.[0] ?? null,
           caption:       p.content,
           user: {
             id:       String(p.author.id),
@@ -209,9 +211,17 @@ export default function PostDetailPage() {
         <div className="max-w-5xl mx-auto">
           <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-lg overflow-hidden">
             <div className="grid lg:grid-cols-2">
-              {/* Image Section */}
-              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center">
-                {post.image ? (
+              {/* Image/Video Section */}
+              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center w-full min-h-[300px]">
+                {post.video ? (
+                  <video
+                    src={post.video}
+                    className="w-full h-full object-cover"
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : post.image ? (
                   <Image
                     src={post.image}
                     alt={post.caption}

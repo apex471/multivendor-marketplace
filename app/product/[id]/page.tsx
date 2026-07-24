@@ -22,6 +22,11 @@ interface Review {
   helpful: number;
 }
 
+interface MediaItem {
+  url: string;
+  type: 'image' | 'video';
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -35,6 +40,7 @@ interface ProductData {
   features: string[];
   specifications: { label: string; value: string }[];
   images: string[];
+  media: MediaItem[];
   sizes: string[];
   colors: { name: string; hex: string }[];
   inStock: boolean;
@@ -195,6 +201,10 @@ export default function ProductDetailPage() {
             ? [{ label: 'SKU', value: p.sku }, { label: 'Category', value: p.category ?? '' }]
             : [],
           images:     p.images?.length ? p.images : ['/images/placeholder.jpg'],
+          media: [
+            ...(p.images?.length ? p.images : ['/images/placeholder.jpg']).map((url: string) => ({ url, type: 'image' as const })),
+            ...(p.videos ?? []).map((url: string) => ({ url, type: 'video' as const })),
+          ],
           sizes,
           colors:     [...colorMap.values()],
           inStock:    (p.stock ?? 0) > 0,
@@ -302,33 +312,43 @@ export default function ProductDetailPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 mb-12">
-          {/* Product Images */}
+          {/* Product Media (Images & Videos) */}
           <div>
-            {/* Main Image */}
+            {/* Main Media */}
             <div className="relative aspect-square mb-4 rounded-xl overflow-hidden bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700">
-              <Image
-                src={product.images[selectedImage]}
-                alt={product.name}
-                fill
-                className="object-cover"
-                priority
-              />
+              {product.media[selectedImage]?.type === 'video' ? (
+                <video
+                  src={product.media[selectedImage].url}
+                  className="w-full h-full object-cover"
+                  controls
+                  playsInline
+                  preload="metadata"
+                />
+              ) : (
+                <Image
+                  src={product.media[selectedImage]?.url || '/images/placeholder.jpg'}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              )}
               {product.oldPrice && (
-                <span className="absolute top-3 sm:top-4 left-3 sm:left-4 px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm font-bold rounded">
+                <span className="absolute top-3 sm:top-4 left-3 sm:left-4 px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm font-bold rounded z-10">
                   {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% OFF
                 </span>
               )}
               <button
                 onClick={() => setIsInWishlist(!isInWishlist)}
-                className="absolute top-3 sm:top-4 right-3 sm:right-4 w-10 h-10 bg-white dark:bg-charcoal-800 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                className="absolute top-3 sm:top-4 right-3 sm:right-4 w-10 h-10 bg-white dark:bg-charcoal-800 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-10"
               >
                 <span className="text-xl">{isInWishlist ? '❤️' : '🤍'}</span>
               </button>
             </div>
 
-            {/* Thumbnail Images */}
+            {/* Thumbnail Gallery */}
             <div className="grid grid-cols-4 gap-2 sm:gap-3">
-              {product.images.map((image, index) => (
+              {product.media.map((item, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
@@ -338,7 +358,14 @@ export default function ProductDetailPage() {
                       : 'border-cool-gray-300 dark:border-charcoal-700'
                   }`}
                 >
-                  <Image src={image} alt={`Product ${index + 1}`} fill className="object-cover" />
+                  {item.type === 'video' ? (
+                    <div className="relative w-full h-full bg-charcoal-900 flex items-center justify-center">
+                      <video src={item.url} className="w-full h-full object-cover opacity-60 pointer-events-none" muted />
+                      <span className="absolute text-xl">🎬</span>
+                    </div>
+                  ) : (
+                    <Image src={item.url} alt={`Product ${index + 1}`} fill className="object-cover" />
+                  )}
                 </button>
               ))}
             </div>

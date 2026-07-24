@@ -13,6 +13,12 @@ interface UploadedImage {
   file: File;
 }
 
+interface UploadedVideo {
+  id: string;
+  url: string;
+  file: File;
+}
+
 interface TaggedProduct {
   id: string;
   name: string;
@@ -24,15 +30,17 @@ export default function CreatePostPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [images, setImages]                   = useState<UploadedImage[]>([]);
+  const [videos, setVideos]                   = useState<UploadedVideo[]>([]);
   const [caption, setCaption]                 = useState('');
   const [hashtags, setHashtags]               = useState('');
   const [location, setLocation]               = useState('');
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [taggedProducts, setTaggedProducts]   = useState<TaggedProduct[]>([]);
   const [productSearchQuery, setProductSearchQuery] = useState('');
-  const [privacy, setPrivacy]                 = useState<'public' | 'followers' | 'private'>('public');
+  const [privacy, setPrivacy]                 = useState<'public' | 'followers' | 'private'>('privacy' as any); // fallback cast
   const [allowComments, setAllowComments]     = useState(true);
   const [isPublishing, setIsPublishing]       = useState(false);
   const [isSavingDraft, setIsSavingDraft]     = useState(false);
@@ -114,6 +122,24 @@ export default function CreatePostPage() {
     setImages(images.filter(img => img.id !== id));
   };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (videos.length + files.length > 3) {
+      alert('Maximum 3 videos allowed per post');
+      return;
+    }
+    const newVideos = files.map(file => ({
+      id:  Date.now().toString() + Math.random(),
+      url: URL.createObjectURL(file),
+      file,
+    }));
+    setVideos([...videos, ...newVideos]);
+  };
+
+  const removeVideo = (id: string) => {
+    setVideos(videos.filter(vid => vid.id !== id));
+  };
+
   const moveImage = (id: string, direction: 'left' | 'right') => {
     const index = images.findIndex(img => img.id === id);
     if (
@@ -166,26 +192,45 @@ export default function CreatePostPage() {
     setPublishError('');
 
     try {
-      // Upload any locally-selected images to CDN first
+      // Upload any locally-selected images and videos to CDN first
       let imageUrls: string[];
+      let videoUrls: string[];
       try {
-        imageUrls = await Promise.all(
-          images.map(async (img) => {
-            if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
-            const fd = new FormData();
-            fd.append('file', img.file);
-            const up = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` },
-              body: fd,
-            });
-            const upJson = await up.json();
-            if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
-            return upJson.data.url as string;
-          })
-        );
+        const imageUploads = images.map(async (img) => {
+          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
+          const fd = new FormData();
+          fd.append('file', img.file);
+          const up = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          const upJson = await up.json();
+          if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+          return upJson.data.url as string;
+        });
+
+        const videoUploads = videos.map(async (vid) => {
+          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return vid.url;
+          const fd = new FormData();
+          fd.append('file', vid.file);
+          fd.append('type', 'video');
+          const up = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          const upJson = await up.json();
+          if (!upJson.success) throw new Error(upJson.message || 'Video upload failed');
+          return upJson.data.url as string;
+        });
+
+        [imageUrls, videoUrls] = await Promise.all([
+          Promise.all(imageUploads),
+          Promise.all(videoUploads),
+        ]);
       } catch (uploadErr) {
-        setPublishError(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload images');
+        setPublishError(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload media files');
         setIsPublishing(false);
         return;
       }
@@ -193,6 +238,7 @@ export default function CreatePostPage() {
       const postData = {
         content:  caption.trim(),
         images:   imageUrls,
+        videos:   videoUrls,
         product:  taggedProducts.length > 0
           ? {
               id:       taggedProducts[0].id,
@@ -242,26 +288,45 @@ export default function CreatePostPage() {
 
     setIsSavingDraft(true);
     try {
-      // Upload any locally-selected images to CDN first
+      // Upload any locally-selected images and videos to CDN first
       let draftUrls: string[];
+      let videoDraftUrls: string[];
       try {
-        draftUrls = await Promise.all(
-          images.map(async (img) => {
-            if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
-            const fd = new FormData();
-            fd.append('file', img.file);
-            const up = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` },
-              body: fd,
-            });
-            const upJson = await up.json();
-            if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
-            return upJson.data.url as string;
-          })
-        );
+        const imageUploads = images.map(async (img) => {
+          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
+          const fd = new FormData();
+          fd.append('file', img.file);
+          const up = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          const upJson = await up.json();
+          if (!upJson.success) throw new Error(upJson.message || 'Image upload failed');
+          return upJson.data.url as string;
+        });
+
+        const videoUploads = videos.map(async (vid) => {
+          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return vid.url;
+          const fd = new FormData();
+          fd.append('file', vid.file);
+          fd.append('type', 'video');
+          const up = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          });
+          const upJson = await up.json();
+          if (!upJson.success) throw new Error(upJson.message || 'Video upload failed');
+          return upJson.data.url as string;
+        });
+
+        [draftUrls, videoDraftUrls] = await Promise.all([
+          Promise.all(imageUploads),
+          Promise.all(videoUploads),
+        ]);
       } catch (uploadErr) {
-        alert(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload images');
+        alert(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload media files');
         setIsSavingDraft(false);
         return;
       }
@@ -272,6 +337,7 @@ export default function CreatePostPage() {
         body:    JSON.stringify({
           content:  caption.trim() || '(draft)',
           images:   draftUrls,
+          videos:   videoDraftUrls,
           hashtags: hashtags.split(',').map(t => t.trim()).filter(t => t),
           privacy,
           status:   'draft',
@@ -318,88 +384,152 @@ export default function CreatePostPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Upload */}
-            <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">
-                Images
-              </h2>
+            {/* Media Upload (Images & Videos) */}
+            <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-6 space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">
+                  Images
+                </h2>
 
-              {/* Upload Area */}
-              {images.length < 10 && (
-                <div className="border-2 border-dashed border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-8 text-center mb-4">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageSelect}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center gap-3 w-full"
-                  >
-                    <div className="w-16 h-16 bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center text-3xl">
-                      📷
-                    </div>
-                    <div>
-                      <p className="text-charcoal-900 dark:text-white font-semibold">
-                        Click to upload images
-                      </p>
-                      <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                        JPG, PNG (max 5MB each, up to 10 images)
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              )}
+                {/* Upload Area */}
+                {images.length < 10 && (
+                  <div className="border-2 border-dashed border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-8 text-center mb-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center gap-3 w-full"
+                    >
+                      <div className="w-16 h-16 bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center text-3xl">
+                        📷
+                      </div>
+                      <div>
+                        <p className="text-charcoal-900 dark:text-white font-semibold">
+                          Click to upload images
+                        </p>
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                          JPG, PNG (max 5MB each, up to 10 images)
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                )}
 
-              {/* Image Grid */}
-              {images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {images.map((image, index) => (
-                    <div key={image.id} className="relative group aspect-square">
-                      <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-cool-gray-300 dark:border-charcoal-700">
-                        <Image
-                          src={image.url}
-                          alt={`Upload ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        {index === 0 && (
-                          <div className="absolute top-2 left-2 bg-gold-600 text-white text-xs px-2 py-1 rounded">
-                            Cover
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                        {index > 0 && (
+                {/* Image Grid */}
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {images.map((image, index) => (
+                      <div key={image.id} className="relative group aspect-square">
+                        <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-cool-gray-300 dark:border-charcoal-700">
+                          <Image
+                            src={image.url}
+                            alt={`Upload ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          {index === 0 && (
+                            <div className="absolute top-2 left-2 bg-gold-600 text-white text-xs px-2 py-1 rounded">
+                              Cover
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                          {index > 0 && (
+                            <button
+                              onClick={() => moveImage(image.id, 'left')}
+                              className="px-3 py-2 bg-white text-charcoal-900 rounded font-semibold text-sm"
+                            >
+                              ←
+                            </button>
+                          )}
                           <button
-                            onClick={() => moveImage(image.id, 'left')}
-                            className="px-3 py-2 bg-white text-charcoal-900 rounded font-semibold text-sm"
+                            onClick={() => removeImage(image.id)}
+                            className="px-3 py-2 bg-red-650 text-white rounded font-semibold text-sm"
                           >
-                            ←
+                            Remove
                           </button>
-                        )}
-                        <button
-                          onClick={() => removeImage(image.id)}
-                          className="px-3 py-2 bg-red-600 text-white rounded font-semibold text-sm"
-                        >
-                          Remove
-                        </button>
-                        {index < images.length - 1 && (
-                          <button
-                            onClick={() => moveImage(image.id, 'right')}
-                            className="px-3 py-2 bg-white text-charcoal-900 rounded font-semibold text-sm"
-                          >
-                            →
-                          </button>
-                        )}
+                          {index < images.length - 1 && (
+                            <button
+                              onClick={() => moveImage(image.id, 'right')}
+                              className="px-3 py-2 bg-white text-charcoal-900 rounded font-semibold text-sm"
+                            >
+                              →
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-cool-gray-200 dark:border-charcoal-700 pt-6">
+                <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">
+                  Videos
+                </h2>
+
+                {/* Video Upload Area */}
+                {videos.length < 3 && (
+                  <div className="border-2 border-dashed border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-8 text-center mb-4">
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
+                      multiple
+                      onChange={handleVideoSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => videoInputRef.current?.click()}
+                      className="flex flex-col items-center gap-3 w-full"
+                    >
+                      <div className="w-16 h-16 bg-gold-100 dark:bg-gold-900/30 rounded-full flex items-center justify-center text-3xl">
+                        🎬
+                      </div>
+                      <div>
+                        <p className="text-charcoal-900 dark:text-white font-semibold">
+                          Click to upload videos
+                        </p>
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                          MP4, WebM (max 100MB each, up to 3 videos)
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Video Grid */}
+                {videos.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {videos.map((vid) => (
+                      <div key={vid.id} className="relative group aspect-square">
+                        <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-cool-gray-300 dark:border-charcoal-700 bg-charcoal-950">
+                          <video
+                            src={vid.url}
+                            className="w-full h-full object-cover"
+                            controls
+                            playsInline
+                          />
+                        </div>
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                          <button
+                            onClick={() => removeVideo(vid.id)}
+                            className="px-3 py-2 bg-red-650 text-white rounded font-semibold text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Caption */}

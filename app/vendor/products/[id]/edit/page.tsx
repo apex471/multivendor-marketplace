@@ -29,6 +29,7 @@ interface Product {
   stock: string;
   lowStockAlert: string;
   images: string[];
+  videos?: string[];
   primaryImageIndex: number;
   variants: ProductVariant[];
   status: 'active' | 'draft' | 'out-of-stock';
@@ -61,6 +62,8 @@ export default function EditProductPage() {
   });
 
   const [images, setImages] = useState<string[]>([]);
+  const [videos, setVideos] = useState<string[]>([]);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [status, setStatus] = useState<'active' | 'draft' | 'out-of-stock'>('active');
@@ -90,6 +93,7 @@ export default function EditProductPage() {
           stock:             String(p.stock ?? ''),
           lowStockAlert:     String(p.lowStockAlert ?? '5'),
           images:            p.images ?? [],
+          videos:            p.videos ?? [],
           primaryImageIndex: 0,
           variants:          (p.variants ?? []).map((v: Record<string, unknown>, i: number) => ({
             id:    String(i),
@@ -115,6 +119,7 @@ export default function EditProductPage() {
           lowStockAlert: mapped.lowStockAlert,
         });
         setImages(mapped.images);
+        setVideos(p.videos ?? []);
         setPrimaryImageIndex(mapped.primaryImageIndex);
         setVariants(mapped.variants.length ? mapped.variants : [{ id: '1', size: '', color: '', stock: 0, sku: '' }]);
         setStatus(mapped.status);
@@ -157,6 +162,45 @@ export default function EditProductPage() {
     } catch (err) {
       alert(`Image upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (videos.length + files.length > 3) {
+      alert('Maximum 3 videos allowed per product.');
+      return;
+    }
+
+    const token = getAuthToken();
+    setIsUploadingVideo(true);
+    const uploads = Array.from(files).map(async (file) => {
+      const body = new FormData();
+      body.append('file', file);
+      body.append('type', 'video');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Upload failed');
+      return json.data.url as string;
+    });
+
+    try {
+      const urls = await Promise.all(uploads);
+      setVideos(prev => [...prev, ...urls]);
+    } catch (err) {
+      alert(`Video upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const removeVideo = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index));
   };
 
   const removeImage = (index: number) => {
@@ -209,6 +253,7 @@ export default function EditProductPage() {
           stock:         parseInt(formData.stock || '0', 10),
           lowStockAlert: parseInt(formData.lowStockAlert || '5', 10),
           images,
+          videos,
           variants,
           status,
         }),
@@ -344,7 +389,7 @@ export default function EditProductPage() {
               <nav className="space-y-2">
                 {[
                   { id: 'basic', label: 'Basic Info', icon: '📝' },
-                  { id: 'images', label: 'Images', icon: '🖼️' },
+                  { id: 'images', label: 'Photos & Videos', icon: '🖼️' },
                   { id: 'variants', label: 'Variants', icon: '🎨' },
                   { id: 'pricing', label: 'Pricing', icon: '💰' },
                   { id: 'inventory', label: 'Inventory', icon: '📦' },
@@ -440,7 +485,7 @@ export default function EditProductPage() {
               {activeTab === 'images' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-charcoal-900 dark:text-white mb-4">
-                    Product Images
+                    Product Images &amp; Videos
                   </h2>
 
                   <div className="border-2 border-dashed border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-8 text-center">
@@ -488,7 +533,7 @@ export default function EditProductPage() {
                               </button>
                               <button
                                 onClick={() => removeImage(index)}
-                                className="px-3 py-1 bg-red-600 text-white rounded text-sm font-semibold"
+                                className="px-3 py-1 bg-red-650 text-white rounded text-sm font-semibold"
                               >
                                 Remove
                               </button>
@@ -498,6 +543,65 @@ export default function EditProductPage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="border-t border-cool-gray-200 dark:border-charcoal-700 pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-charcoal-900 dark:text-white">Product Videos</h3>
+                        <p className="text-xs text-cool-gray-500 mt-0.5">MP4, WebM, MOV, OGG · max 100 MB · up to 3 videos</p>
+                      </div>
+                      <span className="text-sm text-cool-gray-500">{videos.length}/3</span>
+                    </div>
+
+                    <div className="border-2 border-dashed border-cool-gray-300 dark:border-charcoal-700 rounded-lg p-8 text-center">
+                      <input
+                        type="file"
+                        id="video-upload"
+                        multiple
+                        accept="video/*"
+                        onChange={handleVideoUpload}
+                        className="hidden"
+                      />
+                      <label htmlFor="video-upload" className="cursor-pointer">
+                        <div className="text-6xl mb-4">🎬</div>
+                        <p className="text-charcoal-900 dark:text-white font-semibold mb-2">
+                          Click to upload videos
+                        </p>
+                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
+                          or drag and drop (MP4, WebM up to 100MB)
+                        </p>
+                      </label>
+                    </div>
+
+                    {isUploadingVideo && (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 animate-pulse">↑ Uploading videos…</p>
+                    )}
+
+                    {videos.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-charcoal-900 dark:text-white mb-3">
+                          Product Videos ({videos.length})
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {videos.map((vid, index) => (
+                            <div key={index} className="relative group aspect-square">
+                              <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-cool-gray-300 dark:border-charcoal-700 bg-charcoal-950">
+                                <video src={vid} className="w-full h-full object-cover" controls playsInline />
+                              </div>
+                              <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center p-2">
+                                <button
+                                  onClick={() => removeVideo(index)}
+                                  className="w-full px-2 py-1.5 bg-red-650 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                  🗑 Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

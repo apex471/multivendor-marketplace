@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
     const {
       content,
       images    = [],
+      videos    = [],
       product,
       hashtags  = [],
       privacy   = 'public',
@@ -164,6 +165,7 @@ export async function POST(request: NextRequest) {
       authorRole:   user.role === 'admin' ? 'vendor' : user.role as any,
       content:    content.trim(),
       images:     Array.isArray(images) ? images : [],
+      videos:     Array.isArray(videos) ? videos : [],
       product:    product ?? undefined,
       hashtags:   Array.isArray(hashtags) ? hashtags : [],
       privacy,

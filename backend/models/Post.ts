@@ -18,6 +18,7 @@ export interface IPost {
   authorRole: 'vendor' | 'brand' | 'customer';
   content: string;
   images: string[];
+  videos?: string[];
   product?: IPostProduct;
   hashtags: string[];
   likes: number;
@@ -42,6 +43,7 @@ export const Post = {
       privacy: data.privacy ?? 'public',
       status: data.status ?? 'published',
       images: data.images ?? [],
+      videos: data.videos ?? [],
       hashtags: data.hashtags ?? [],
       createdAt: now,
       updatedAt: now,

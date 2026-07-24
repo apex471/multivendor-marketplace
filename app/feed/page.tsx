@@ -17,7 +17,7 @@ interface PostProduct { id: string; name: string; price: number; image: string; 
 interface Post {
   id: string; authorId: string;
   author: { name: string; avatar: string | null; verified: boolean; isVendor: boolean; };
-  content: string; images: string[]; likes: number; comments: number; shares: number;
+  content: string; images: string[]; videos?: string[]; likes: number; comments: number; shares: number;
   timestamp: string; liked: boolean; saved: boolean; product?: PostProduct;
 }
 interface CurrentUser { id: string; name: string; avatar: string | null; role: string; }
@@ -180,13 +180,13 @@ export default function FeedPage() {
           const livePosts: Post[] = json.data.posts.map((p: {
             id?: string; _id?: string;  // API returns 'id' via docToObject(); _id is legacy fallback
             authorId: string; authorName: string; authorAvatar?: string | null;
-            authorRole: string; content: string; images: string[]; product?: PostProduct;
+            authorRole: string; content: string; images: string[]; videos?: string[]; product?: PostProduct;
             likes: number; comments: number; shares: number; createdAt: string; liked?: boolean;
           }) => ({
             id: String(p.id ?? p._id ?? ''),  // prefer 'id' (Firestore docToObject), fallback to _id
             authorId: String(p.authorId),
             author: { name: p.authorName, avatar: p.authorAvatar ?? null, verified: p.authorRole !== 'customer', isVendor: ['vendor','brand'].includes(p.authorRole) },
-            content: p.content, images: p.images ?? [], product: p.product,
+            content: p.content, images: p.images ?? [], videos: p.videos ?? [], product: p.product,
             likes: p.likes, comments: p.comments, shares: p.shares,
             timestamp: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
             liked: p.liked ?? false, saved: false,
@@ -494,8 +494,20 @@ export default function FeedPage() {
                 </Link>
               )}
 
-              {/* Post Images */}
-              {post.images.length > 0 && (
+              {/* Post Video or Images */}
+              {post.videos && post.videos.length > 0 ? (
+                <div className="px-4 pb-3">
+                  <div className="relative rounded-xl overflow-hidden border border-cool-gray-200 dark:border-charcoal-800 bg-charcoal-950 aspect-4/3">
+                    <video
+                      src={post.videos[0]}
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                      preload="metadata"
+                    />
+                  </div>
+                </div>
+              ) : post.images.length > 0 && (
                 <Link href={`/post/${post.id}`}
                   className={`grid gap-0.5 ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                   {post.images.slice(0, 4).map((image, index) => (
