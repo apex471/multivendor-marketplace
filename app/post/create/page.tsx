@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
+import { uploadFileDirect } from '@/lib/api/upload';
 
 interface UploadedImage {
   id: string;
@@ -196,47 +197,14 @@ export default function CreatePostPage() {
       let imageUrls: string[];
       let videoUrls: string[];
       try {
-        const imageUploads = images.map(async (img) => {
-          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
-          const fd = new FormData();
-          fd.append('file', img.file);
-          const up = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
-          });
-          let upJson;
-          const upClone = up.clone();
-          try {
-            upJson = await up.json();
-          } catch (e) {
-            const textMsg = await upClone.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-          }
-          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
-          return upJson.data.url as string;
+        const imageUploads = images.map((img) => {
+          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return Promise.resolve(img.url);
+          return uploadFileDirect(img.file, 'posts');
         });
 
-        const videoUploads = videos.map(async (vid) => {
-          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return vid.url;
-          const fd = new FormData();
-          fd.append('file', vid.file);
-          fd.append('type', 'video');
-          const up = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
-          });
-          let upJson;
-          const upClone = up.clone();
-          try {
-            upJson = await up.json();
-          } catch (e) {
-            const textMsg = await upClone.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-          }
-          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
-          return upJson.data.url as string;
+        const videoUploads = videos.map((vid) => {
+          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return Promise.resolve(vid.url);
+          return uploadFileDirect(vid.file, 'posts');
         });
 
         [imageUrls, videoUrls] = await Promise.all([
@@ -306,47 +274,14 @@ export default function CreatePostPage() {
       let draftUrls: string[];
       let videoDraftUrls: string[];
       try {
-        const imageUploads = images.map(async (img) => {
-          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return img.url;
-          const fd = new FormData();
-          fd.append('file', img.file);
-          const up = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
-          });
-          let upJson;
-          const upClone = up.clone();
-          try {
-            upJson = await up.json();
-          } catch (e) {
-            const textMsg = await upClone.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-          }
-          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Image upload failed');
-          return upJson.data.url as string;
+        const imageUploads = images.map((img) => {
+          if (!img.url.startsWith('blob:') && !img.url.startsWith('data:')) return Promise.resolve(img.url);
+          return uploadFileDirect(img.file, 'posts');
         });
 
-        const videoUploads = videos.map(async (vid) => {
-          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return vid.url;
-          const fd = new FormData();
-          fd.append('file', vid.file);
-          fd.append('type', 'video');
-          const up = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
-          });
-          let upJson;
-          const upClone = up.clone();
-          try {
-            upJson = await up.json();
-          } catch (e) {
-            const textMsg = await upClone.text().catch(() => '');
-            throw new Error(`Server returned non-JSON (status ${up.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-          }
-          if (!up.ok || !upJson.success) throw new Error(upJson.message || upJson.error || 'Video upload failed');
-          return upJson.data.url as string;
+        const videoUploads = videos.map((vid) => {
+          if (!vid.url.startsWith('blob:') && !vid.url.startsWith('data:')) return Promise.resolve(vid.url);
+          return uploadFileDirect(vid.file, 'posts');
         });
 
         [draftUrls, videoDraftUrls] = await Promise.all([

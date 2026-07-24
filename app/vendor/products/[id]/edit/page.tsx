@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Header from '../../../../../components/common/Header';
 import Footer from '../../../../../components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
+import { uploadFileDirect } from '@/lib/api/upload';
 
 interface ProductVariant {
   id: string;
@@ -142,26 +143,7 @@ export default function EditProductPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const token = getAuthToken();
-    const uploads = Array.from(files).map(async (file) => {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body,
-      });
-      let json;
-      const resClone = res.clone();
-      try {
-        json = await res.json();
-      } catch (e) {
-        const textMsg = await resClone.text().catch(() => '');
-        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-      }
-      if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
-      return json.data.url as string;
-    });
+    const uploads = Array.from(files).map((file) => uploadFileDirect(file, 'products'));
 
     try {
       const urls = await Promise.all(uploads);
@@ -180,28 +162,8 @@ export default function EditProductPage() {
       return;
     }
 
-    const token = getAuthToken();
     setIsUploadingVideo(true);
-    const uploads = Array.from(files).map(async (file) => {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('type', 'video');
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body,
-      });
-      let json;
-      const resClone = res.clone();
-      try {
-        json = await res.json();
-      } catch (e) {
-        const textMsg = await resClone.text().catch(() => '');
-        throw new Error(`Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}`);
-      }
-      if (!res.ok || !json.success) throw new Error(json.error ?? json.message ?? 'Upload failed');
-      return json.data.url as string;
-    });
+    const uploads = Array.from(files).map((file) => uploadFileDirect(file, 'products'));
 
     try {
       const urls = await Promise.all(uploads);

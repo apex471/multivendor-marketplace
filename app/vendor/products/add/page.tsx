@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '../../../../components/common/Header';
 import Footer from '../../../../components/common/Footer';
 import { getAuthToken, getStoredUser } from '@/lib/api/auth';
+import { uploadFileDirect } from '@/lib/api/upload';
 import {
   FormIcon,
   MediaIcon,
@@ -103,41 +104,12 @@ export default function AddProductPage() {
     const ctrl = new AbortController();
     abortMap.current.set(abortKey, ctrl);
 
-    const fd = new FormData();
-    fd.append('file', file);
-
     try {
-      const res  = await fetch('/api/upload', {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body:    fd,
-        signal:  ctrl.signal,
-      });
-      
-      let json;
-      const resClone = res.clone();
-      try {
-        json = await res.json();
-      } catch (parseErr) {
-        const textMsg = await resClone.text().catch(() => '');
-        setSlots(prev => prev.map(s =>
-          s.abortKey === abortKey
-            ? { ...s, status: 'error', error: `Server returned non-JSON (status ${res.status}): ${textMsg.slice(0, 150) || 'Unknown error'}` }
-            : s
-        ));
-        return;
-      }
-
-      if (!res.ok || !json.success) {
-        setSlots(prev => prev.map(s =>
-          s.abortKey === abortKey ? { ...s, status: 'error', error: json.message ?? json.error ?? `Server error ${res.status}` } : s
-        ));
-        return;
-      }
+      const remoteUrl = await uploadFileDirect(file, 'products');
 
       setSlots(prev => prev.map(s =>
         s.abortKey === abortKey
-          ? { ...s, status: 'done', remoteUrl: json.data.url as string, error: null }
+          ? { ...s, status: 'done', remoteUrl, error: null }
           : s
       ));
     } catch (err) {
