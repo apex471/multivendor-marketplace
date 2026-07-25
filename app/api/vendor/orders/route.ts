@@ -35,8 +35,10 @@ export async function GET(request: NextRequest) {
     const normalized = vendorOrders.map(o => {
       const vendorItems = (o.items ?? []).filter((i: IOrderItem) => productIds.has(i.productId ?? ''));
       const vendorSubtotal = vendorItems.reduce((s: number, i: IOrderItem) => s + i.price * i.quantity, 0);
-      totalRevenue += vendorSubtotal;
-      if (o.createdAt && new Date(o.createdAt) >= monthStart) monthlyRevenue += vendorSubtotal;
+      // Only count revenue from paid orders — do not inflate with pending/unpaid
+      const isPaid = o.paymentStatus === 'paid';
+      if (isPaid) totalRevenue += vendorSubtotal;
+      if (isPaid && o.createdAt && new Date(o.createdAt) >= monthStart) monthlyRevenue += vendorSubtotal;
 
       // Guard against orders with missing/null shippingAddress (crash source)
       const addr = o.shippingAddress;

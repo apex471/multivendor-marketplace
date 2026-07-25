@@ -26,7 +26,7 @@ export default function VendorDashboard() {
   useEffect(() => { if (user) { setAvatar(user.avatar || ''); setBanner(user.banner || ''); } }, [user]);
 
   type VendorOrder = { id: string; customer: string; date: string; items: number; total: number; status: string };
-  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, avgRating: 0 });
+  const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, monthlyRevenue: 0, avgRating: 0 });
   const [recentOrders, setRecentOrders] = useState<VendorOrder[]>([]);
 
   // ── Order Detail Modal ────────────────────────────────────────────────────
@@ -184,7 +184,12 @@ export default function VendorDashboard() {
           status: o.status ? (o.status.charAt(0).toUpperCase() + o.status.slice(1)) : 'Unknown',
         }));
         setRecentOrders(rows);
-        setStats(prev => ({ ...prev, totalOrders: ordersJson.data.totalOrders ?? rows.length, revenue: ordersJson.data.monthlyRevenue ?? 0 }));
+        setStats(prev => ({
+          ...prev,
+          totalOrders: ordersJson.data.stats?.totalOrders ?? ordersJson.data.totalOrders ?? rows.length,
+          revenue: ordersJson.data.stats?.revenue ?? 0,
+          monthlyRevenue: ordersJson.data.stats?.monthlyRevenue ?? 0,
+        }));
       }
       if (productsJson?.data) setStats(prev => ({ ...prev, totalProducts: productsJson.data.total ?? productsJson.data.products?.length ?? 0 }));
     }).catch(() => {});
@@ -288,7 +293,7 @@ export default function VendorDashboard() {
           {[
             { label: 'Active Products', value: stats.totalProducts, icon: '📦', accent: 'text-purple-400', sub: 'In your catalog' },
             { label: 'Total Orders',    value: stats.totalOrders,   icon: '🛍️', accent: 'text-blue-400',   sub: 'All time' },
-            { label: 'Monthly Revenue', value: formatPrice(stats.revenue), icon: '💰', accent: 'text-green-400', sub: 'Current month' },
+            { label: 'Monthly Revenue', value: formatPrice(stats.monthlyRevenue), icon: '💰', accent: 'text-green-400', sub: 'Current month (paid)' },
             { label: 'Avg Rating',      value: stats.avgRating || '—', icon: '⭐', accent: 'text-gold-400', sub: 'Out of 5.0' },
           ].map(card => (
             <div key={card.label} className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-4 sm:p-5 shadow-lg hover:border-charcoal-600 transition-colors">
@@ -698,7 +703,8 @@ export default function VendorDashboard() {
               ) : (
                 <div className="grid sm:grid-cols-3 gap-4">
                   <div className="bg-purple-950/40 border border-purple-900/50 rounded-xl p-5 text-center"><p className="text-xs text-cool-gray-400 mb-1">Total Orders</p><p className="text-3xl font-bold text-purple-400">{stats.totalOrders}</p></div>
-                  <div className="bg-green-950/40 border border-green-900/50 rounded-xl p-5 text-center"><p className="text-xs text-cool-gray-400 mb-1">Monthly Revenue</p><p className="text-3xl font-bold text-green-400">{formatPrice(stats.revenue)}</p></div>
+                  <div className="bg-green-950/40 border border-green-900/50 rounded-xl p-5 text-center"><p className="text-xs text-cool-gray-400 mb-1">Monthly Revenue</p><p className="text-3xl font-bold text-green-400">{formatPrice(stats.monthlyRevenue)}</p></div>
+                  <div className="bg-purple-950/40 border border-purple-900/50 rounded-xl p-5 text-center"><p className="text-xs text-cool-gray-400 mb-1">Total Revenue</p><p className="text-3xl font-bold text-purple-400">{formatPrice(stats.revenue)}</p></div>
                   <div className="bg-blue-950/40 border border-blue-900/50 rounded-xl p-5 text-center"><p className="text-xs text-cool-gray-400 mb-1">Active Products</p><p className="text-3xl font-bold text-blue-400">{stats.totalProducts}</p></div>
                 </div>
               )}

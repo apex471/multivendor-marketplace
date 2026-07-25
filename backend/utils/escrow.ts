@@ -45,16 +45,38 @@ export async function releaseEscrow(orderId: string, reason?: string) {
       }
     : calculateFees(subtotal, shipping);
 
-  // Find vendor ID
-  const vendorName = order.items?.[0]?.vendor ?? null;
-  let vendorId: string | null = null;
-  let vendorUserDoc: any = null;
-  if (vendorName) {
-    const vendorUser = await db.collection('users').where('storeName', '==', vendorName).limit(1).get();
-    if (!vendorUser.empty) {
-      vendorId = vendorUser.docs[0].id;
-      vendorUserDoc = vendorUser.docs[0].data();
+  // ── Resolve vendor IDs from order items ─────────────────────────────────
+  // Order items store vendorId (Firestore user doc ID) set at checkout time.
+  // Group items by vendorId so each vendor gets their own escrow_release.
+  const vendorItemsMap = new Map<string, { items: typeof order.items; vendorId: string }>();
+
+  for (const item of order.items ?? []) {
+    // Primary: use vendorId stored on the item (set at checkout)
+    let resolvedVendorId: string | null = (item as any).vendorId || null;
+
+    if (!resolvedVendorId) {
+      // Fallback 1: look up by storeName (display vendor name on item)
+      const vendorName = (item as any).vendor ?? null;
+      if (vendorName) {
+        const byName = await db.collection('users').where('storeName', '==', vendorName).limit(1).get();
+        if (!byName.empty) resolvedVendorId = byName.docs[0].id;
+      }
     }
+
+    if (!resolvedVendorId) continue; // skip items with no resolvable vendor
+
+    if (!vendorItemsMap.has(resolvedVendorId)) {
+      vendorItemsMap.set(resolvedVendorId, { items: [], vendorId: resolvedVendorId });
+    }
+    vendorItemsMap.get(resolvedVendorId)!.items.push(item);
+  }
+
+  // Determine a single dominant vendorId for backwards compat (first vendor found)
+  let vendorId: string | null = vendorItemsMap.size > 0 ? [...vendorItemsMap.keys()][0] : null;
+  let vendorUserDoc: any = null;
+  if (vendorId) {
+    const vSnap = await db.collection('users').doc(vendorId).get();
+    if (vSnap.exists) vendorUserDoc = vSnap.data();
   }
 
   // Check and process direct Flutterwave payout if bank details are set
@@ -113,26 +135,48 @@ export async function releaseEscrow(orderId: string, reason?: string) {
     }
   }
 
-  // 3. Create Vendor Payout Transaction (escrow_release)
-  await Transaction.create({
-    transactionId: `REL-${txn.transactionId}`,
-    type:          'escrow_release',
-    amount:        fees.vendorPayout,
-    currency:      'USD',
-    status:        'completed',
-    ...(vendorId ? { toUser: vendorId } : {}),
-    orderId,
-    description:   `Vendor payout for order ${orderId} (subtotal $${fees.subtotal.toFixed(2)} − 10% seller fee $${fees.sellerFee.toFixed(2)})`,
-    metadata: {
-      sellerFee: fees.sellerFee,
-      sellerFeeRate: FEES.SELLER_FEE_RATE * 100,
-      payoutStatus,
-      ...(flutterwaveTransfer ? { flutterwaveTransfer } : {}),
-      bankName: vendorUserDoc?.bankName || null,
-      accountNumber: accountNumber || null,
-      accountName: vendorUserDoc?.accountName || null,
-    },
-  });
+  // 3. Create Vendor Payout Transaction(s) — one per vendor
+  if (vendorItemsMap.size > 0) {
+    for (const [vId, { items: vItems }] of vendorItemsMap.entries()) {
+      // Calculate this vendor's subtotal from their items only
+      const vSubtotal = vItems.reduce((s: number, i: any) => s + (i.price ?? 0) * (i.quantity ?? 1), 0);
+      const vPayout = Number((vSubtotal * (1 - FEES.SELLER_FEE_RATE)).toFixed(2));
+
+      await Transaction.create({
+        transactionId: `REL-${txn.transactionId}-${vId.slice(-6)}`,
+        type:          'escrow_release',
+        amount:        vPayout,
+        currency:      'USD',
+        status:        'completed',
+        toUser:        vId,
+        orderId,
+        description:   `Vendor payout for order ${orderId} (subtotal $${vSubtotal.toFixed(2)} − ${FEES.SELLER_FEE_RATE * 100}% seller fee)`,
+        metadata: {
+          sellerFee:     Number((vSubtotal * FEES.SELLER_FEE_RATE).toFixed(2)),
+          sellerFeeRate: FEES.SELLER_FEE_RATE * 100,
+          payoutStatus,
+          ...(vId === vendorId && flutterwaveTransfer ? { flutterwaveTransfer } : {}),
+          bankName:      vendorUserDoc?.bankName || null,
+          accountNumber: vendorUserDoc?.accountNumber || null,
+          accountName:   vendorUserDoc?.accountName || null,
+        },
+      });
+    }
+  } else {
+    // No vendor resolved — create a single release using the fee-computed vendorPayout
+    // so the record exists even if toUser is missing (admin can reconcile manually)
+    await Transaction.create({
+      transactionId: `REL-${txn.transactionId}`,
+      type:          'escrow_release',
+      amount:        fees.vendorPayout,
+      currency:      'USD',
+      status:        'completed',
+      ...(vendorId ? { toUser: vendorId } : {}),
+      orderId,
+      description:   `Vendor payout for order ${orderId} (subtotal $${fees.subtotal.toFixed(2)} − ${FEES.SELLER_FEE_RATE * 100}% seller fee $${fees.sellerFee.toFixed(2)}) [vendor unresolved]`,
+      metadata: { sellerFee: fees.sellerFee, sellerFeeRate: FEES.SELLER_FEE_RATE * 100, payoutStatus, vendorUnresolved: true },
+    });
+  }
 
   // 4. Create Logistics Payout Transaction (logistics_release)
   if (order.assignedDriverId && fees.shipping > 0) {
