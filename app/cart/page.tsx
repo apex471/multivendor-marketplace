@@ -210,7 +210,7 @@ export default function CartPage() {
                 </button>
 
                 <div className="text-center text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400">
-                  <p>🔒 Secure checkout powered by Stripe</p>
+                  <p>🔒 Secure checkout powered by Flutterwave</p>
                 </div>
 
                 {/* Trust Badges */}

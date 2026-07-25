@@ -24,9 +24,10 @@ interface StatsData {
     totalRevenue: number;
     monthRevenue: number;
     pendingEscrow: number;
-    commissionEarned: number;  // platform gross (5% buyer + 5% seller)
-    stripeFees: number;        // 2.9% absorbed by platform
-    netRevenue: number;        // platform gross − stripe fees
+    commissionEarned: number;  // platform gross (10% buyer + 10% seller)
+    paymentFees: number;       // ~1.4% Flutterwave fee absorbed by platform
+    stripeFees: number;        // backward compat alias
+    netRevenue: number;        // platform gross − payment fees
   };
   charts: {
     weeklySignups: { date: string; count: number }[];
@@ -145,11 +146,11 @@ export default function AdminDashboard() {
           </div>
           <div className="text-2xl font-bold text-white">{fmtMoney(stats?.financials.commissionEarned ?? 0)}</div>
           <div className="text-xs text-cool-gray-400 mt-1">Platform Fees (10% Buyer + 10% Seller)</div>
-          {/* Stripe fee breakdown */}
+          {/* Payment fee breakdown */}
           <div className="mt-3 pt-3 border-t border-charcoal-700 space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-cool-gray-500">Stripe fees (2.9%)</span>
-              <span className="text-red-400">−{fmtMoney(stats?.financials.stripeFees ?? 0)}</span>
+              <span className="text-cool-gray-500">Payment fees (FLW ~1.4%)</span>
+              <span className="text-red-400">−{fmtMoney(stats?.financials.paymentFees ?? stats?.financials.stripeFees ?? 0)}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-cool-gray-400 font-medium">Net to platform</span>

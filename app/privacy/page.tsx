@@ -53,7 +53,7 @@ export default function PrivacyPage() {
 • Sellers receive your name, shipping address, and order details to fulfill purchases
 
 **Service Providers:**
-• Payment processors (Stripe, PayPal)
+• Payment processors (Flutterwave)
 • Shipping carriers (USPS, FedEx, UPS)
 • Cloud storage providers (AWS, Google Cloud)
 • Analytics services (Google Analytics)

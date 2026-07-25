@@ -57,7 +57,7 @@ const TYPE_LABELS: Record<string, string> = {
   order_payment:  'Buyer Charge (Escrow)',
   escrow_release: 'Vendor Payout',
   platform_fee:   'Platform Fee',
-  stripe_fee:     'Stripe Fee',
+  stripe_fee:     'Payment Fee',
   refund:         'Refund',
 };
 
@@ -133,7 +133,7 @@ export default function EscrowManagementPage() {
               <div className="text-[10px] text-cool-gray-600 mt-1">deducted at payout</div>
             </div>
             <div className="bg-charcoal-900 rounded-xl p-4 text-center">
-              <div className="text-xs text-cool-gray-500 uppercase mb-1">Stripe Cost</div>
+              <div className="text-xs text-cool-gray-500 uppercase mb-1">Payment Cost (FLW)</div>
               <div className="text-2xl font-bold text-red-400">{ps.stripeFeeRate}%</div>
               <div className="text-[10px] text-cool-gray-600 mt-1">absorbed by platform</div>
             </div>
@@ -149,7 +149,7 @@ export default function EscrowManagementPage() {
               <div className="text-lg font-bold text-white">{fmt(ps.grossRevenue)}</div>
             </div>
             <div className="bg-charcoal-700/50 rounded-lg p-3">
-              <div className="text-xs text-cool-gray-400 mb-0.5">Stripe Fees Paid</div>
+              <div className="text-xs text-cool-gray-400 mb-0.5">Payment Fees (FLW)</div>
               <div className="text-lg font-bold text-red-400">−{fmt(ps.stripeFees)}</div>
             </div>
             <div className="bg-green-900/30 border border-green-800/40 rounded-lg p-3">
@@ -257,7 +257,7 @@ export default function EscrowManagementPage() {
                       <div className="text-white font-semibold">{fmt(tx.feeBreakdown.tax)}</div>
                     </div>
                     <div className="bg-red-900/20 border border-red-800/20 rounded-lg p-2">
-                      <div className="text-red-400">Stripe Fee</div>
+                      <div className="text-red-400">Payment Fee (FLW)</div>
                       <div className="text-red-300 font-semibold">−{fmt(tx.feeBreakdown.stripeFee)}</div>
                     </div>
                     <div className="bg-gold-900/30 border border-gold-800/20 rounded-lg p-2">
@@ -299,7 +299,7 @@ export default function EscrowManagementPage() {
                     <span className="text-green-300">{fmt(selected.feeBreakdown.vendorPayout)}</span>
                   </div>
                   <div className="border-t border-charcoal-600 pt-2 flex justify-between text-xs">
-                    <span className="text-red-400">Stripe fee — absorbed by platform</span>
+                    <span className="text-red-400">Payment fee — absorbed by platform</span>
                     <span className="text-red-300">−{fmt(selected.feeBreakdown.stripeFee)}</span>
                   </div>
                   <div className="flex justify-between text-xs font-semibold">

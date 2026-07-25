@@ -88,7 +88,7 @@ export default function HelpPage() {
     },
     {
       question: 'How do vendor commissions work?',
-      answer: 'CLW charges a simple 5% seller commission, deducted from your payout when escrow is released — you never pay it upfront. Buyers are not charged any service fee; they only pay the item price, shipping, and applicable tax. Stripe\'s 2.9% processing fee is fully absorbed by the platform. You can view your earnings in the Vendor Dashboard under "Earnings".',
+      answer: 'CLW charges a simple 5% seller commission, deducted from your payout when escrow is released — you never pay it upfront. Buyers are not charged any service fee; they only pay the item price, shipping, and applicable tax. Flutterwave\'s ~1.4% processing fee is fully absorbed by the platform. You can view your earnings in the Vendor Dashboard under "Earnings".',
       category: 'vendors',
     },
   ];

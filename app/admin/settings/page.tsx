@@ -14,7 +14,8 @@ interface Settings {
   commissionRate: number;   // legacy — kept for backward compat
   buyerFeeRate: number;     // 10% charged to buyer
   sellerFeeRate: number;    // 10% deducted from seller payout
-  stripeFeeRate: number;    // 2.9% Stripe cost absorbed by platform
+  paymentFeeRate: number;   // ~1.4% Flutterwave cost absorbed by platform
+  stripeFeeRate: number;    // backward compat alias
   escrowDuration: number;
   minWithdrawal: number;
   freeShippingThreshold: number;
@@ -25,7 +26,7 @@ interface Settings {
 const DEFAULT: Settings = {
   platformName: 'CLW Marketplace', platformEmail: 'admin@clw.com', supportEmail: 'support@clw.com',
   maintenanceMode: false, allowNewVendors: true, allowNewBrands: true, requireEmailVerification: false,
-  commissionRate: 10, buyerFeeRate: 10, sellerFeeRate: 10, stripeFeeRate: 2.9,
+  commissionRate: 10, buyerFeeRate: 10, sellerFeeRate: 10, paymentFeeRate: 1.4, stripeFeeRate: 1.4,
   escrowDuration: 7, minWithdrawal: 50,
   freeShippingThreshold: 100, defaultShippingCost: 9.99, internationalShipping: true,
 };
@@ -146,22 +147,22 @@ export default function SettingsPage() {
                 <div className="bg-green-900/30 border border-green-800/30 rounded-lg p-3">
                   <div className="text-xs text-green-500">Platform net</div>
                   <div className="text-xl font-bold text-green-400">
-                    {Math.max(0, settings.sellerFeeRate - settings.stripeFeeRate).toFixed(1)}%
+                    {Math.max(0, settings.sellerFeeRate - (settings.paymentFeeRate ?? settings.stripeFeeRate)).toFixed(1)}%
                   </div>
-                  <div className="text-[10px] text-green-600">after Stripe</div>
+                  <div className="text-[10px] text-green-600">after FLW fee</div>
                 </div>
               </div>
               <div className="text-xs text-cool-gray-500 text-center">
-                Seller fee: {settings.sellerFeeRate}% &nbsp;−&nbsp; Stripe: {settings.stripeFeeRate}% &nbsp;=&nbsp;
-                <span className="text-green-400 font-semibold">{(settings.sellerFeeRate - settings.stripeFeeRate).toFixed(1)}% net margin</span>
+                Seller fee: {settings.sellerFeeRate}% &nbsp;−&nbsp; Flutterwave: {settings.paymentFeeRate ?? settings.stripeFeeRate}% &nbsp;=&nbsp;
+                <span className="text-green-400 font-semibold">{(settings.sellerFeeRate - (settings.paymentFeeRate ?? settings.stripeFeeRate)).toFixed(1)}% net margin</span>
               </div>
             </div>
-            <Field label="Seller Commission (%)" field="sellerFeeRate" type="number" placeholder="5" />
+            <Field label="Seller Commission (%)" field="sellerFeeRate" type="number" placeholder="10" />
             <div>
-              <label className="block text-xs font-semibold text-cool-gray-400 mb-1.5">Stripe Processing Rate (%)</label>
-              <input type="number" value={settings.stripeFeeRate} readOnly
+              <label className="block text-xs font-semibold text-cool-gray-400 mb-1.5">Flutterwave Processing Rate (%)</label>
+              <input type="number" value={settings.paymentFeeRate ?? settings.stripeFeeRate} readOnly
                 className="w-full px-4 py-2.5 bg-charcoal-900 border border-charcoal-600 text-cool-gray-500 rounded-lg text-sm cursor-not-allowed" />
-              <p className="text-[10px] text-cool-gray-600 mt-1">Fixed at 2.9% (Stripe's rate). Platform absorbs this cost from gross revenue.</p>
+              <p className="text-[10px] text-cool-gray-600 mt-1">~1.4% (Flutterwave&apos;s NGN rate). Platform absorbs this from gross revenue.</p>
             </div>
             <Field label="Escrow Duration (days)" field="escrowDuration" type="number" placeholder="7" />
             <Field label="Minimum Withdrawal ($)" field="minWithdrawal" type="number" placeholder="50" />

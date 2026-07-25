@@ -160,8 +160,9 @@ export async function GET(request: NextRequest) {
         pendingEscrow: pendingEscrowAmount,
         pendingEscrowCount,
         commissionEarned:  totalPlatformGross,   // 20% gross (10% buyer + 10% seller)
-        stripeFees:        totalStripeFees,       // 2.9% absorbed by platform
-        netRevenue:        totalPlatformNet,      // 17.1% net
+        paymentFees:       totalStripeFees,       // ~1.4% Flutterwave fee absorbed by platform
+        stripeFees:        totalStripeFees,       // backward compat alias
+        netRevenue:        totalPlatformNet,      // net after payment fees
       },
       charts: {
         weeklySignups,

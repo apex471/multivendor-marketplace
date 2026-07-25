@@ -54,6 +54,41 @@ export default function VendorDashboard() {
   const [payoutSuccess, setPayoutSuccess] = useState('');
   const [isSubmittingPayout, setIsSubmittingPayout] = useState(false);
 
+  // Saved payout account
+  const [savedPayoutAccount, setSavedPayoutAccount] = useState<{
+    hasAccount: boolean; bankName: string|null; accountNumber: string|null; accountName: string|null; bankCode: string|null;
+  } | null>(null);
+  const [showAccountSetup, setShowAccountSetup] = useState(false);
+  const [acctSetupBank, setAcctSetupBank] = useState('');
+  const [acctSetupNumber, setAcctSetupNumber] = useState('');
+  const [acctSetupName, setAcctSetupName] = useState('');
+  const [acctSetupCode, setAcctSetupCode] = useState('');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [acctSetupMsg, setAcctSetupMsg] = useState<{type:'success'|'error';text:string}|null>(null);
+
+  const handleSavePayoutAccount = async () => {
+    if (!acctSetupBank.trim() || !acctSetupNumber.trim() || !acctSetupName.trim()) {
+      setAcctSetupMsg({ type: 'error', text: 'Bank name, account number and account name are required' }); return;
+    }
+    setIsSavingAccount(true); setAcctSetupMsg(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/user/payout-account', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bankName: acctSetupBank, accountNumber: acctSetupNumber, accountName: acctSetupName, bankCode: acctSetupCode }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setAcctSetupMsg({ type: 'error', text: json.message || 'Failed to save' }); return; }
+      setAcctSetupMsg({ type: 'success', text: '✓ Payout account saved! Future withdrawals will use this account automatically.' });
+      setSavedPayoutAccount({ hasAccount: true, bankName: acctSetupBank, accountNumber: acctSetupNumber, accountName: acctSetupName, bankCode: acctSetupCode });
+      // Pre-populate withdrawal form too
+      setPayoutBankName(acctSetupBank); setPayoutAccHolder(acctSetupName); setPayoutAccNumber(acctSetupNumber);
+      setTimeout(() => { setShowAccountSetup(false); setAcctSetupMsg(null); }, 2500);
+    } catch { setAcctSetupMsg({ type: 'error', text: 'Network error. Please try again.' }); }
+    finally { setIsSavingAccount(false); }
+  };
+
   const loadPayoutData = useCallback(async () => {
     try {
       const token = getAuthToken();
@@ -66,6 +101,21 @@ export default function VendorDashboard() {
         setTotalEarned(json.data.totalEarned ?? 0);
         setTotalWithdrawn(json.data.totalWithdrawn ?? 0);
         setPayoutHistory(json.data.history ?? []);
+        // Pre-populate form + set saved account state
+        if (json.data.savedPayoutAccount) {
+          const spa = json.data.savedPayoutAccount;
+          setSavedPayoutAccount(spa);
+          if (spa.hasAccount) {
+            setPayoutBankName(spa.bankName ?? '');
+            setPayoutAccHolder(spa.accountName ?? '');
+            setPayoutAccNumber(spa.accountNumber ?? '');
+            // Pre-fill setup form too
+            setAcctSetupBank(spa.bankName ?? '');
+            setAcctSetupName(spa.accountName ?? '');
+            setAcctSetupNumber(spa.accountNumber ?? '');
+            setAcctSetupCode(spa.bankCode ?? '');
+          }
+        }
       }
     } catch { /* silent */ }
   }, []);
@@ -747,11 +797,7 @@ export default function VendorDashboard() {
                     </div>
                   </div>
                 </div>
-                <div><label className="block text-sm font-semibold text-cool-gray-300 mb-2">Store Name</label><input type="text" value={settingsForm.storeName} onChange={e => setSettingsForm(f => ({ ...f, storeName: e.target.value }))} className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-purple-500 outline-none placeholder:text-cool-gray-600" /></div>
-                <div><label className="block text-sm font-semibold text-cool-gray-300 mb-2">Store Description</label><textarea rows={4} value={settingsForm.bio} onChange={e => setSettingsForm(f => ({ ...f, bio: e.target.value }))} placeholder="Describe your store…" className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-purple-500 outline-none placeholder:text-cool-gray-600" /></div>
-                <div><label className="block text-sm font-semibold text-cool-gray-300 mb-2">Business Email</label><input type="email" value={settingsForm.email} readOnly className="w-full px-4 py-3 bg-charcoal-900 border border-charcoal-700 text-cool-gray-500 rounded-xl cursor-not-allowed" /></div>
-                <div><label className="block text-sm font-semibold text-cool-gray-300 mb-2">Business Phone</label><input type="tel" value={settingsForm.phone} onChange={e => setSettingsForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. +1 (555) 000-0000" className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl focus:ring-2 focus:ring-purple-500 outline-none placeholder:text-cool-gray-600" /></div>
-                <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                   <button disabled={settingsSaving} onClick={async () => { const token = getAuthToken(); if (!token) return; setSettingsSaving(true); setSettingsMsg(''); const parts = settingsForm.storeName.trim().split(' '); try { const res = await fetch('/api/auth/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '', bio: settingsForm.bio, phoneNumber: settingsForm.phone, avatar: avatar || undefined, banner: banner || undefined }) }); const d = await res.json(); if (res.ok && d.success) { setSettingsMsg('✓ Settings saved'); updateUser({ avatar: avatar || undefined, banner: banner || undefined, fullName: settingsForm.storeName, bio: settingsForm.bio, phoneNumber: settingsForm.phone }); } else { setSettingsMsg(d.message || 'Save failed'); } } catch { setSettingsMsg('Save failed — please try again'); } finally { setSettingsSaving(false); setTimeout(() => setSettingsMsg(''), 3000); } }} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-colors font-bold min-h-12 disabled:opacity-60">
                     {settingsSaving ? 'Saving…' : 'Save Changes'}
                   </button>
@@ -764,15 +810,58 @@ export default function VendorDashboard() {
           {/* Payouts */}
           {activeTab === 'payouts' && (
             <div className="space-y-6">
+
+              {/* Payout Account Status Banner */}
+              {savedPayoutAccount !== null && !savedPayoutAccount.hasAccount && (
+                <div className="p-4 bg-amber-950/50 border border-amber-700/60 rounded-xl flex items-start gap-3">
+                  <span className="text-2xl mt-0.5">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-amber-300 font-bold text-sm">Payout account not set up</p>
+                    <p className="text-amber-400/80 text-xs mt-0.5">You haven&apos;t saved a bank account yet. Set one up so admin can pay you when you request a withdrawal.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountSetup(true)}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl whitespace-nowrap transition-colors">
+                    Set Up Now
+                  </button>
+                </div>
+              )}
+
+              {/* Saved Payout Account Card */}
+              {savedPayoutAccount?.hasAccount && (
+                <div className="p-4 bg-green-950/30 border border-green-800/40 rounded-xl flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏦</span>
+                    <div>
+                      <p className="text-green-300 font-bold text-sm">Payout Account Set</p>
+                      <p className="text-green-400/70 text-xs mt-0.5">
+                        {savedPayoutAccount.bankName} · **** {savedPayoutAccount.accountNumber?.slice(-4)}
+                        {savedPayoutAccount.accountName && ` · ${savedPayoutAccount.accountName}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountSetup(true)}
+                    className="px-3 py-1.5 border border-green-700/60 text-green-300 hover:bg-green-900/30 font-semibold text-xs rounded-xl transition-colors">
+                    ✏️ Edit
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg hover:border-charcoal-600 transition-colors">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
                   <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
                   <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
                   <button
-                    onClick={() => { setPayoutError(''); setPayoutSuccess(''); setShowPayoutModal(true); }}
-                    className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10"
-                  >
+                    type="button"
+                    onClick={() => {
+                      if (!savedPayoutAccount?.hasAccount) { setShowAccountSetup(true); return; }
+                      setPayoutError(''); setPayoutSuccess(''); setShowPayoutModal(true);
+                    }}
+                    className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10">
                     💳 Request Payout
                   </button>
                 </div>
@@ -784,7 +873,7 @@ export default function VendorDashboard() {
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
                   <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
+                  <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending &amp; processed requests</p>
                 </div>
               </div>
               <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl overflow-hidden shadow-lg">
@@ -829,35 +918,109 @@ export default function VendorDashboard() {
                   </table>
                 </div>
               </div>
+              {/* Payout Account Setup Modal */}
+              {showAccountSetup && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+                  <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-md shadow-2xl p-6">
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-charcoal-700">
+                      <div>
+                        <h3 className="text-lg font-bold text-white">🏦 Payout Account</h3>
+                        <p className="text-xs text-cool-gray-500 mt-0.5">Saved once — used for all future withdrawals</p>
+                      </div>
+                      <button type="button" onClick={() => setShowAccountSetup(false)} className="text-cool-gray-400 hover:text-white text-2xl leading-none">×</button>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Bank Name *</label>
+                        <input type="text" placeholder="e.g. Zenith Bank, GTBank, Access Bank" value={acctSetupBank}
+                          onChange={e => setAcctSetupBank(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Name *</label>
+                        <input type="text" placeholder="As it appears on your bank account" value={acctSetupName}
+                          onChange={e => setAcctSetupName(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Number * <span className="normal-case font-normal text-cool-gray-500">(10 digits)</span></label>
+                        <input type="text" placeholder="0123456789" value={acctSetupNumber}
+                          onChange={e => setAcctSetupNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono tracking-widest" />
+                        <p className="text-[10px] text-cool-gray-600 mt-1">{acctSetupNumber.length}/10 digits</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Bank Code <span className="normal-case font-normal">(Optional)</span></label>
+                        <input type="text" placeholder="e.g. 057 (Zenith), 058 (GTBank)" value={acctSetupCode}
+                          onChange={e => setAcctSetupCode(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
+                      </div>
+                      {acctSetupMsg && (
+                        <div className={`p-3 rounded-xl text-xs font-semibold border ${acctSetupMsg.type === 'success' ? 'bg-green-950/60 text-green-300 border-green-900/50' : 'bg-red-950/60 text-red-300 border-red-900/50'}`}>
+                          {acctSetupMsg.text}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <button type="button" onClick={() => setShowAccountSetup(false)}
+                          className="py-3 bg-charcoal-700 hover:bg-charcoal-600 text-cool-gray-300 font-semibold rounded-xl text-sm transition-colors cursor-pointer">
+                          Cancel
+                        </button>
+                        <button type="button" onClick={handleSavePayoutAccount} disabled={isSavingAccount}
+                          className="py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50">
+                          {isSavingAccount ? 'Saving…' : '✓ Save Account'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {showPayoutModal && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
                   <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-md shadow-2xl p-6">
                     <div className="flex items-center justify-between mb-4 pb-3 border-b border-charcoal-700">
                       <h3 className="text-lg font-bold text-white">Request Payout</h3>
-                      <button onClick={() => setShowPayoutModal(false)} className="text-cool-gray-400 hover:text-white text-2xl leading-none transition-colors">×</button>
+                      <button type="button" onClick={() => setShowPayoutModal(false)} className="text-cool-gray-400 hover:text-white text-2xl leading-none transition-colors">×</button>
                     </div>
                     <form onSubmit={handlePayoutSubmit} className="space-y-4">
+                      {/* Show saved account info */}
+                      {savedPayoutAccount?.hasAccount && (
+                        <div className="p-3 bg-charcoal-700/60 border border-charcoal-600/60 rounded-xl flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-cool-gray-400">Paying out to:</p>
+                            <p className="text-sm font-bold text-white mt-0.5">{savedPayoutAccount.bankName}</p>
+                            <p className="text-xs text-cool-gray-400">{savedPayoutAccount.accountName} · **** {savedPayoutAccount.accountNumber?.slice(-4)}</p>
+                          </div>
+                          <button type="button" onClick={() => { setShowPayoutModal(false); setShowAccountSetup(true); }}
+                            className="text-xs text-purple-400 hover:text-purple-300 underline whitespace-nowrap">Change</button>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Amount to Withdraw ($)</label>
-                        <input type="number" step="0.01" placeholder="0.00" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} max={walletBalance} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold" />
+                        <input type="number" step="0.01" placeholder="0.00" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} max={walletBalance}
+                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold" />
                         <p className="text-[11px] text-cool-gray-500 mt-1">Available: {formatPrice(walletBalance)} · Min. withdrawal: {formatPrice(50)}</p>
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Bank Name</label>
-                        <input type="text" placeholder="e.g. JPMorgan Chase" value={payoutBankName} onChange={e => setPayoutBankName(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Holder Name</label>
-                        <input type="text" placeholder="e.g. Acme Corp LLC" value={payoutAccHolder} onChange={e => setPayoutAccHolder(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Number</label>
-                        <input type="text" placeholder="Bank account number" value={payoutAccNumber} onChange={e => setPayoutAccNumber(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Routing Number <span className="normal-case font-normal">(Optional)</span></label>
-                        <input type="text" placeholder="9-digit routing number" value={payoutRouting} onChange={e => setPayoutRouting(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
-                      </div>
+                      {/* Only show bank fields if no saved account */}
+                      {!savedPayoutAccount?.hasAccount && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Bank Name *</label>
+                            <input type="text" placeholder="e.g. Zenith Bank" value={payoutBankName} onChange={e => setPayoutBankName(e.target.value)}
+                              className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Holder Name *</label>
+                            <input type="text" placeholder="Full name on account" value={payoutAccHolder} onChange={e => setPayoutAccHolder(e.target.value)}
+                              className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Number *</label>
+                            <input type="text" placeholder="10-digit account number" value={payoutAccNumber} onChange={e => setPayoutAccNumber(e.target.value)}
+                              className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
+                          </div>
+                        </>
+                      )}
                       {payoutError   && <div className="p-3 bg-red-950/60 text-red-300 border border-red-900/50 rounded-xl text-xs font-semibold">{payoutError}</div>}
                       {payoutSuccess && <div className="p-3 bg-green-950/60 text-green-300 border border-green-900/50 rounded-xl text-xs font-semibold">{payoutSuccess}</div>}
                       <div className="grid grid-cols-2 gap-3 pt-2">

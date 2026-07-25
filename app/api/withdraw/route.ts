@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { Transaction } from '@/backend/models/Transaction';
 import { Settings } from '@/backend/models/Settings';
+import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 
@@ -45,11 +46,22 @@ export async function GET(request: NextRequest) {
       (a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)
     );
 
+    // 4. Fetch saved payout account from user profile
+    const savedUser = await User.findById(payload.userId);
+
     return sendSuccess({
       balance,
       totalEarned,
       totalWithdrawn,
       history: combinedHistory,
+      // Return saved payout account so frontend can pre-populate the withdrawal form
+      savedPayoutAccount: {
+        hasAccount: !!(savedUser?.bankName && savedUser?.accountNumber && savedUser?.accountName),
+        bankName:      savedUser?.bankName      ?? null,
+        accountNumber: savedUser?.accountNumber ?? null,
+        accountName:   savedUser?.accountName   ?? null,
+        bankCode:      savedUser?.bankCode       ?? null,
+      },
     });
   } catch (err) {
     console.error('[Withdraw API GET]', err);
@@ -70,16 +82,22 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const amount = Number(body.amount);
-    const bankName = String(body.bankName || '').trim();
-    const accountNumber = String(body.accountNumber || '').trim();
-    const accountHolderName = String(body.accountHolderName || '').trim();
-    const routingNumber = String(body.routingNumber || '').trim();
+
+    // Fetch saved payout account — use as fallback if body doesn't supply bank details
+    const vendor = await User.findById(payload.userId);
+    const bankName          = String(body.bankName          ?? vendor?.bankName      ?? '').trim();
+    const accountNumber     = String(body.accountNumber     ?? vendor?.accountNumber ?? '').trim();
+    const accountHolderName = String(body.accountHolderName ?? vendor?.accountName   ?? '').trim();
+    const routingNumber     = String(body.routingNumber     ?? '').trim();
 
     if (!amount || amount <= 0 || isNaN(amount)) {
       return sendError('Please specify a valid withdrawal amount', 400);
     }
     if (!bankName || !accountNumber || !accountHolderName) {
-      return sendError('Bank name, account number, and account holder name are required', 400);
+      return sendError(
+        'No payout account found. Please set up your bank account in the Payouts tab before requesting a withdrawal.',
+        400
+      );
     }
 
     // 1. Get minimum withdrawal from platform settings
