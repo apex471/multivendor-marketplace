@@ -146,7 +146,7 @@ export default function VendorDashboard() {
       return;
     }
 
-    if (!user.isEmailVerified) {
+    if (user.isEmailVerified === false) {
       router.replace(
         `/auth/verify-email/pending?email=${encodeURIComponent(user.email)}&role=vendor`
       );
@@ -178,12 +178,12 @@ export default function VendorDashboard() {
         const rows: VendorOrder[] = (ordersJson.data.orders ?? []).map((o: {
           id: string; customer: string | { name?: string; email?: string }; date?: string; createdAt?: string; items: number | unknown[]; total: number; status: string;
         }) => ({
-          id:       o.id,
+          id:       o.id ?? '',
           customer: typeof o.customer === 'object' ? ((o.customer as { name?: string })?.name ?? '') : (o.customer ?? ''),
-          date:     new Date(o.createdAt ?? o.date ?? Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          items:    Array.isArray(o.items) ? o.items.length : (o.items as number ?? 0),
-          total:    o.total,
-          status:   o.status.charAt(0).toUpperCase() + o.status.slice(1),
+          date:     (() => { try { return new Date(o.createdAt ?? o.date ?? Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return '—'; } })(),
+          items:    Array.isArray(o.items) ? o.items.length : (typeof o.items === 'number' ? o.items : 0),
+          total:    typeof o.total === 'number' ? o.total : 0,
+          status:   o.status ? (o.status.charAt(0).toUpperCase() + o.status.slice(1)) : 'Unknown',
         }));
         setRecentOrders(rows);
         setStats(prev => ({
@@ -270,7 +270,7 @@ export default function VendorDashboard() {
   }, [user]);
 
   // Show nothing while auth is being checked
-  if (isLoading || !isAuthenticated || !user || !user.isEmailVerified || user.role !== 'vendor') {
+  if (isLoading || !isAuthenticated || !user || user.role !== 'vendor') {
     return (
       <div className="min-h-screen bg-linear-to-br from-purple-600/10 via-white to-purple-600/5 flex items-center justify-center">
         <div className="text-center">
@@ -1003,10 +1003,22 @@ export default function VendorDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        payoutHistory.map((tx: any) => {
+                        payoutHistory.map((tx: any, txIdx: number) => {
                           const isIncome = tx.type === 'escrow_release';
+                          // Safely format the date — createdAt may be a string, Date, or missing
+                          let txDateStr = '—';
+                          let txTimeStr = '';
+                          try {
+                            if (tx.createdAt) {
+                              const d = new Date(tx.createdAt);
+                              if (!isNaN(d.getTime())) {
+                                txDateStr = d.toLocaleDateString();
+                                txTimeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              }
+                            }
+                          } catch { /* ignore */ }
                           return (
-                            <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-charcoal-750/30 transition-colors">
+                            <tr key={tx.id ?? tx.transactionId ?? txIdx} className="hover:bg-gray-50/50 dark:hover:bg-charcoal-750/30 transition-colors">
                               <td className="px-5 py-4">
                                 <div className="font-semibold text-gray-900 dark:text-white text-sm">
                                   {isIncome ? 'Order Escrow Release' : 'Withdrawal Request'}
@@ -1015,7 +1027,7 @@ export default function VendorDashboard() {
                                   {tx.description}
                                 </div>
                                 <div className="text-[10px] text-gray-400 dark:text-cool-gray-500 mt-1">
-                                  ID: {tx.transactionId} · {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  ID: {tx.transactionId ?? '—'} · {txDateStr}{txTimeStr ? ` ${txTimeStr}` : ''}
                                 </div>
                               </td>
                               <td className="px-5 py-4">

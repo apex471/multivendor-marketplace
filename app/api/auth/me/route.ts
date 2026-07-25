@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
         banner: user.banner || null,
         bio: user.bio || null,
         phoneNumber: user.phoneNumber || null,
-        isEmailVerified: user.isEmailVerified,
+        // Always return a boolean — old Firestore documents may have this field absent (undefined)
+        // which serializes to missing-from-JSON and is treated as falsy on the frontend
+        isEmailVerified: user.isEmailVerified ?? true,
         createdAt: user.createdAt,
         bankName: user.bankName || null,
         accountNumber: user.accountNumber || null,

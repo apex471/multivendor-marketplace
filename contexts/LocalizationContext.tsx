@@ -255,8 +255,10 @@ export function LocalizationProvider({ children }: { children: ReactNode }) {
   };
 
   const formatPrice = (usdAmount: number): string => {
+    // Guard against NaN / undefined / null from API data
+    const safeAmount = typeof usdAmount === 'number' && isFinite(usdAmount) ? usdAmount : 0;
     const { rate, symbol } = rates[currency];
-    const converted = usdAmount * rate;
+    const converted = safeAmount * rate;
     // Format options: NGN matches integer usually, others have 2 decimal places
     const decimals = currency === 'NGN' ? 0 : 2;
     return `${symbol}${converted.toLocaleString(undefined, {

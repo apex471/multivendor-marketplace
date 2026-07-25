@@ -74,7 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (res.ok) {
             const data = await res.json();
             if (data.success && data.data?.user) {
-              const freshUser = data.data.user as User;
+              // IMPORTANT: normalize the raw backend shape so fullName,
+              // isEmailVerified, etc. are always present — identical to login/signup flow
+              const freshUser = normalizeUser(data.data.user);
               storeUser(freshUser);
               setUser(freshUser);
               setIsAuthenticated(true);
@@ -88,9 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         } catch {
           // Network error — trust localStorage to avoid logging out offline users
+          // Normalize the stored user so the shape is always consistent,
+          // regardless of what legacy format was cached in localStorage
           const storedUser = getStoredUser();
           if (storedUser) {
-            setUser(storedUser);
+            const normalizedStored = normalizeUser(storedUser);
+            storeUser(normalizedStored); // update cache with fresh normalized shape
+            setUser(normalizedStored);
             setIsAuthenticated(true);
           } else {
             setIsAuthenticated(false);
@@ -117,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = getAuthToken();
       const storedUser = getStoredUser();
       if (token && storedUser) {
-        setUser(storedUser);
+        setUser(normalizeUser(storedUser));
         setIsAuthenticated(true);
       } else {
         setUser(null);

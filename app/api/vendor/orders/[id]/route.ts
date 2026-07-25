@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { Order } from '@/backend/models/Order';
+import { Order, IOrderItem } from '@/backend/models/Order';
 import { Product } from '@/backend/models/Product';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendNotFound, sendServerError } from '@/backend/utils/responseAppRouter';
@@ -13,7 +13,8 @@ export async function GET(
   if (!auth?.startsWith('Bearer ')) return sendError('Authentication required', 401);
   const payload = verifyToken(auth.slice(7));
   if (!payload) return sendError('Invalid or expired token', 401);
-  if (payload.role !== 'vendor') return sendError('Vendor access only', 403);
+  // Allow both vendor and brand roles (consistent with the list route)
+  if (!['vendor', 'brand'].includes(payload.role)) return sendError('Vendor access only', 403);
 
   try {
     const vendorProducts = await Product.find({ vendorId: payload.userId }, { limit: 1000 });
@@ -22,19 +23,40 @@ export async function GET(
     const order = await Order.findByOrderId(id);
     if (!order) return sendNotFound('Order not found');
 
-    const vendorItems = order.items.filter(i => productIds.has(i.productId ?? ''));
+    // Guard against orders with missing/null items array
+    if (!Array.isArray(order.items)) return sendNotFound('Order not found');
+
+    const vendorItems = order.items.filter((i: IOrderItem) => productIds.has(i.productId ?? ''));
     if (!vendorItems.length) return sendNotFound('Order not found');
+
+    // Guard against missing shippingAddress
+    const addr = order.shippingAddress ?? {};
 
     return sendSuccess({
       order: {
         id: order.orderId, orderNumber: order.orderId,
-        customer: { name: order.customerName, email: order.customerEmail, phone: order.customerPhone ?? '' },
-        items: vendorItems.map(i => ({ id: i.productId ?? '', name: i.name, image: i.image ?? null, size: i.size ?? '', color: i.color ?? '', quantity: i.quantity, price: i.price })),
-        subtotal: vendorItems.reduce((s, i) => s + i.price * i.quantity, 0),
-        shippingCost: order.shippingCost, tax: order.tax,
-        total: vendorItems.reduce((s, i) => s + i.price * i.quantity, 0),
-        status: order.status, trackingNumber: order.trackingNumber ?? null,
-        shippingAddress: order.shippingAddress, createdAt: order.createdAt,
+        customer: {
+          name: order.customerName ?? '',
+          email: order.customerEmail ?? '',
+          phone: order.customerPhone ?? '',
+        },
+        items: vendorItems.map((i: IOrderItem) => ({
+          id: i.productId ?? '',
+          name: i.name,
+          image: i.image ?? null,
+          size: i.size ?? '',
+          color: i.color ?? '',
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        subtotal: vendorItems.reduce((s: number, i: IOrderItem) => s + i.price * i.quantity, 0),
+        shippingCost: order.shippingCost ?? 0,
+        tax: order.tax ?? 0,
+        total: vendorItems.reduce((s: number, i: IOrderItem) => s + i.price * i.quantity, 0),
+        status: order.status,
+        trackingNumber: order.trackingNumber ?? null,
+        shippingAddress: addr,
+        createdAt: order.createdAt,
       },
     });
   } catch (err) {
@@ -51,7 +73,7 @@ export async function PATCH(
   if (!auth?.startsWith('Bearer ')) return sendError('Authentication required', 401);
   const payload = verifyToken(auth.slice(7));
   if (!payload) return sendError('Invalid or expired token', 401);
-  if (payload.role !== 'vendor') return sendError('Vendor access only', 403);
+  if (!['vendor', 'brand'].includes(payload.role)) return sendError('Vendor access only', 403);
 
   try {
     const vendorProducts = await Product.find({ vendorId: payload.userId }, { limit: 1000 });
@@ -59,12 +81,20 @@ export async function PATCH(
 
     const order = await Order.findByOrderId(id);
     if (!order) return sendNotFound('Order not found');
-    if (!order.items.some(i => productIds.has(i.productId ?? ''))) return sendNotFound('Order not found');
+
+    // Guard against orders with missing/null items array
+    if (!Array.isArray(order.items) || !order.items.some((i: IOrderItem) => productIds.has(i.productId ?? ''))) {
+      return sendNotFound('Order not found');
+    }
 
     const body = await request.json().catch(() => ({})) as { status?: string; trackingNumber?: string; cancelReason?: string };
     const { status, trackingNumber, cancelReason } = body;
 
-    const VALID: Record<string, string[]> = { pending: ['processing', 'cancelled'], processing: ['shipped', 'cancelled'], shipped: ['delivered'] };
+    const VALID: Record<string, string[]> = {
+      pending: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['delivered'],
+    };
     if (!status || !(VALID[order.status] ?? []).includes(status)) {
       return sendError(`Cannot transition from "${order.status}" to "${status ?? '—'}"`, 400);
     }
