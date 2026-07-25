@@ -587,8 +587,8 @@ export default function BrandDashboard() {
           </p>
         </div>
       </div>
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-display font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-6">
+        <h2 className="text-xl font-display font-bold text-white mb-4 flex items-center gap-2">
           <span className="text-2xl">⏳</span>
           Pending Partnership Requests ({affiliateRequests.filter(r => r.status === 'pending').length})
         </h2>
