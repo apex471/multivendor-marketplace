@@ -28,6 +28,18 @@ export default function VendorDashboard() {
   type VendorOrder = { id: string; customer: string; date: string; items: number; total: number; status: string };
   const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, avgRating: 0 });
   const [recentOrders, setRecentOrders] = useState<VendorOrder[]>([]);
+
+  // ── Order Detail Modal ────────────────────────────────────────────────────
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderDetail, setOrderDetail] = useState<any>(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
+  const [orderDetailError, setOrderDetailError] = useState('');
+  const [processingOrder, setProcessingOrder] = useState(false);
+  const [processTrackingNum, setProcessTrackingNum] = useState('');
+  const [orderActionMsg, setOrderActionMsg] = useState<{type:'success'|'error'; text:string}|null>(null);
+
+  // ── Payout / Wallet ───────────────────────────────────────────────────────
   const [walletBalance, setWalletBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
@@ -58,11 +70,71 @@ export default function VendorDashboard() {
     } catch { /* silent */ }
   }, []);
 
+  // Reload payout data whenever user switches to the payouts tab
+  useEffect(() => {
+    if (activeTab === 'payouts') loadPayoutData();
+  }, [activeTab, loadPayoutData]);
+
+  // ── Fetch a single order's full details ──────────────────────────────────
+  const openOrderDetail = useCallback(async (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setOrderDetail(null);
+    setOrderDetailError('');
+    setOrderActionMsg(null);
+    setProcessTrackingNum('');
+    setShowOrderModal(true);
+    setOrderDetailLoading(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/vendor/orders/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setOrderDetail(json.data.order);
+      } else {
+        setOrderDetailError(json.message || 'Failed to load order details');
+      }
+    } catch {
+      setOrderDetailError('Network error — could not load order details');
+    } finally {
+      setOrderDetailLoading(false);
+    }
+  }, []);
+
+  // ── Update order status via PATCH ────────────────────────────────────────
+  const handleUpdateOrderStatus = useCallback(async (orderId: string, newStatus: string, trackingNumber?: string) => {
+    setProcessingOrder(true);
+    setOrderActionMsg(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/vendor/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus, trackingNumber }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setOrderActionMsg({ type: 'success', text: `Order marked as "${newStatus}" successfully!` });
+        // Refresh order detail
+        const detailRes = await fetch(`/api/vendor/orders/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const detailJson = await detailRes.json();
+        if (detailJson.success) setOrderDetail(detailJson.data.order);
+        // Also refresh the orders list
+        setRecentOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1) } : o));
+      } else {
+        setOrderActionMsg({ type: 'error', text: json.message || 'Failed to update order status' });
+      }
+    } catch {
+      setOrderActionMsg({ type: 'error', text: 'Network error — could not update order' });
+    } finally {
+      setProcessingOrder(false);
+    }
+  }, []);
+
   const handlePayoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPayoutError(''); setPayoutSuccess('');
     const amount = parseFloat(payoutAmount);
-    if (!amount || amount <= 0) { setPayoutError('Enter a valid amount'); return; }
+    if (!amount || amount <= 0) { setPayoutError('Enter a valid withdrawal amount'); return; }
     if (!payoutBankName.trim() || !payoutAccHolder.trim() || !payoutAccNumber.trim()) {
       setPayoutError('Bank name, account holder, and account number are required'); return;
     }
@@ -76,10 +148,10 @@ export default function VendorDashboard() {
       });
       const json = await res.json();
       if (!res.ok) { setPayoutError(json.message || 'Request failed'); return; }
-      setPayoutSuccess('Withdrawal request submitted! Admin will review within 2-3 business days.');
+      setPayoutSuccess('✓ Withdrawal request submitted! Admin will review and process within 2-3 business days.');
       setPayoutAmount(''); setPayoutBankName(''); setPayoutAccHolder(''); setPayoutAccNumber(''); setPayoutRouting('');
       loadPayoutData();
-      setTimeout(() => { setShowPayoutModal(false); setPayoutSuccess(''); }, 2500);
+      setTimeout(() => { setShowPayoutModal(false); setPayoutSuccess(''); }, 3000);
     } catch (err: any) { setPayoutError(err.message || 'Failed to submit withdrawal request'); }
     finally { setIsSubmittingPayout(false); }
   };
@@ -374,12 +446,199 @@ export default function VendorDashboard() {
                         <p className="text-xl font-bold text-purple-400">{formatPrice(order.total)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:min-w-[140px]">
-                        <button className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-colors font-semibold min-h-10 text-sm">View Details</button>
-                        {order.status === 'Pending' && <button className="px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-xl transition-colors font-semibold min-h-10 text-sm">Process Order</button>}
+                        <button
+                          onClick={() => openOrderDetail(order.id)}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-colors font-semibold min-h-10 text-sm"
+                        >
+                          View Details
+                        </button>
+                        {order.status === 'Pending' && (
+                          <button
+                            onClick={() => openOrderDetail(order.id)}
+                            className="px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-xl transition-colors font-semibold min-h-10 text-sm"
+                          >
+                            Process Order
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Order Detail Modal ─────────────────────────────────────────── */}
+          {showOrderModal && (
+            <div className="fixed inset-0 bg-black/75 flex items-start justify-center z-50 p-4 pt-16 backdrop-blur-sm overflow-y-auto">
+              <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-2xl shadow-2xl">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-6 border-b border-charcoal-700">
+                  <div>
+                    <h3 className="text-xl font-display font-bold text-white">Order Details</h3>
+                    {selectedOrderId && <p className="text-xs text-cool-gray-500 mt-0.5">#{selectedOrderId.slice(-12)}</p>}
+                  </div>
+                  <button
+                    onClick={() => { setShowOrderModal(false); setOrderDetail(null); setOrderActionMsg(null); }}
+                    className="text-cool-gray-400 hover:text-white text-3xl leading-none transition-colors w-10 h-10 flex items-center justify-center rounded-lg hover:bg-charcoal-700"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Loading */}
+                  {orderDetailLoading && (
+                    <div className="text-center py-12">
+                      <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-cool-gray-400">Loading order details…</p>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {orderDetailError && !orderDetailLoading && (
+                    <div className="p-4 bg-red-950/60 text-red-300 border border-red-900/50 rounded-xl text-sm">{orderDetailError}</div>
+                  )}
+
+                  {/* Order Content */}
+                  {orderDetail && !orderDetailLoading && (
+                    <>
+                      {/* Action feedback */}
+                      {orderActionMsg && (
+                        <div className={`p-3 rounded-xl text-sm font-semibold border ${
+                          orderActionMsg.type === 'success'
+                            ? 'bg-green-950/60 text-green-300 border-green-900/50'
+                            : 'bg-red-950/60 text-red-300 border-red-900/50'
+                        }`}>{orderActionMsg.text}</div>
+                      )}
+
+                      {/* Status + Customer */}
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="bg-charcoal-700/50 rounded-xl p-4">
+                          <p className="text-xs text-cool-gray-500 uppercase tracking-wider mb-2">Status</p>
+                          <span className={`inline-flex px-3 py-1.5 rounded-full text-sm font-bold ${statusBadge(orderDetail.status)}`}>{orderDetail.status}</span>
+                        </div>
+                        <div className="bg-charcoal-700/50 rounded-xl p-4">
+                          <p className="text-xs text-cool-gray-500 uppercase tracking-wider mb-2">Customer</p>
+                          <p className="font-semibold text-white">{orderDetail.customer?.name || '—'}</p>
+                          <p className="text-xs text-cool-gray-400">{orderDetail.customer?.email || ''}</p>
+                          {orderDetail.customer?.phone && <p className="text-xs text-cool-gray-400">{orderDetail.customer.phone}</p>}
+                        </div>
+                      </div>
+
+                      {/* Shipping Address */}
+                      {orderDetail.shippingAddress && (
+                        <div className="bg-charcoal-700/50 rounded-xl p-4">
+                          <p className="text-xs text-cool-gray-500 uppercase tracking-wider mb-2">Shipping Address</p>
+                          <p className="text-cool-gray-300 text-sm">
+                            {[orderDetail.shippingAddress.addressLine1, orderDetail.shippingAddress.city, orderDetail.shippingAddress.state, orderDetail.shippingAddress.zipCode, orderDetail.shippingAddress.country].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tracking */}
+                      {orderDetail.trackingNumber && (
+                        <div className="bg-blue-950/40 border border-blue-900/40 rounded-xl p-4">
+                          <p className="text-xs text-blue-400 uppercase tracking-wider mb-1">Tracking Number</p>
+                          <p className="font-mono text-blue-300 font-semibold">{orderDetail.trackingNumber}</p>
+                        </div>
+                      )}
+
+                      {/* Order Items */}
+                      <div>
+                        <p className="text-xs text-cool-gray-500 uppercase tracking-wider mb-3">Items Ordered</p>
+                        <div className="space-y-2">
+                          {(orderDetail.items ?? []).map((item: any, idx: number) => (
+                            <div key={item.id ?? idx} className="flex items-center gap-3 p-3 bg-charcoal-700/40 rounded-xl border border-charcoal-600/50">
+                              {item.image && (
+                                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-charcoal-600 shrink-0">
+                                  <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-white text-sm truncate">{item.name}</p>
+                                <p className="text-xs text-cool-gray-400">
+                                  Qty: {item.quantity}
+                                  {item.size ? ` · Size: ${item.size}` : ''}
+                                  {item.color ? ` · Color: ${item.color}` : ''}
+                                </p>
+                              </div>
+                              <p className="font-bold text-purple-400 text-sm shrink-0">{formatPrice(item.price * item.quantity)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Order Total */}
+                      <div className="flex items-center justify-between p-4 bg-charcoal-900/60 rounded-xl border border-charcoal-700">
+                        <span className="font-semibold text-cool-gray-300">Your Total (this order)</span>
+                        <span className="text-2xl font-black text-purple-400">{formatPrice(orderDetail.total ?? orderDetail.subtotal ?? 0)}</span>
+                      </div>
+
+                      {/* Status Actions */}
+                      {(() => {
+                        const s = (orderDetail.status ?? '').toLowerCase();
+                        const canProcess = s === 'pending';
+                        const canShip    = s === 'processing';
+                        const canDeliver = s === 'shipped';
+                        const canCancel  = ['pending', 'processing'].includes(s);
+                        if (!canProcess && !canShip && !canDeliver && !canCancel) return null;
+                        return (
+                          <div className="border-t border-charcoal-700 pt-5">
+                            <p className="text-sm font-bold text-cool-gray-300 mb-3">Update Order Status</p>
+                            <div className="space-y-3">
+                              {canProcess && (
+                                <button
+                                  disabled={processingOrder}
+                                  onClick={() => handleUpdateOrderStatus(orderDetail.id, 'processing')}
+                                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-colors disabled:opacity-60"
+                                >
+                                  {processingOrder ? 'Updating…' : '▶ Mark as Processing'}
+                                </button>
+                              )}
+                              {canShip && (
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Enter tracking number (required)"
+                                    value={processTrackingNum}
+                                    onChange={e => setProcessTrackingNum(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm placeholder:text-cool-gray-600"
+                                  />
+                                  <button
+                                    disabled={processingOrder || !processTrackingNum.trim()}
+                                    onClick={() => handleUpdateOrderStatus(orderDetail.id, 'shipped', processTrackingNum.trim())}
+                                    className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-colors disabled:opacity-60"
+                                  >
+                                    {processingOrder ? 'Updating…' : '🚚 Mark as Shipped'}
+                                  </button>
+                                </div>
+                              )}
+                              {canDeliver && (
+                                <button
+                                  disabled={processingOrder}
+                                  onClick={() => handleUpdateOrderStatus(orderDetail.id, 'delivered')}
+                                  className="w-full py-3 bg-green-700 hover:bg-green-600 text-white rounded-xl font-bold transition-colors disabled:opacity-60"
+                                >
+                                  {processingOrder ? 'Updating…' : '✅ Mark as Delivered'}
+                                </button>
+                              )}
+                              {canCancel && (
+                                <button
+                                  disabled={processingOrder}
+                                  onClick={() => handleUpdateOrderStatus(orderDetail.id, 'cancelled')}
+                                  className="w-full py-3 border border-red-900/60 text-red-400 rounded-xl font-semibold hover:bg-red-950/40 transition-colors disabled:opacity-60 text-sm"
+                                >
+                                  {processingOrder ? 'Updating…' : '✕ Cancel Order'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -504,7 +763,12 @@ export default function VendorDashboard() {
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
                   <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
                   <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
-                  <button onClick={() => { setPayoutError(''); setPayoutSuccess(''); setShowPayoutModal(true); }} disabled={walletBalance <= 0} className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10 disabled:opacity-50 disabled:cursor-not-allowed">💳 Request Payout</button>
+                  <button
+                    onClick={() => { setPayoutError(''); setPayoutSuccess(''); setShowPayoutModal(true); }}
+                    className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10"
+                  >
+                    💳 Request Payout
+                  </button>
                 </div>
                 <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg">
                   <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
@@ -570,11 +834,24 @@ export default function VendorDashboard() {
                       <div>
                         <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Amount to Withdraw ($)</label>
                         <input type="number" step="0.01" placeholder="0.00" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} max={walletBalance} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold" />
-                        <p className="text-[11px] text-cool-gray-500 mt-1">Available: {formatPrice(walletBalance)} (Min. withdrawal {formatPrice(50)})</p>
+                        <p className="text-[11px] text-cool-gray-500 mt-1">Available: {formatPrice(walletBalance)} · Min. withdrawal: {formatPrice(50)}</p>
                       </div>
-                      {[{ label: 'Bank Name', ph: 'e.g. JPMorgan Chase', val: payoutBankName, set: setPayoutBankName }, { label: 'Account Holder Name', ph: 'e.g. Acme Corp LLC', val: payoutAccHolder, set: setPayoutAccHolder }, { label: 'Account Number', ph: 'Bank account number', val: payoutAccNumber, set: setPayoutAccNumber }, { label: 'Routing Number (Optional)', ph: '9-digit routing number', val: payoutRouting, set: setPayoutRouting }].map(f => (
-                        <div key={f.label}><label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">{f.label}</label><input type="text" placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" /></div>
-                      ))}
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Bank Name</label>
+                        <input type="text" placeholder="e.g. JPMorgan Chase" value={payoutBankName} onChange={e => setPayoutBankName(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Holder Name</label>
+                        <input type="text" placeholder="e.g. Acme Corp LLC" value={payoutAccHolder} onChange={e => setPayoutAccHolder(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Account Number</label>
+                        <input type="text" placeholder="Bank account number" value={payoutAccNumber} onChange={e => setPayoutAccNumber(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Routing Number <span className="normal-case font-normal">(Optional)</span></label>
+                        <input type="text" placeholder="9-digit routing number" value={payoutRouting} onChange={e => setPayoutRouting(e.target.value)} className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-mono" />
+                      </div>
                       {payoutError   && <div className="p-3 bg-red-950/60 text-red-300 border border-red-900/50 rounded-xl text-xs font-semibold">{payoutError}</div>}
                       {payoutSuccess && <div className="p-3 bg-green-950/60 text-green-300 border border-green-900/50 rounded-xl text-xs font-semibold">{payoutSuccess}</div>}
                       <div className="grid grid-cols-2 gap-3 pt-2">
