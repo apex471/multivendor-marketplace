@@ -79,8 +79,8 @@ function ConfirmationContent() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
-              href={`/order/${orderId}`}
-              className="flex-1 px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors"
+              href={`/track/${orderId}`}
+              className="flex-1 px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-center"
             >
               Track Order
             </Link>

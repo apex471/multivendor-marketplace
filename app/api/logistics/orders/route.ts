@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest) {
         if (order.assignedDriverId && order.assignedDriverId !== payload.userId) {
           return sendError('Order already taken by another driver', 409);
         }
-        await Order.updateById(orderId, {
+        await Order.updateOne(order.id!, {
           status:             'processing',
           assignedDriverId:   payload.userId,
           assignedDriverName: driverDisplayName,
@@ -169,7 +169,7 @@ export async function PATCH(request: NextRequest) {
       }
 
       case 'decline': {
-        await Order.updateById(orderId, {
+        await Order.updateOne(order.id!, {
           assignedDriverId:   undefined,
           assignedDriverName: undefined,
           acceptedAt:         undefined,
@@ -181,7 +181,7 @@ export async function PATCH(request: NextRequest) {
 
       case 'pickup': {
         if (order.assignedDriverId !== payload.userId) return sendError('Not your order', 403);
-        await Order.updateById(orderId, { status: 'shipped', pickedUpAt: now, updatedAt: now });
+        await Order.updateOne(order.id!, { status: 'shipped', pickedUpAt: now, updatedAt: now });
         await notifyCustomer(
           `${driverDisplayName} has picked up your order and is on the way! 🚚`,
           `/track/${order.orderId}`
@@ -192,13 +192,13 @@ export async function PATCH(request: NextRequest) {
       case 'transit': {
         if (order.assignedDriverId !== payload.userId) return sendError('Not your order', 403);
         // transit is the same as shipped — UI stage only
-        await Order.updateById(orderId, { status: 'shipped', updatedAt: now });
+        await Order.updateOne(order.id!, { status: 'shipped', updatedAt: now });
         break;
       }
 
       case 'delivered': {
         if (order.assignedDriverId !== payload.userId) return sendError('Not your order', 403);
-        await Order.updateById(orderId, { status: 'delivered', deliveredAt: now, updatedAt: now });
+        await Order.updateOne(order.id!, { status: 'delivered', deliveredAt: now, updatedAt: now });
         await notifyCustomer(
           `Your order has been delivered! 🎉 Please rate your experience`,
           `/orders/${order.orderId}`

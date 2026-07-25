@@ -51,6 +51,21 @@ export async function POST(request: NextRequest) {
 
   LOCATIONS.set(driver.userId, entry);
 
+  try {
+    const { db } = await import('@/backend/config/firebase');
+    await db.collection('driverLocations').doc(driver.userId).set({
+      lat:       entry.lat,
+      lng:       entry.lng,
+      accuracy:  entry.accuracy,
+      area:      entry.area,
+      heading:   entry.heading,
+      speed:     entry.speed,
+      updatedAt: entry.updatedAt,
+    });
+  } catch (dbErr) {
+    console.error('Failed to persist driver location in Firestore:', dbErr);
+  }
+
   return sendSuccess({ location: entry }, 'Location updated');
 }
 

@@ -61,7 +61,7 @@ export default function BrandDetailPage() {
           banner:         b.banner || null,
           category:       'Brand',
           description:    b.bio || `Welcome to ${b.name}.`,
-          founded:        new Date(b.joinedAt).getFullYear().toString(),
+          founded:        b.joinedAt ? new Date(b.joinedAt).getFullYear().toString() : new Date().getFullYear().toString(),
           headquarters:   '',
           verified:       true,
           hasDirectStore: true,

@@ -45,10 +45,13 @@ export async function POST(request: NextRequest) {
       customerName:  shippingInfo.fullName,
       customerEmail: customerEmail || 'guest@example.com',
       customerPhone: shippingInfo.phone ?? '',
-      items: cartItems.map((i: { id?: string; productId?: string; name: string; price: number; quantity: number; image?: string; vendor?: string; size?: string; color?: string }) => ({
+      items: cartItems.map((i: { id?: string; productId?: string; name: string; price: number; quantity: number; image?: string; vendor?: string; vendorId?: string; vendorRole?: string; size?: string; color?: string }) => ({
         productId: i.productId ?? i.id ?? '',
         name: i.name, price: i.price, quantity: i.quantity,
-        image: i.image ?? '', vendor: i.vendor ?? '', size: i.size, color: i.color,
+        image: i.image ?? '', vendor: i.vendor ?? '',
+        vendorId: i.vendorId ?? '',
+        vendorRole: i.vendorRole ?? 'vendor',
+        size: i.size, color: i.color,
       })),
       shippingAddress: {
         fullName: shippingInfo.fullName, phone: shippingInfo.phone ?? '',
@@ -169,8 +172,10 @@ export async function POST(request: NextRequest) {
       vendorName: cartItems.map((i: { vendor?: string }) => i.vendor ?? 'Unknown').join(', '),
       vendorAddress: '',
       products: cartItems.map((i: { name: string }) => i.name),
-      items: cartItems.map((i: { name: string; price?: number; quantity?: number; image?: string; vendor?: string }, idx: number) => ({
+      items: cartItems.map((i: { name: string; price?: number; quantity?: number; image?: string; vendor?: string; vendorId?: string; vendorRole?: string }, idx: number) => ({
         id: String(idx), name: i.name, price: i.price ?? 0, quantity: i.quantity ?? 1, image: i.image ?? '', vendor: i.vendor ?? '',
+        vendorId: i.vendorId ?? '',
+        vendorRole: i.vendorRole ?? 'vendor',
       })),
       total:         buyerTotal,
       subtotal:      fees.subtotal,

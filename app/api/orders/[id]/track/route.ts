@@ -29,12 +29,13 @@ export async function GET(
     // If authenticated, perform standard authorization checks.
     // If guest/unauthenticated, allow access because possession of the unique secure ORD-* reference acts as authorization.
     if (payload) {
-      const isCustomer = order.customerId === payload.userId;
-      const isDriver   = order.assignedDriverId === payload.userId;
-      const isAdmin    = payload.role === 'admin';
-      const isVendor   = payload.role === 'vendor' || payload.role === 'brand';
+      const isCustomer  = order.customerId === payload.userId;
+      const isDriver    = order.assignedDriverId === payload.userId;
+      const isLogistics = payload.role === 'logistics';
+      const isAdmin     = payload.role === 'admin';
+      const isVendor    = payload.role === 'vendor' || payload.role === 'brand';
 
-      if (order.customerId && !isCustomer && !isDriver && !isAdmin && !isVendor) {
+      if (order.customerId && !isCustomer && !isDriver && !isLogistics && !isAdmin && !isVendor) {
         return sendError('Access denied — this is not your order', 403);
       }
     }

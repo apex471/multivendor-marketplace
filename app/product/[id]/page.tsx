@@ -32,7 +32,7 @@ interface ProductData {
   name: string;
   price: number;
   oldPrice?: number;
-  vendor: { name: string; id: string; rating: number; verified: boolean };
+  vendor: { name: string; id: string; role: string; rating: number; verified: boolean };
   rating: number;
   reviews: number;
   sales: number;
@@ -185,10 +185,9 @@ export default function ProductDetailPage() {
           price:          displayPrice,
           oldPrice:       originalPrice,
           vendor: {
-            name:     p.vendorId?.firstName
-              ? `${p.vendorId.firstName} ${p.vendorId.lastName ?? ''}`.trim()
-              : 'Vendor',
-            id:       typeof p.vendorId === 'string' ? p.vendorId : (p.vendorId?._id ?? ''),
+            name:     p.vendorName || 'Vendor',
+            id:       p.vendorId || '',
+            role:     p.vendorRole || 'vendor',
             rating:   0,
             verified: true,
           },
@@ -267,6 +266,8 @@ export default function ProductDetailPage() {
       price:     product.price,
       image:     product.images[0] ?? '/images/placeholder.jpg',
       vendor:    product.vendor.name,
+      vendorId:  product.vendor.id,
+      vendorRole: product.vendor.role,
       size:      selectedSize || 'One Size',
       color:     selectedColor || 'Default',
       quantity,

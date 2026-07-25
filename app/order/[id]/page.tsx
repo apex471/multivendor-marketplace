@@ -15,6 +15,8 @@ interface OrderItem {
   quantity: number;
   image: string;
   vendor: string;
+  vendorId?: string;
+  vendorRole?: string;
 }
 
 interface Order {
@@ -77,13 +79,15 @@ export default function OrderDetailPage() {
           status: statusMap[raw.status] ?? 'processing',
           date:   raw.orderDate,
           items:  Array.isArray(raw.items) && raw.items.length > 0
-            ? (raw.items as Array<{ id?: string; name: string; price: number; quantity: number; image?: string; vendor?: string }>).map((item, i) => ({
+            ? (raw.items as Array<{ id?: string; name: string; price: number; quantity: number; image?: string; vendor?: string; vendorId?: string; vendorRole?: string }>).map((item, i) => ({
                 id:       item.id ?? String(i),
                 name:     item.name,
                 price:    item.price,
                 quantity: item.quantity,
                 image:    item.image || '/images/placeholder.jpg',
                 vendor:   item.vendor ?? raw.vendorName,
+                vendorId: item.vendorId,
+                vendorRole: item.vendorRole || 'vendor',
               }))
             : (raw.products as string[]).map((name: string, i: number) => ({
                 id:       String(i),
@@ -92,6 +96,8 @@ export default function OrderDetailPage() {
                 quantity: 1,
                 image:    '/images/placeholder.jpg',
                 vendor:   raw.vendorName,
+                vendorId: '',
+                vendorRole: 'vendor',
               })),
           subtotal:         raw.subtotal ?? raw.total,
           shipping:         raw.courier?.price ?? 0,
@@ -227,9 +233,12 @@ export default function OrderDetailPage() {
                     </p>
                   )}
                 </div>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+                <Link
+                  href={`/track/${orderId}`}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center shrink-0"
+                >
                   Track Package
-                </button>
+                </Link>
               </div>
             </div>
           )}
@@ -329,7 +338,15 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-charcoal-900 mb-1">{item.name}</h3>
-                      <p className="text-sm text-charcoal-600 mb-1">{item.vendor}</p>
+                      <p className="text-sm text-charcoal-600 mb-1">
+                        {item.vendorId ? (
+                          <Link href={`/${item.vendorRole === 'brand' ? 'brand' : 'vendor'}/${item.vendorId}`} className="hover:underline text-gold-600 font-medium">
+                            {item.vendor}
+                          </Link>
+                        ) : (
+                          item.vendor
+                        )}
+                      </p>
                       <p className="text-sm text-charcoal-600">Quantity: {item.quantity}</p>
                     </div>
                     <div className="text-right">
@@ -340,14 +357,16 @@ export default function OrderDetailPage() {
                 ))}
               </div>
 
-              <div className="mt-6 pt-6 border-t">
-                <Link
-                  href={`/vendor/${order.items[0].id}`}
-                  className="text-gold-600 hover:text-gold-700 font-medium text-sm"
-                >
-                  View Vendor Profile →
-                </Link>
-              </div>
+              {order.items[0]?.vendorId && (
+                <div className="mt-6 pt-6 border-t">
+                  <Link
+                    href={`/${order.items[0].vendorRole === 'brand' ? 'brand' : 'vendor'}/${order.items[0].vendorId}`}
+                    className="text-gold-600 hover:text-gold-700 font-medium text-sm"
+                  >
+                    View Vendor Profile →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
