@@ -22,8 +22,9 @@ export async function GET(request: NextRequest) {
     const allOrders = await Order.find({}, { orderBy: 'createdAt', orderDir: 'desc', limit: 2000 });
 
     // Filter orders containing at least one of this vendor's products
+    // Guard against orders with missing/null items array (data integrity issue)
     const vendorOrders = allOrders.filter(o =>
-      o.items.some(i => productIds.has(i.productId ?? ''))
+      Array.isArray(o.items) && o.items.some((i: IOrderItem) => productIds.has(i.productId ?? ''))
     );
 
     const now = new Date();
@@ -32,16 +33,26 @@ export async function GET(request: NextRequest) {
     let monthlyRevenue = 0;
 
     const normalized = vendorOrders.map(o => {
-      const vendorItems = o.items.filter(i => productIds.has(i.productId ?? ''));
-      const vendorSubtotal = vendorItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const vendorItems = (o.items ?? []).filter((i: IOrderItem) => productIds.has(i.productId ?? ''));
+      const vendorSubtotal = vendorItems.reduce((s: number, i: IOrderItem) => s + i.price * i.quantity, 0);
       totalRevenue += vendorSubtotal;
       if (o.createdAt && new Date(o.createdAt) >= monthStart) monthlyRevenue += vendorSubtotal;
+
+      // Guard against orders with missing/null shippingAddress (crash source)
+      const addr = o.shippingAddress ?? {};
+      const shippingAddress = [
+        (addr as Record<string, string | undefined>).addressLine1,
+        (addr as Record<string, string | undefined>).city,
+        (addr as Record<string, string | undefined>).state,
+        (addr as Record<string, string | undefined>).zipCode,
+      ].filter(Boolean).join(', ');
+
       return {
         id: o.orderId, orderNumber: o.orderId,
-        customer: { name: o.customerName, email: o.customerEmail },
-        items: vendorItems.map(i => ({ id: i.productId ?? '', name: i.name, image: i.image ?? null, quantity: i.quantity, price: i.price })),
+        customer: { name: o.customerName ?? '', email: o.customerEmail ?? '' },
+        items: vendorItems.map((i: IOrderItem) => ({ id: i.productId ?? '', name: i.name, image: i.image ?? null, quantity: i.quantity, price: i.price })),
         total: vendorSubtotal, status: o.status, paymentStatus: o.paymentStatus, createdAt: o.createdAt,
-        shippingAddress: [o.shippingAddress.addressLine1, o.shippingAddress.city, o.shippingAddress.state, o.shippingAddress.zipCode].filter(Boolean).join(', '),
+        shippingAddress,
       };
     });
 

@@ -62,7 +62,7 @@ export const Transaction = {
       if (v !== undefined && v !== null) query = query.where(k, '==', v);
     }
 
-    if (opts?.limit)   query.limit(opts.limit);
+    if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<ITransaction>(d)!);
     if (opts?.skip) results = results.slice(opts.skip);

@@ -108,6 +108,26 @@ export const Order = {
     if (opts?.limit)   query = query.limit(opts.limit);
     const snap = await query.get();
     let results = snap.docs.map(d => docToObject<IOrder>(d)!);
+
+    // In-memory sort (avoids composite index requirement for where+orderBy combos)
+    if (opts?.orderBy) {
+      const field = opts.orderBy as keyof IOrder;
+      const dir   = opts.orderDir ?? 'desc';
+      results.sort((a, b) => {
+        const av = a[field] as unknown;
+        const bv = b[field] as unknown;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av instanceof Date && bv instanceof Date) {
+          return dir === 'asc' ? av.getTime() - bv.getTime() : bv.getTime() - av.getTime();
+        }
+        const as = String(av);
+        const bs = String(bv);
+        return dir === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as);
+      });
+    }
+
     if (opts?.skip) results = results.slice(opts.skip);
     return results;
   },
