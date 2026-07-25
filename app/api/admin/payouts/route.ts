@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
     if (!payoutId || !action) {
       return sendError('Payout ID and action are required', 400);
     }
-    if (action !== 'approve' && action !== 'reject') {
-      return sendError('Invalid action. Must be approve or reject', 400);
+    if (!['approve', 'manual_approve', 'reject'].includes(action)) {
+      return sendError('Invalid action. Must be approve, manual_approve, or reject', 400);
     }
 
     // 1. Fetch transaction
@@ -119,13 +119,35 @@ export async function POST(request: NextRequest) {
       return sendError(`Cannot action this payout. Current status is ${targetPayout.status}`, 400);
     }
 
-    // 2. Perform approve or reject
+    // 2. Perform approve, manual_approve, or reject
     const now = new Date();
     const updatedMetadata: any = {
       ...(targetPayout.metadata || {}),
-      adminNotes: notes || (action === 'approve' ? 'Approved' : 'Rejected by Admin'),
+      adminNotes: notes || (action === 'approve' ? 'Approved via Flutterwave' : action === 'manual_approve' ? 'Manually approved' : 'Rejected by Admin'),
       processedAt: now.toISOString(),
     };
+
+    // ── Manual Approval (bypasses Flutterwave entirely) ────────────────────
+    if (action === 'manual_approve') {
+      const { bankReference, confirmationNote } = body;
+      updatedMetadata.manualPayment = {
+        bankReference:    bankReference?.trim() || null,
+        confirmationNote: confirmationNote?.trim() || null,
+        processedBy:      'admin_manual',
+        processedAt:      now.toISOString(),
+      };
+      updatedMetadata.payoutMethod = 'manual_bank_transfer';
+
+      await Transaction.updateOne(payoutId, {
+        status:    'completed',
+        metadata:  updatedMetadata,
+        updatedAt: now,
+      });
+      return sendSuccess(
+        { payoutId, status: 'completed', method: 'manual' },
+        'Payout marked as manually processed. Vendor balance updated.'
+      );
+    }
 
     if (action === 'approve') {
       // Initiate payout via Flutterwave if secret key is present
