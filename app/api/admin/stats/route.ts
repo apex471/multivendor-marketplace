@@ -18,14 +18,37 @@ export async function GET(request: NextRequest) {
     const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    // Fetch all collections in parallel
-    const [allUsers, allTxs, allTickets, allOrders, waitlistSnap] = await Promise.all([
+    // Fetch all collections in parallel — including Flutterwave live balances
+    const flwKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    const flwBalancePromise = flwKey
+      ? fetch('https://api.flutterwave.com/v3/balances', {
+          headers: { Authorization: `Bearer ${flwKey}` }
+        })
+          .then(r => r.json())
+          .then(d => (Array.isArray(d?.data) ? d.data : null))
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    const [allUsers, allTxs, allTickets, allOrders, waitlistSnap, flwBalances] = await Promise.all([
       User.find({}),
       Transaction.find({}),
       db.collection('supportTickets').get().then(snap => snap.docs.map(d => docToObject<any>(d)!)),
       OrderModel.find({}),
       db.collection('waitlist').get().then(snap => snap.docs.map(d => docToObject<any>(d)!)),
+      flwBalancePromise,
     ]);
+
+    // Parse FLW balances into a readable map {currency -> {collectionBalance, payoutBalance}}
+    const flutterwaveBalances: Record<string, { currency: string; collectionBalance: number; payoutBalance: number }> = {};
+    if (Array.isArray(flwBalances)) {
+      for (const b of flwBalances) {
+        flutterwaveBalances[b.currency ?? 'UNKNOWN'] = {
+          currency:          b.currency ?? 'UNKNOWN',
+          collectionBalance: Number(b.available_balance ?? b.collection_balance ?? 0),
+          payoutBalance:     Number(b.ledger_balance ?? b.payout_balance ?? 0),
+        };
+      }
+    }
 
     // Compute User stats
     const totalCustomers = allUsers.filter(u => u.role === 'customer' && u.isActive).length;
@@ -144,6 +167,9 @@ export async function GET(request: NextRequest) {
         weeklySignups,
         courierBreakdown,
       },
+      // Live Flutterwave balance — null if key not configured or API unreachable
+      flutterwaveBalances: Object.keys(flutterwaveBalances).length > 0 ? flutterwaveBalances : null,
+      flutterwaveKeyConfigured: !!flwKey,
     });
   } catch (error) {
     console.error('Admin stats error:', error);
