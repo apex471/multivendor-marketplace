@@ -39,12 +39,12 @@ export async function GET(request: NextRequest) {
       if (o.createdAt && new Date(o.createdAt) >= monthStart) monthlyRevenue += vendorSubtotal;
 
       // Guard against orders with missing/null shippingAddress (crash source)
-      const addr = o.shippingAddress ?? {};
+      const addr = o.shippingAddress;
       const shippingAddress = [
-        (addr as Record<string, string | undefined>).addressLine1,
-        (addr as Record<string, string | undefined>).city,
-        (addr as Record<string, string | undefined>).state,
-        (addr as Record<string, string | undefined>).zipCode,
+        addr?.addressLine1,
+        addr?.city,
+        addr?.state,
+        addr?.zipCode,
       ].filter(Boolean).join(', ');
 
       return {
