@@ -165,7 +165,6 @@ export default function SettingsPage() {
               <p className="text-[10px] text-cool-gray-600 mt-1">~1.4% (Flutterwave&apos;s NGN rate). Platform absorbs this from gross revenue.</p>
             </div>
             <Field label="Escrow Duration (days)" field="escrowDuration" type="number" placeholder="7" />
-            <Field label="Minimum Withdrawal ($)" field="minWithdrawal" type="number" placeholder="50" />
           </>
         )}
         {tab === 'shipping' && (

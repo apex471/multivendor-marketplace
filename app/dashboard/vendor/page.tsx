@@ -999,7 +999,7 @@ export default function VendorDashboard() {
                         <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">Amount to Withdraw ($)</label>
                         <input type="number" step="0.01" placeholder="0.00" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)} max={walletBalance}
                           className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold" />
-                        <p className="text-[11px] text-cool-gray-500 mt-1">Available: {formatPrice(walletBalance)} · Min. withdrawal: {formatPrice(50)}</p>
+                        <p className="text-[11px] text-cool-gray-500 mt-1">Available: {formatPrice(walletBalance)}</p>
                       </div>
                       {/* Only show bank fields if no saved account */}
                       {!savedPayoutAccount?.hasAccount && (

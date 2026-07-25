@@ -1156,7 +1156,7 @@ export default function BrandDashboard() {
                           className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-semibold"
                         />
                         <p className="text-[11px] text-cool-gray-400 mt-1">
-                          Available: {formatPrice(walletBalance)} (Min. withdrawal {formatPrice(50)})
+                          Available: {formatPrice(walletBalance)}
                         </p>
                       </div>
 

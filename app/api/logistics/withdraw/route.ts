@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/backend/config/firebase';
 import { Transaction } from '@/backend/models/Transaction';
-import { Settings } from '@/backend/models/Settings';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
@@ -67,15 +66,7 @@ export async function POST(request: NextRequest) {
       return sendError('Bank name and account number are required', 400);
     }
 
-    // 1. Check current settings for minWithdrawal
-    const settings = await Settings.findOne();
-    const minWithdrawal = settings?.minWithdrawal ?? 50;
-
-    if (amount < minWithdrawal) {
-      return sendError(`Minimum withdrawal amount is $${minWithdrawal}`, 400);
-    }
-
-    // 2. Calculate current balance
+    // Calculate current balance
     const allCompletedTxs = await Transaction.find({ toUser: payload.userId, status: 'completed' });
     const totalEarned = allCompletedTxs.reduce((sum, tx) => sum + tx.amount, 0);
 

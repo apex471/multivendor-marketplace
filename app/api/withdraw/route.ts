@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { Transaction } from '@/backend/models/Transaction';
-import { Settings } from '@/backend/models/Settings';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
@@ -100,17 +99,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Get minimum withdrawal from platform settings
-    const settings = await Settings.findOne();
-    const minWithdrawal = settings?.minWithdrawal ?? 50;
-
-    if (amount < minWithdrawal) {
-      return sendError(`Minimum withdrawal amount is $${minWithdrawal}`, 400);
-    }
-
-    // 2. Fetch current balance
+    // Fetch current balance
     const earningTypes = payload.role === 'logistics' ? ['logistics_release'] : ['escrow_release'];
-    
     let allEarnings = await Transaction.find({ toUser: payload.userId, status: 'completed' });
     allEarnings = allEarnings.filter(tx => earningTypes.includes(tx.type));
     const totalEarned = allEarnings.reduce((sum, tx) => sum + tx.amount, 0);
@@ -120,11 +110,10 @@ export async function POST(request: NextRequest) {
       tx => tx.status === 'completed' || tx.status === 'pending'
     );
     const totalWithdrawn = activeWithdrawals.reduce((sum, tx) => sum + tx.amount, 0);
-
     const balance = Math.max(0, Number((totalEarned - totalWithdrawn).toFixed(2)));
 
     if (amount > balance) {
-      return sendError(`Insufficient balance. Available balance is $${balance.toFixed(2)}`, 400);
+      return sendError(`Insufficient balance. Available: $${balance.toFixed(2)}`, 400);
     }
 
     // 3. Create a pending withdrawal transaction
