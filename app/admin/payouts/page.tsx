@@ -270,7 +270,7 @@ export default function AdminPayoutsPage() {
           const isManual = payout.metadata?.payoutMethod === 'manual_bank_transfer';
           return (
             <div key={payout.id} className="bg-charcoal-800 border border-charcoal-700 rounded-2xl p-5 hover:border-charcoal-600 transition-colors">
-              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
+              <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5">
 
                 {/* Left — identity */}
                 <div className="flex-1 min-w-0">
@@ -331,7 +331,7 @@ export default function AdminPayoutsPage() {
                 </div>
 
                 {/* Right — Amount + Actions */}
-                <div className="flex flex-col items-end gap-3 min-w-[160px]">
+                <div className="flex flex-col gap-3 xl:min-w-[170px] xl:items-end">
                   <div className="text-right">
                     <div className="text-2xl font-black text-white">{fmtUSD(payout.amount)}</div>
                     <div className="text-gold-400 font-bold text-base">{fmtNGN(payout.amount)}</div>
@@ -340,16 +340,22 @@ export default function AdminPayoutsPage() {
 
                   {payout.status === 'pending' ? (
                     <div className="flex flex-col gap-2 w-full">
-                      <button onClick={() => openModal(payout, 'manual')}
-                        className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all hover:scale-[1.02] text-center shadow-lg shadow-blue-900/30">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openModal(payout, 'manual'); }}
+                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all text-center shadow-lg shadow-blue-900/30 cursor-pointer select-none">
                         🏦 Mark as Manually Paid
                       </button>
-                      <button onClick={() => openModal(payout, 'auto')}
-                        className="w-full px-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-colors text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openModal(payout, 'auto'); }}
+                        className="w-full px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-900 text-white font-semibold text-sm rounded-xl transition-colors text-center cursor-pointer">
                         ⚡ Try Flutterwave Auto
                       </button>
-                      <button onClick={() => openModal(payout, 'reject')}
-                        className="w-full px-4 py-2 border border-red-900/60 text-red-400 font-semibold text-xs rounded-xl hover:bg-red-950/40 transition-colors text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openModal(payout, 'reject'); }}
+                        className="w-full px-4 py-2.5 border border-red-900/60 text-red-400 font-semibold text-sm rounded-xl hover:bg-red-950/40 active:bg-red-950/60 transition-colors text-center cursor-pointer">
                         ✕ Reject
                       </button>
                     </div>
@@ -368,7 +374,7 @@ export default function AdminPayoutsPage() {
 
       {/* Modal */}
       {selectedPayout && modalMode && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 backdrop-blur-sm overflow-y-auto">
           <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-lg shadow-2xl my-8">
             <div className="flex items-center justify-between p-5 border-b border-charcoal-700">
               <div>
@@ -483,15 +489,20 @@ export default function AdminPayoutsPage() {
               )}
 
               <div className="grid grid-cols-2 gap-3 pt-1">
-                <button onClick={closeModal}
-                  className="py-3 bg-charcoal-700 hover:bg-charcoal-600 text-cool-gray-300 font-semibold rounded-xl text-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); closeModal(); }}
+                  className="py-3 bg-charcoal-700 hover:bg-charcoal-600 active:bg-charcoal-800 text-cool-gray-300 font-semibold rounded-xl text-sm transition-colors cursor-pointer">
                   Cancel
                 </button>
-                <button onClick={handleSubmit} disabled={actionLoading === selectedPayout.id}
-                  className={`py-3 font-bold rounded-xl text-sm text-white transition-colors disabled:opacity-50 ${
-                    modalMode === 'manual' ? 'bg-blue-600 hover:bg-blue-500' :
-                    modalMode === 'auto'   ? 'bg-emerald-600 hover:bg-emerald-500' :
-                                            'bg-red-700 hover:bg-red-600'
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleSubmit(); }}
+                  disabled={actionLoading === selectedPayout.id}
+                  className={`py-3 font-bold rounded-xl text-sm text-white transition-colors disabled:opacity-50 cursor-pointer ${
+                    modalMode === 'manual' ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700' :
+                    modalMode === 'auto'   ? 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700' :
+                                            'bg-red-700 hover:bg-red-600 active:bg-red-800'
                   }`}>
                   {actionLoading === selectedPayout.id ? 'Processing…' :
                    modalMode === 'manual' ? '✓ Confirm Manual Payment' :
