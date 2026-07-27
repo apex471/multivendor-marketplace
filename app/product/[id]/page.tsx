@@ -9,6 +9,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/common/Toast';
 import { useLocalization } from '@/contexts/LocalizationContext';
+import { getAuthToken } from '@/lib/api/auth';
 
 interface Review {
   id: string;
@@ -126,6 +127,7 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
   const [isLoading,       setIsLoading]       = useState(true);
   const [notFound,        setNotFound]        = useState(false);
+  const [isPreview,       setIsPreview]       = useState(false);
 
   useEffect(() => {
     fetch(`/api/products/${productId}/reviews`)
@@ -147,11 +149,16 @@ export default function ProductDetailPage() {
   }, [productId]);
 
   useEffect(() => {
-    fetch(`/api/products/${productId}`)
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`/api/products/${productId}`, { headers })
       .then(r => r.json())
       .then(json => {
         if (!json.success || !json.data?.product) { setNotFound(true); return; }
         const p = json.data.product;
+        if (p.isPreview) setIsPreview(true);
         const displayPrice  = p.salePrice && p.salePrice < p.price ? p.salePrice : p.price;
         const originalPrice = p.salePrice && p.salePrice < p.price ? p.price    : undefined;
         const rawSizesSet = new Set<string>();
@@ -180,7 +187,8 @@ export default function ProductDetailPage() {
           }
         });
         setProduct({
-          id:             p._id,
+          // Use p.id (Firestore doc id) — Firestore does not use _id
+          id:             p.id || p._id,
           name:           p.name,
           price:          displayPrice,
           oldPrice:       originalPrice,
@@ -191,7 +199,7 @@ export default function ProductDetailPage() {
             rating:   0,
             verified: true,
           },
-          rating:         p.averageRating ?? 0,
+          rating:         p.averageRating ?? p.rating ?? 0,
           reviews:        p.reviewCount   ?? 0,
           sales:          p.salesCount    ?? 0,
           description:    p.description   ?? '',
@@ -214,11 +222,11 @@ export default function ProductDetailPage() {
         });
         setRelatedProducts(
           (json.data.related ?? []).map((r: Record<string, unknown>) => ({
-            id:     r._id as string,
+            id:     (r.id ?? r._id) as string,
             name:   r.name as string,
             price:  r.price as number,
             image:  (r.images as string[])?.[0] ?? '/images/placeholder.jpg',
-            rating: (r.averageRating as number) ?? 0,
+            rating: (r.averageRating as number) ?? (r.rating as number) ?? 0,
           }))
         );
       })
@@ -235,15 +243,26 @@ export default function ProductDetailPage() {
     }
   }, [product]);
 
-  useEffect(() => {
-    if (notFound) router.push('/shop');
-  }, [notFound, router]);
-
+  // Don't auto-redirect on notFound — show an inline message instead so
+  // vendors who navigated directly from their dashboard still get useful feedback.
   if (isLoading) return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       <Header />
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gold-600 border-t-transparent" />
+      </div>
+      <Footer />
+    </div>
+  );
+
+  if (notFound) return (
+    <div className="min-h-screen bg-white dark:bg-charcoal-900">
+      <Header />
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <div className="text-5xl">📦</div>
+        <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Product not found</h2>
+        <p className="text-charcoal-500 dark:text-cool-gray-400 text-sm">This product may still be under review or has been removed.</p>
+        <Link href="/shop" className="px-6 py-3 bg-gold-600 text-white rounded-xl font-semibold hover:bg-gold-700 transition-colors">Browse Shop</Link>
       </div>
       <Footer />
     </div>
@@ -299,6 +318,19 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
       <Header />
+
+      {/* Preview Mode Banner */}
+      {isPreview && (
+        <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 px-4 py-3">
+          <div className="container mx-auto flex items-center gap-3">
+            <span className="text-xl">⏳</span>
+            <div>
+              <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">Preview Mode — Pending Review</p>
+              <p className="text-amber-700 dark:text-amber-300 text-xs">This product is not yet visible to customers. It will go live after admin approval.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-6 sm:py-8 md:py-12">
         {/* Breadcrumb */}

@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const products = filtered.slice(skip, skip + limit).map(p => {
       const { costPrice: _, ...rest } = p as typeof p & { costPrice?: unknown };
-      return rest;
+      // Always expose both `id` and `_id` so any UI code using either field works correctly.
+      return { ...rest, _id: rest.id };
     });
 
     // Distinct categories from all active products
