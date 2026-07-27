@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// NOTE: This app uses Firebase Admin SDK exclusively (server-side only).
+// All client-side access is denied — data flows through Next.js API routes
+// which authenticate requests themselves before calling Firestore.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Deny ALL direct client reads/writes — API routes handle all access.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
