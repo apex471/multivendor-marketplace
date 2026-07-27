@@ -237,7 +237,15 @@ export const User = {
   },
 
   // ── Compare password ──────────────────────────────────────────────────────
-  async comparePassword(userId: string, plainPassword: string): Promise<boolean> {
+  // Accepts either:
+  //   comparePassword(userId, plain)         — fetches hash from Firestore (1 read)
+  //   comparePassword(userId, plain, hash)   — uses pre-fetched hash (0 reads)
+  // Always prefer the 3-arg form when you already have the user document.
+  async comparePassword(userId: string, plainPassword: string, preloadedHash?: string): Promise<boolean> {
+    if (preloadedHash) {
+      return bcrypt.compare(plainPassword, preloadedHash);
+    }
+    // Fallback: fetch the hash from Firestore (legacy path)
     const snap = await db.collection(USERS).doc(userId).get();
     if (!snap.exists) return false;
     const data = snap.data()!;
