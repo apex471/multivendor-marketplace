@@ -9,13 +9,13 @@ import { sendSuccess, sendError, sendServerError } from '@/backend/utils/respons
 // Returns all users who signed up with this referral code, plus per-user earnings
 export async function GET(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   const { error } = await verifyAdminAuth(request);
   if (error) return sendError(error, 401);
 
   try {
-    const { code } = params;
+    const { code } = await params;
     const sp    = new URL(request.url).searchParams;
     const page  = Math.max(1, parseInt(sp.get('page') || '1'));
     const limit = Math.min(100, parseInt(sp.get('limit') || '50'));
