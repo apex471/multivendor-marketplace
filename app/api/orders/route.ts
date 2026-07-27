@@ -95,6 +95,8 @@ export async function POST(request: NextRequest) {
         stripeFee:       fees.stripeFee,
         vendorPayout:    fees.vendorPayout,
         platformGross:   fees.platformGross,
+        affiliateFee:    fees.affiliateFee,
+        adminNet:        fees.adminNet,
         platformNet:     fees.platformNet,
       },
     });

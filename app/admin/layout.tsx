@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/admin/orders', label: 'Orders', icon: '📦', desc: 'Order tracking' },
   { href: '/admin/products', label: 'Products', icon: '🏷️', desc: 'Catalog control' },
   { href: '/admin/escrow', label: 'Escrow', icon: '🔒', desc: 'Payment releases', badgeKey: 'escrow' as const },
+  { href: '/admin/referrals', label: 'Referrals', icon: '🔗', desc: 'Affiliate programs' },
   { href: '/admin/payouts', label: 'Payouts', icon: '💸', desc: 'Approve vendor payouts', badgeKey: 'payouts' as const },
   { href: '/admin/support', label: 'Support', icon: '💬', desc: 'Customer tickets', badgeKey: 'tickets' as const },
   { href: '/admin/reports', label: 'Reports', icon: '📊', desc: 'Analytics & exports' },

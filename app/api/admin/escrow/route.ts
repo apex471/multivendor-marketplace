@@ -6,7 +6,7 @@ import { db, FieldPath, docToObject } from '@/backend/config/firebase';
 import { sendSuccess, sendError, sendServerError } from '@/backend/utils/responseAppRouter';
 import { calculateFees, FEES } from '@/lib/fees';
 
-const ESCROW_TYPES = ['order_payment', 'escrow_release', 'platform_fee', 'stripe_fee', 'refund', 'logistics_release'];
+const ESCROW_TYPES = ['order_payment', 'escrow_release', 'platform_fee', 'stripe_fee', 'affiliate_payout', 'refund', 'logistics_release'];
 
 // GET /api/admin/escrow
 export async function GET(request: NextRequest) {
@@ -82,13 +82,20 @@ export async function GET(request: NextRequest) {
       .filter(t => t.type === 'order_payment' && t.status === 'pending')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    // Platform revenue stats (completed platform_fee records)
+    // Platform revenue stats (completed platform_fee records = admin net)
     const platformFeeRecords = allEscrowTxs.filter(t => t.type === 'platform_fee' && t.status === 'completed');
-    const totalPlatformGross = platformFeeRecords.reduce((sum, t) => sum + t.amount, 0);
+    const totalAdminNet      = Math.round(platformFeeRecords.reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
     const totalStripeFees    = allEscrowTxs
       .filter(t => t.type === 'stripe_fee' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
-    const totalPlatformNet   = Math.round((totalPlatformGross - totalStripeFees) * 100) / 100;
+    // Affiliate payouts paid out of platform gross
+    const totalAffiliatePaid = Math.round(
+      allEscrowTxs
+        .filter(t => t.type === 'affiliate_payout' && t.status === 'completed')
+        .reduce((sum, t) => sum + t.amount, 0) * 100
+    ) / 100;
+    // Gross = adminNet + affiliatePaid (reconstruct for display)
+    const totalPlatformGross = Math.round((totalAdminNet + totalAffiliatePaid + totalStripeFees) * 100) / 100;
 
     return sendSuccess({
       transactions: populatedTxs,
@@ -96,12 +103,14 @@ export async function GET(request: NextRequest) {
       counts: { pending: pendingCount, completed: completedCount, refunded: refundedCount },
       totalHeld,
       platformStats: {
-        grossRevenue: totalPlatformGross,
-        stripeFees:   totalStripeFees,
-        netRevenue:   totalPlatformNet,
-        buyerFeeRate:  FEES.BUYER_SERVICE_FEE_RATE * 100,
-        sellerFeeRate: FEES.SELLER_FEE_RATE * 100,
-        stripeFeeRate: FEES.STRIPE_RATE * 100,
+        grossRevenue:       totalPlatformGross,
+        affiliatesPaid:     totalAffiliatePaid,
+        stripeFees:         Math.round(totalStripeFees * 100) / 100,
+        adminNetRevenue:    totalAdminNet,
+        buyerFeeRate:       FEES.BUYER_SERVICE_FEE_RATE * 100,
+        sellerFeeRate:      FEES.SELLER_FEE_RATE * 100,
+        affiliateRate:      FEES.AFFILIATE_RATE * 100,
+        stripeFeeRate:      FEES.STRIPE_RATE * 100,
       },
     });
   } catch (err) {

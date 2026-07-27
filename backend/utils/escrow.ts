@@ -1,6 +1,8 @@
 import { db } from '@/backend/config/firebase';
+import { FieldValue } from 'firebase-admin/firestore';
 import { Transaction } from '@/backend/models/Transaction';
 import { Order } from '@/backend/models/Order';
+import { ReferralCode } from '@/backend/models/ReferralCode';
 import { calculateFees, FEES } from '@/lib/fees';
 
 export async function releaseEscrow(orderId: string, reason?: string) {
@@ -26,36 +28,73 @@ export async function releaseEscrow(orderId: string, reason?: string) {
   }
   await Transaction.updateOne(txn.id!, updatePayload);
 
-  // 2. Reconstruct fee breakdown
+  // ── Resolve affiliate info from the buyer ──────────────────────────────────
+  let affiliateCode: string | null = null;
+  let affiliateUserId: string | null = null;
+  let affiliateDocId: string | null = null;
+
+  if (order.customerId) {
+    try {
+      const buyerSnap = await db.collection('users').doc(order.customerId).get();
+      if (buyerSnap.exists) {
+        const buyerData = buyerSnap.data()!;
+        const referredByCode: string | undefined = buyerData.referredByCode;
+        if (referredByCode) {
+          const refCodeDoc = await ReferralCode.findByCode(referredByCode);
+          if (refCodeDoc && refCodeDoc.isActive) {
+            affiliateCode = referredByCode;
+            affiliateDocId = refCodeDoc.id!;
+            // The affiliate user is identified by the code's createdByAdmin field
+            // which stores the userId of whoever owns this code's earnings.
+            // (Admin-generated codes credit earnings to the code's "owner" userId)
+            affiliateUserId = (refCodeDoc as any).affiliateUserId || refCodeDoc.createdByAdmin || null;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Escrow] Failed to resolve affiliate for buyer', order.customerId, err);
+    }
+  }
+
+  const hasAffiliate = !!affiliateCode && !!affiliateUserId;
+
+  // 2. Reconstruct fee breakdown (with affiliate flag)
   const fb = txn.feeBreakdown as any;
   const subtotal = fb?.subtotal ?? order.subtotal;
   const shipping = fb?.shipping ?? order.shippingCost;
   const fees = fb
     ? {
         subtotal:        fb.subtotal,
-        shipping:        fb.shipping,
+        shipping:        fb.shipping ?? 0,
         buyerServiceFee: fb.buyerServiceFee,
         sellerFee:       fb.sellerFee,
-        stripeFee:       fb.stripeFee,
+        stripeFee:       fb.stripeFee ?? fb.paymentFee ?? 0,
+        paymentFee:      fb.stripeFee ?? fb.paymentFee ?? 0,
         vendorPayout:    fb.vendorPayout,
         platformGross:   fb.platformGross,
         platformNet:     fb.platformNet,
-        tax:             fb.tax,
+        tax:             fb.tax ?? 0,
         buyerTotal:      txn.amount,
+        // Compute affiliate fields fresh even if feeBreakdown exists (may be legacy record)
+        affiliateFee:    hasAffiliate ? Math.round(fb.subtotal * FEES.AFFILIATE_RATE * 100) / 100 : 0,
+        adminNet:        0, // filled below
       }
-    : calculateFees(subtotal, shipping);
+    : calculateFees(subtotal, shipping, hasAffiliate);
+
+  // Fill adminNet if we reconstructed from legacy feeBreakdown
+  if (fb) {
+    fees.adminNet = Math.round(
+      (fees.platformGross - fees.affiliateFee - (fees.stripeFee ?? 0)) * 100
+    ) / 100;
+  }
 
   // ── Resolve vendor IDs from order items ─────────────────────────────────
-  // Order items store vendorId (Firestore user doc ID) set at checkout time.
-  // Group items by vendorId so each vendor gets their own escrow_release.
   const vendorItemsMap = new Map<string, { items: typeof order.items; vendorId: string }>();
 
   for (const item of order.items ?? []) {
-    // Primary: use vendorId stored on the item (set at checkout)
     let resolvedVendorId: string | null = (item as any).vendorId || null;
 
     if (!resolvedVendorId) {
-      // Fallback 1: look up by storeName (display vendor name on item)
       const vendorName = (item as any).vendor ?? null;
       if (vendorName) {
         const byName = await db.collection('users').where('storeName', '==', vendorName).limit(1).get();
@@ -63,7 +102,7 @@ export async function releaseEscrow(orderId: string, reason?: string) {
       }
     }
 
-    if (!resolvedVendorId) continue; // skip items with no resolvable vendor
+    if (!resolvedVendorId) continue;
 
     if (!vendorItemsMap.has(resolvedVendorId)) {
       vendorItemsMap.set(resolvedVendorId, { items: [], vendorId: resolvedVendorId });
@@ -71,7 +110,6 @@ export async function releaseEscrow(orderId: string, reason?: string) {
     vendorItemsMap.get(resolvedVendorId)!.items.push(item);
   }
 
-  // Determine a single dominant vendorId for backwards compat (first vendor found)
   let vendorId: string | null = vendorItemsMap.size > 0 ? [...vendorItemsMap.keys()][0] : null;
   let vendorUserDoc: any = null;
   if (vendorId) {
@@ -138,7 +176,6 @@ export async function releaseEscrow(orderId: string, reason?: string) {
   // 3. Create Vendor Payout Transaction(s) — one per vendor
   if (vendorItemsMap.size > 0) {
     for (const [vId, { items: vItems }] of vendorItemsMap.entries()) {
-      // Calculate this vendor's subtotal from their items only
       const vSubtotal = vItems.reduce((s: number, i: any) => s + (i.price ?? 0) * (i.quantity ?? 1), 0);
       const vPayout = Number((vSubtotal * (1 - FEES.SELLER_FEE_RATE)).toFixed(2));
 
@@ -163,8 +200,6 @@ export async function releaseEscrow(orderId: string, reason?: string) {
       });
     }
   } else {
-    // No vendor resolved — create a single release using the fee-computed vendorPayout
-    // so the record exists even if toUser is missing (admin can reconcile manually)
     await Transaction.create({
       transactionId: `REL-${txn.transactionId}`,
       type:          'escrow_release',
@@ -193,27 +228,79 @@ export async function releaseEscrow(orderId: string, reason?: string) {
     });
   }
 
-  // 5. Create Platform Fee Transaction (platform_fee)
+  // 5. Create Affiliate Payout Transaction (if applicable) ──────────────────
+  if (hasAffiliate && affiliateUserId && fees.affiliateFee > 0) {
+    // Create affiliate_payout record (wallet credit)
+    await Transaction.create({
+      transactionId:  `AFF-${txn.transactionId}`,
+      type:           'affiliate_payout',
+      amount:         fees.affiliateFee,
+      currency:       'USD',
+      status:         'completed',
+      toUser:         affiliateUserId,
+      orderId,
+      affiliateCode:  affiliateCode!,
+      affiliateUserId: affiliateUserId,
+      description:    `Affiliate commission for order ${orderId}: 5% of $${fees.subtotal.toFixed(2)} = $${fees.affiliateFee.toFixed(2)} (code: ${affiliateCode})`,
+      metadata: {
+        affiliateCode,
+        affiliateRate: FEES.AFFILIATE_RATE * 100,
+        subtotal:      fees.subtotal,
+      },
+    });
+
+    // Credit the affiliate's wallet balance (Firestore atomic increment)
+    try {
+      await db.collection('users').doc(affiliateUserId).update({
+        affiliateEarnings: FieldValue.increment(fees.affiliateFee),
+        updatedAt: now,
+      });
+    } catch (err) {
+      console.error('[Escrow] Failed to update affiliate wallet for', affiliateUserId, err);
+    }
+
+    // Update referral code stats
+    if (affiliateDocId) {
+      try {
+        await ReferralCode.incrementEarnings(affiliateDocId, fees.affiliateFee);
+      } catch (err) {
+        console.error('[Escrow] Failed to update referral code earnings for', affiliateDocId, err);
+      }
+    }
+  }
+
+  // 6. Create Platform Fee Transaction (platform_fee) ────────────────────────
+  const affiliateLine = hasAffiliate
+    ? ` | Affiliate (${affiliateCode}) −$${fees.affiliateFee.toFixed(2)}`
+    : '';
+
   await Transaction.create({
     transactionId: `FEE-${txn.transactionId}`,
     type:          'platform_fee',
-    amount:        fees.platformGross,
+    amount:        fees.adminNet,          // admin keeps the net after affiliate deduction
     currency:      'USD',
     status:        'completed',
     orderId,
-    description:   `Platform fee for order ${orderId}: buyer 10% ($${fees.buyerServiceFee.toFixed(2)}) + seller 10% ($${fees.sellerFee.toFixed(2)}) = $${fees.platformGross.toFixed(2)}`,
+    ...(affiliateCode ? { affiliateCode } : {}),
+    ...(affiliateUserId ? { affiliateUserId } : {}),
+    description:   `Platform fee for order ${orderId}: buyer 10% ($${fees.buyerServiceFee.toFixed(2)}) + seller 10% ($${fees.sellerFee.toFixed(2)}) = $${fees.platformGross.toFixed(2)} gross${affiliateLine} → admin net $${fees.adminNet.toFixed(2)}`,
     metadata: {
       buyerServiceFee:  fees.buyerServiceFee,
       sellerFee:        fees.sellerFee,
       platformGross:    fees.platformGross,
+      affiliateFee:     fees.affiliateFee,
+      affiliateCode:    affiliateCode,
+      affiliateUserId:  affiliateUserId,
+      adminNet:         fees.adminNet,
       platformNet:      fees.platformNet,
       stripeFee:        fees.stripeFee,
       buyerFeeRate:     FEES.BUYER_SERVICE_FEE_RATE * 100,
       sellerFeeRate:    FEES.SELLER_FEE_RATE * 100,
+      affiliateRate:    hasAffiliate ? FEES.AFFILIATE_RATE * 100 : 0,
     },
   });
 
-  // 6. Create Stripe Fee Transaction (stripe_fee)
+  // 7. Create Stripe/Payment Fee Transaction (stripe_fee) ───────────────────
   await Transaction.create({
     transactionId: `STRIPE-${txn.transactionId}`,
     type:          'stripe_fee',
@@ -221,7 +308,7 @@ export async function releaseEscrow(orderId: string, reason?: string) {
     currency:      'USD',
     status:        'completed',
     orderId,
-    description:   `Stripe processing fee for order ${orderId}: 2.9% + $0.30 = $${fees.stripeFee.toFixed(2)} (absorbed by platform)`,
+    description:   `Payment processing fee for order ${orderId}: ~1.4% of $${txn.amount.toFixed(2)} = $${fees.stripeFee.toFixed(2)} (absorbed by platform)`,
     metadata: { stripeRate: FEES.STRIPE_RATE * 100 },
   });
 }

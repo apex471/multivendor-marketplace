@@ -3,6 +3,7 @@ import { User, UserRole } from '@/backend/models/User';
 import { generateToken } from '@/backend/utils/jwt';
 import { validateSignupInput, sanitizeInput } from '@/backend/utils/validation';
 import { sendVerificationEmail, sendAdminNotificationEmail } from '@/backend/utils/email';
+import { ReferralCode } from '@/backend/models/ReferralCode';
 import {
   sendSuccess,
   sendError,
@@ -31,11 +32,26 @@ export async function POST(request: NextRequest) {
     const socialLinks: Record<string, string> | undefined = body.socialLinks || undefined;
     const businessCity: string | undefined = body.businessCity || undefined;
     const businessState: string | undefined = body.businessState || undefined;
+    // Referral code (optional — passed as ?ref=CODE or in body.referralCode)
+    const referralCodeRaw: string | undefined = body.referralCode || undefined;
 
     // Check if email already exists
     const existing = await User.findOne({ email });
     if (existing) {
       return sendError('User with this email already exists', 409, { email: 'Email is already registered' });
+    }
+
+    // Validate referral code (if provided)
+    let validatedReferralCode: string | undefined = undefined;
+    let referralCodeDocId: string | undefined = undefined;
+    if (referralCodeRaw) {
+      const normalizedCode = referralCodeRaw.toUpperCase().trim();
+      const refDoc = await ReferralCode.findByCode(normalizedCode);
+      if (refDoc && refDoc.isActive) {
+        validatedReferralCode = normalizedCode;
+        referralCodeDocId = refDoc.id!;
+      }
+      // If code is invalid/inactive, we silently ignore it (don't block signup)
     }
 
     let subdomain: string | undefined = undefined;
@@ -70,11 +86,19 @@ export async function POST(request: NextRequest) {
       ...(socialLinks ? { socialLinks } : {}),
       ...(businessCity ? { businessCity } : {}),
       ...(businessState ? { businessState } : {}),
+      ...(validatedReferralCode ? { referredByCode: validatedReferralCode } : {}),
       applicationStatus: 'approved',
       isEmailVerified: false,
       isPhoneVerified: false,
       isActive: true,
     });
+
+    // Increment referral code signup count (non-blocking)
+    if (referralCodeDocId) {
+      ReferralCode.incrementSignups(referralCodeDocId).catch(err =>
+        console.error('[Signup] Failed to increment referral signups:', err)
+      );
+    }
 
     // Generate and save OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();

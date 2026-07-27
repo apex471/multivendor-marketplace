@@ -1,10 +1,11 @@
 import { db, docToObject } from '@/backend/config/firebase';
 
 export type TransactionType =
-  | 'order_payment'       // buyer charge — includes subtotal + 5% service fee + shipping + tax
-  | 'escrow_release'      // vendor payout after escrow period — subtotal minus 5% seller fee
-  | 'platform_fee'        // admin revenue record: 5% buyer + 5% seller = 10% gross
-  | 'stripe_fee'          // stripe processing fee absorbed by platform (2.9%)
+  | 'order_payment'       // buyer charge — includes subtotal + 10% service fee + shipping + tax
+  | 'escrow_release'      // vendor payout after escrow period — subtotal minus 10% seller fee
+  | 'platform_fee'        // admin revenue record: 10% buyer + 10% seller = 20% gross
+  | 'stripe_fee'          // payment processing fee absorbed by platform (~1.4%)
+  | 'affiliate_payout'    // 5% commission credited to affiliate's wallet on escrow release
   | 'refund'
   | 'commission_payout'
   | 'withdrawal'
@@ -19,21 +20,27 @@ export interface ITransaction {
   amount: number;
   currency: string;
   status: TransactionStatus;
-  fromUser?: string;    // buyer userId for order_payment / vendor userId for escrow_release
-  toUser?: string;      // vendor userId for escrow_release / admin for platform_fee
+  fromUser?: string;      // buyer userId for order_payment / vendor userId for escrow_release
+  toUser?: string;        // vendor userId for escrow_release / admin for platform_fee / affiliate userId for affiliate_payout
   orderId?: string;
   description: string;
+  /** Referral code that was applied (present on affiliate_payout and platform_fee records) */
+  affiliateCode?: string;
+  /** Firestore userId of the affiliate who owns the referral code */
+  affiliateUserId?: string;
   // Fee breakdown fields (present on order_payment records)
   feeBreakdown?: {
     subtotal: number;
-    buyerServiceFee: number;  // 5% from buyer
-    sellerFee: number;        // 5% from seller (deducted at payout)
+    buyerServiceFee: number;  // 10% from buyer
+    sellerFee: number;        // 10% from seller (deducted at payout)
     shipping: number;
     tax: number;
-    stripeFee: number;        // 2.9% absorbed by platform
+    stripeFee: number;        // ~1.4% absorbed by platform
     vendorPayout: number;     // subtotal − sellerFee
-    platformGross: number;    // buyerServiceFee + sellerFee
-    platformNet: number;      // platformGross − stripeFee
+    platformGross: number;    // buyerServiceFee + sellerFee (20%)
+    affiliateFee: number;     // 5% of subtotal if referred, else 0
+    adminNet: number;         // platformGross − affiliateFee − stripeFee
+    platformNet: number;      // platformGross − stripeFee (backward compat)
   };
   metadata?: Record<string, unknown>;
   createdAt?: Date;
