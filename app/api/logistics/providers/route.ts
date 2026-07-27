@@ -87,3 +87,34 @@ export async function GET(req: NextRequest) {
     return sendServerError(err instanceof Error ? err.message : 'Failed to load providers');
   }
 }
+
+// ─── PATCH /api/logistics/providers ──────────────────────────────────────────
+// Vendors/brands can save their preferred logistics provider to their profile.
+export async function PATCH(req: NextRequest) {
+  const payload = getAuth(req);
+  if (!payload) return sendError('Unauthorized', 401);
+  if (payload.role !== 'vendor' && payload.role !== 'brand') {
+    return sendError('Only vendors and brand owners can select a provider', 403);
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { selectedProviderId, selectedProviderName } = body as {
+      selectedProviderId?: string;
+      selectedProviderName?: string;
+    };
+
+    if (!selectedProviderId) return sendError('selectedProviderId is required', 400);
+
+    await db.collection('users').doc(payload.userId).update({
+      selectedLogisticsProviderId:   selectedProviderId,
+      selectedLogisticsProviderName: selectedProviderName ?? null,
+      selectedLogisticsAt:           new Date().toISOString(),
+    });
+
+    return sendSuccess({ selectedProviderId, selectedProviderName }, 'Preferred logistics provider saved');
+  } catch (err) {
+    console.error('[Logistics/Providers PATCH]', err);
+    return sendServerError('Failed to save provider preference');
+  }
+}

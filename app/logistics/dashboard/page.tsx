@@ -195,6 +195,9 @@ export default function LogisticsDashboard() {
   const [toastMsg,        setToastMsg]        = useState('');
   const [deliveredFlash,  setDeliveredFlash]  = useState(false);
   const [applicationStatus, setApplicationStatus] = useState<string>('approved');
+  const [onTimeRate, setOnTimeRate]   = useState<number | null>(null);
+  const [ratingScore, setRatingScore] = useState<number | null>(null);
+  const [acceptanceRate, setAcceptanceRate] = useState<number | null>(null);
 
   // ── Location state ───────────────────────────────────────────────────────
   const [locPermission, setLocPermission] = useState<LocPermission>('prompt');
@@ -233,6 +236,10 @@ export default function LogisticsDashboard() {
           if (s?.todayDeliveries > 0) setTodayDeliveries(s.todayDeliveries);
           if (s?.monthRevenue    > 0) setMonthEarnings(s.monthRevenue);
           if (s?.weekRevenue     > 0) setWeekEarnings(s.weekRevenue);
+          // Real performance metrics from dashboard API
+          if (s?.onTimeRate     != null) setOnTimeRate(s.onTimeRate);
+          if (s?.ratingScore    != null) setRatingScore(s.ratingScore);
+          if (s?.acceptanceRate != null) setAcceptanceRate(s.acceptanceRate);
         }
       })
       .catch(() => {});
@@ -363,31 +370,13 @@ export default function LogisticsDashboard() {
               setLocPermission('denied');
               setLocError('Location denied. Enable it in browser settings.');
             } else {
-              // Attempt 3: Graceful fallback to a default/simulated location so the app is not blocked
-              console.warn('Both GPS attempts failed. Falling back to default location.');
-              const fallbackLat = 6.5244; // Default lagos center or similar
-              const fallbackLng = 3.3792;
-              const area = await reverseGeocode(fallbackLat, fallbackLng);
-              const loc: DriverLocation = {
-                lat: fallbackLat,
-                lng: fallbackLng,
-                accuracy: 100,
-                heading: null,
-                speed: null,
-                area: area || 'Default Location',
-                updatedAt: new Date().toISOString(),
-              };
-              setLocPermission('granted');
-              setDriverLoc(loc);
-              const token = getAuthToken() ?? '';
-              if (token) {
-                fetch('/api/logistics/location', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                  body: JSON.stringify(loc),
-                }).catch(() => {});
-              }
-              beginWatch(fallbackLat, fallbackLng);
+              // Both GPS attempts failed — surface a clear error, do NOT use fake coordinates
+              setLocPermission('prompt');
+              setLocError(
+                err2.code === 2
+                  ? 'GPS signal unavailable. Move to a location with better coverage and try again.'
+                  : 'Location timed out. Please try again.'
+              );
             }
           },
           { enableHighAccuracy: false, timeout: 15000 }
@@ -1220,18 +1209,14 @@ export default function LogisticsDashboard() {
             {/* Today summary */}
             <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5">
               <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-4 font-semibold">Today</p>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div>
                   <p className="text-2xl font-black text-yellow-400">${todayEarnings.toFixed(2)}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">Earned</p>
                 </div>
-                <div className="border-x border-gray-700">
+                <div className="border-l border-gray-700">
                   <p className="text-2xl font-black text-white">{todayDeliveries}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">Deliveries</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-white">98%</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">On-Time</p>
                 </div>
               </div>
             </div>
@@ -1377,21 +1362,25 @@ export default function LogisticsDashboard() {
 
             <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 space-y-4">
               <p className="text-sm font-bold text-white">Performance</p>
-              {[
-                { label: 'On-Time Rate',          value: '98.5%', pct: 98.5, color: 'bg-green-500' },
-                { label: 'Customer Satisfaction', value: '4.9 / 5', pct: 98, color: 'bg-yellow-500' },
-                { label: 'Acceptance Rate',       value: '87%',   pct: 87,   color: 'bg-blue-500'  },
-              ].map(m => (
-                <div key={m.label}>
-                  <div className="flex justify-between mb-1.5">
-                    <span className="text-xs text-gray-400">{m.label}</span>
-                    <span className="text-xs font-bold text-white">{m.value}</span>
+              {onTimeRate == null && ratingScore == null && acceptanceRate == null ? (
+                <p className="text-xs text-gray-500 text-center py-4">Performance data loading…</p>
+              ) : (
+                [
+                  { label: 'On-Time Rate',          value: onTimeRate     != null ? `${onTimeRate.toFixed(1)}%`       : '—', pct: onTimeRate     ?? 0,  color: 'bg-green-500'  },
+                  { label: 'Customer Satisfaction', value: ratingScore    != null ? `${ratingScore.toFixed(1)} / 5`   : '—', pct: ratingScore    != null ? (ratingScore / 5) * 100 : 0, color: 'bg-yellow-500' },
+                  { label: 'Acceptance Rate',       value: acceptanceRate != null ? `${acceptanceRate.toFixed(1)}%` : '—', pct: acceptanceRate ?? 0,  color: 'bg-blue-500'   },
+                ].map(m => (
+                  <div key={m.label}>
+                    <div className="flex justify-between mb-1.5">
+                      <span className="text-xs text-gray-400">{m.label}</span>
+                      <span className="text-xs font-bold text-white">{m.value}</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className={`h-full ${m.color} rounded-full transition-all`} style={{ width: `${m.pct}%` }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                    <div className={`h-full ${m.color} rounded-full transition-all`} style={{ width: `${m.pct}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

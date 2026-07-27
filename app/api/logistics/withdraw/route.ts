@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { db } from '@/backend/config/firebase';
 import { Transaction } from '@/backend/models/Transaction';
 import { User } from '@/backend/models/User';

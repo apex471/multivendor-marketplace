@@ -162,9 +162,11 @@ interface ProviderCardProps {
   provider: ReturnType<typeof useLogistics>['logisticProviders'][number];
   onSelect: () => void;
   isSelected: boolean;
+  onBeepSuccess: (msg: string) => void;
+  onBeepError:   (msg: string) => void;
 }
 
-function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
+function ProviderCard({ provider, onSelect, isSelected, onBeepSuccess, onBeepError }: ProviderCardProps) {
   return (
     <div
       className={`bg-white dark:bg-charcoal-800 rounded-2xl border-2 transition-all hover:shadow-lg ${
@@ -284,19 +286,23 @@ function ProviderCard({ provider, onSelect, isSelected }: ProviderCardProps) {
           {!provider.isOnline && (
             <button
               onClick={async () => {
-                const token = getAuthToken();
-                if (!token) return;
-                try {
-                  const res = await fetch(`/api/logistics/providers/${provider.id}/beep`, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
-                  const json = await res.json();
-                  alert(json.message);
-                } catch {
-                  alert('Failed to ping provider');
+              const token = getAuthToken();
+              if (!token) return;
+              try {
+                const res = await fetch(`/api/logistics/providers/${provider.id}/beep`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                const json = await res.json();
+                if (res.ok) {
+                  onBeepSuccess(json.message || 'Provider pinged successfully');
+                } else {
+                  onBeepError(json.message || 'Failed to ping provider');
                 }
-              }}
+              } catch {
+                onBeepError('Network error — could not ping provider');
+              }
+            }}
               className="w-full py-2 bg-gold-500/10 hover:bg-gold-500/20 text-gold-700 dark:text-gold-400 border border-gold-500/20 hover:border-gold-500/35 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
             >
               🔔 Ping Provider to Come Online
@@ -323,6 +329,12 @@ export default function LogisticsProvidersPage() {
   const [referralUrl, setReferralUrl] = useState('');
   const [selectedId, setSelectedId] = useState<string>(selectedLogistics?.providerId || '');
   const [selectSuccessMsg, setSelectSuccessMsg] = useState('');
+  const [beepToast, setBeepToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const showBeepToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setBeepToast({ msg, type });
+    setTimeout(() => setBeepToast(null), 3500);
+  };
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -344,6 +356,17 @@ export default function LogisticsProvidersPage() {
   };
 
   const handleSelectProvider = async (provider: typeof logisticProviders[number]) => {
+    const token = getAuthToken();
+    // Persist to backend so the preference survives refresh
+    if (token) {
+      try {
+        await fetch('/api/logistics/providers', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ selectedProviderId: provider.id, selectedProviderName: provider.name }),
+        });
+      } catch { /* non-critical — context still updates locally */ }
+    }
     await selectLogistics(provider);
     setSelectedId(provider.id);
     setSelectSuccessMsg(`${provider.name} is now your preferred logistics partner.`);
@@ -400,6 +423,14 @@ export default function LogisticsProvidersPage() {
   return (
     <>
       <Header />
+
+      {/* Beep toast */}
+      {beepToast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium transition-all
+          ${beepToast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+          {beepToast.msg}
+        </div>
+      )}
 
       <main className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-950">
         {/* Page Header */}
@@ -525,6 +556,8 @@ export default function LogisticsProvidersPage() {
                   provider={provider}
                   isSelected={selectedId === provider.id}
                   onSelect={() => handleSelectProvider(provider)}
+                  onBeepSuccess={(msg) => showBeepToast(msg, 'success')}
+                  onBeepError={(msg)   => showBeepToast(msg, 'error')}
                 />
               ))}
             </div>
