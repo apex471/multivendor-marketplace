@@ -171,10 +171,13 @@ export async function POST(request: NextRequest) {
         const order = await Order.findByOrderId(orderId);
         if (order && order.status !== 'completed') {
           await Order.updateOne(order.id!, { status: 'completed', paymentStatus: 'paid' });
-          const OrderStore = await import('@/lib/store/orders');
-          OrderStore.update(orderId, { status: 'completed', paymentStatus: 'paid' });
+          // NOTE: OrderStore (in-memory) intentionally removed — it was a legacy
+          // mock that crashed on serverless environments. Firestore is the source of truth.
         }
-      } catch {}
+      } catch (orderErr) {
+        // Non-critical — log but don't fail the escrow release
+        console.warn('[Escrow] Order status update failed (non-critical):', orderErr);
+      }
 
       return sendSuccess(
         {
@@ -205,7 +208,8 @@ export async function POST(request: NextRequest) {
       'Escrow refunded to customer successfully'
     );
   } catch (err) {
-    console.error('Admin escrow POST error:', err);
-    return sendServerError('Failed to process escrow action');
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('[Admin Escrow] POST error:', errMsg, err);
+    return sendServerError(`Failed to process escrow action: ${errMsg}`);
   }
 }

@@ -30,19 +30,21 @@ interface Transaction {
 }
 
 interface PlatformStats {
-  grossRevenue: number;
-  stripeFees: number;
-  netRevenue: number;
-  buyerFeeRate: number;
-  sellerFeeRate: number;
-  stripeFeeRate: number;
+  grossRevenue:    number;
+  stripeFees:      number;
+  adminNetRevenue: number;
+  affiliatesPaid:  number;
+  buyerFeeRate:    number;
+  sellerFeeRate:   number;
+  affiliateRate:   number;
+  stripeFeeRate:   number;
 }
 
 interface EscrowData {
-  transactions: Transaction[];
-  pagination: { total: number };
-  counts: { pending: number; completed: number; refunded: number; };
-  totalHeld: number;
+  transactions:  Transaction[];
+  pagination:    { total: number };
+  counts:        { pending: number; completed: number; refunded: number; };
+  totalHeld:     number;
   platformStats?: PlatformStats;
 }
 
@@ -106,7 +108,7 @@ export default function EscrowManagementPage() {
     finally { setActionLoading(null); }
   };
 
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const fmt = (n: number | undefined | null) => `$${(n ?? 0).toFixed(2)}`;
   const ps = escrow?.platformStats;
 
   return (
@@ -139,11 +141,11 @@ export default function EscrowManagementPage() {
             </div>
             <div className="bg-charcoal-900 rounded-xl p-4 text-center">
               <div className="text-xs text-cool-gray-500 uppercase mb-1">Net Margin</div>
-              <div className="text-2xl font-bold text-green-400">{Math.max(0, ps.sellerFeeRate - ps.stripeFeeRate).toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-green-400">{Math.max(0, (ps.sellerFeeRate ?? 0) - (ps.stripeFeeRate ?? 0)).toFixed(1)}%</div>
               <div className="text-[10px] text-cool-gray-600 mt-1">per transaction</div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
             <div className="bg-charcoal-700/50 rounded-lg p-3">
               <div className="text-xs text-cool-gray-400 mb-0.5">Gross Revenue</div>
               <div className="text-lg font-bold text-white">{fmt(ps.grossRevenue)}</div>
@@ -152,9 +154,15 @@ export default function EscrowManagementPage() {
               <div className="text-xs text-cool-gray-400 mb-0.5">Payment Fees (FLW)</div>
               <div className="text-lg font-bold text-red-400">−{fmt(ps.stripeFees)}</div>
             </div>
+            {(ps.affiliatesPaid ?? 0) > 0 && (
+              <div className="bg-blue-900/30 border border-blue-800/40 rounded-lg p-3">
+                <div className="text-xs text-blue-400 mb-0.5">Affiliate Payouts</div>
+                <div className="text-lg font-bold text-blue-300">−{fmt(ps.affiliatesPaid)}</div>
+              </div>
+            )}
             <div className="bg-green-900/30 border border-green-800/40 rounded-lg p-3">
-              <div className="text-xs text-green-400 mb-0.5">Net Revenue</div>
-              <div className="text-lg font-bold text-green-300">{fmt(ps.netRevenue)}</div>
+              <div className="text-xs text-green-400 mb-0.5">Admin Net Revenue</div>
+              <div className="text-lg font-bold text-green-300">{fmt(ps.adminNetRevenue)}</div>
             </div>
           </div>
         </div>
