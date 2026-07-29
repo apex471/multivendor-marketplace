@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     if (!mediaUrls?.length) return sendError('At least one media URL is required', 400);
 
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours (Archived after 48 hours)
 
     const story = await Story.create({
       authorId:     payload.userId,

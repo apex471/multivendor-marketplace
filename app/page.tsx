@@ -22,6 +22,132 @@ interface Post {
   comments?: number;
 }
 
+interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
+interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; }
+
+// ── Story Viewer Modal ────────────────────────────────────────────────────────
+function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) {
+  const [idx, setIdx]       = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [msgText, setMsgText] = useState('');
+  const total = story.mediaUrls.length || 1;
+
+  useEffect(() => {
+    setProgress(0);
+    const start = Date.now();
+    const duration = 5000;
+    const frame = () => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min((elapsed / duration) * 100, 100);
+      setProgress(pct);
+      if (pct < 100) requestAnimationFrame(frame);
+      else {
+        if (idx < total - 1) setIdx(i => i + 1);
+        else onClose();
+      }
+    };
+    const raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [idx, total, onClose]);
+
+  const media = story.mediaUrls[idx];
+  
+  // Format story creation time dynamically
+  const timeString = (() => {
+    if (!story.createdAt) return 'Just now';
+    try {
+      const diffMs = Date.now() - new Date(story.createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHrs = Math.floor(diffMins / 60);
+      if (diffHrs < 24) return `${diffHrs}h ago`;
+      return `${Math.floor(diffHrs / 24)}d ago`;
+    } catch {
+      return 'Just now';
+    }
+  })();
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-charcoal-950 flex items-center justify-center"
+      onClick={onClose}>
+      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
+        onClick={e => e.stopPropagation()}>
+        {/* Top Section overlays */}
+        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent">
+          {/* Progress bars */}
+          <div className="flex gap-1 mb-3">
+            {Array.from({ length: total }).map((_, i) => (
+              <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
+                <div className="h-full bg-white rounded-full transition-none"
+                  style={{ width: i < idx ? '100%' : i === idx ? `${progress}%` : '0%' }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/60">
+              <div className="w-full h-full bg-charcoal-700 rounded-full overflow-hidden relative">
+                {story.author.avatar ? (
+                  <Image src={story.author.avatar} alt={story.author.name} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gold-600 flex items-center justify-center text-white font-bold text-xs">
+                    {(story.author.name || story.author.username || '?')[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm leading-none">{story.author.name || story.author.username}</p>
+              <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
+            </div>
+            <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Media Content - Scaled aspect ratio */}
+        <div className="relative flex-1 w-full h-full flex items-center justify-center">
+          {media ? (
+            <Image src={media} alt="Story content" fill className="object-contain" priority />
+          ) : (
+            <div className="absolute inset-0 bg-linear-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
+              <span className="text-6xl text-white">✦</span>
+            </div>
+          )}
+
+          {/* Tap zones overlay */}
+          <div className="absolute inset-0 flex z-10">
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => setIdx(i => Math.max(0, i - 1))} />
+            <div className="w-1/3 h-full" />
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (idx < total - 1) setIdx(i => i + 1); else onClose(); }} />
+          </div>
+        </div>
+
+        {/* Bottom Actions Overlay */}
+        <div className="p-4 bg-gradient-to-t from-black/80 to-transparent z-20">
+          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-full px-4 py-2.5">
+            <input
+              type="text"
+              placeholder="Reply to story..."
+              value={msgText}
+              onChange={e => setMsgText(e.target.value)}
+              className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
+            />
+            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">❤️</button>
+            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">✦</button>
+            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">📤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Vendor {
   id: string;
   name: string;
@@ -66,6 +192,8 @@ export default function Home() {
   const [vendors,  setVendors]  = useState<Vendor[]>([]);
   const [brands,   setBrands]   = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stories,  setStories]  = useState<any[]>([]);
+  const [activeStory, setActiveStory] = useState<any | null>(null);
 
   const brandsRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
@@ -88,11 +216,13 @@ export default function Home() {
       fetch('/api/vendors?limit=4').then(r => r.json()).catch(() => ({})),
       fetch('/api/brands?limit=6').then(r => r.json()).catch(() => ({})),
       fetch('/api/products?limit=18&sort=popular').then(r => r.json()).catch(() => ({})),
-    ]).then(([postsRes, vendorsRes, brandsRes, productsRes]) => {
+      fetch('/api/stories?limit=15').then(r => r.json()).catch(() => ({})),
+    ]).then(([postsRes, vendorsRes, brandsRes, productsRes, storiesRes]) => {
       if (postsRes?.data?.posts)    setPosts(postsRes.data.posts);
       if (vendorsRes?.data?.vendors) setVendors(vendorsRes.data.vendors);
       if (brandsRes?.data?.brands)  setBrands(brandsRes.data.brands);
       if (productsRes?.data?.products) setProducts(productsRes.data.products);
+      if (storiesRes?.data?.stories) setStories(storiesRes.data.stories);
     });
   }, []);
 
@@ -238,36 +368,42 @@ export default function Home() {
       </section>
 
       {/* Stories Section */}
-      <section className="bg-white dark:bg-charcoal-900 border-b border-cool-gray-200 dark:border-charcoal-800">
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-            {vendors.slice(0, 6).map((vendor, i) => (
-              <button
-                key={vendor.id}
-                onClick={() => router.push(`/vendors/${vendor.id}`)}
-                className="shrink-0 text-center group touch-manipulation"
-              >
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
-                  <div className={`absolute inset-0 rounded-full ${i % 2 === 0 ? 'bg-linear-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-gray-300'} p-[2.5px] sm:p-[3px]`}>
-                    <div className="w-full h-full rounded-full bg-white dark:bg-charcoal-900 p-[2px] sm:p-[3px]">
-                      {vendor.avatar ? (
-                        <Image src={vendor.avatar} alt={vendor.name} width={80} height={80} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full rounded-full bg-gold-100 dark:bg-charcoal-800 flex items-center justify-center text-lg font-bold text-gold-600">
-                          {vendor.name.charAt(0)}
+      {stories.length > 0 && (
+        <section className="bg-white dark:bg-charcoal-900 border-b border-cool-gray-200 dark:border-charcoal-800">
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+              {stories.map((story) => (
+                <button
+                  key={story.id}
+                  onClick={() => setActiveStory(story)}
+                  className="shrink-0 text-center group touch-manipulation flex flex-col items-center"
+                >
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
+                    <div className="absolute inset-0 rounded-full bg-linear-to-tr from-gold-400 via-gold-600 to-gold-800 p-[2.5px] group-hover:from-gold-300 group-hover:to-gold-700 transition-all duration-200">
+                      <div className="w-full h-full rounded-full bg-white dark:bg-charcoal-950 p-[2px]">
+                        <div className="w-full h-full rounded-full overflow-hidden relative bg-charcoal-700">
+                          {story.author.avatar ? (
+                            <Image src={story.author.avatar} alt={story.author.username} fill className="object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm bg-gold-600">
+                              {(story.author.name || story.author.username || '?')[0].toUpperCase()}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <p className="text-[10px] sm:text-xs text-charcoal-700 dark:text-cool-gray-300 truncate w-16 sm:w-20 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">
-                  {vendor.name.split(' ')[0]}
-                </p>
-              </button>
-            ))}
+                  <p className="text-[10px] sm:text-xs text-charcoal-700 dark:text-cool-gray-300 truncate w-16 sm:w-20 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">
+                    {story.author.username || story.author.name}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12 md:py-16">
