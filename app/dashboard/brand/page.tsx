@@ -1146,15 +1146,21 @@ export default function BrandDashboard() {
                         <label className="block text-xs font-bold text-cool-gray-400 uppercase tracking-wider mb-1">
                           Amount to Withdraw ($)
                         </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={payoutAmount}
-                          onChange={e => setPayoutAmount(e.target.value)}
-                          max={walletBalance}
-                          className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-semibold"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={payoutAmount}
+                            onChange={e => setPayoutAmount(e.target.value)}
+                            className="flex-1 px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-gold-500 text-sm font-semibold"
+                          />
+                          <button type="button" onClick={() => setPayoutAmount(walletBalance.toFixed(2))}
+                            className="px-3 py-2.5 bg-charcoal-600 hover:bg-charcoal-500 text-cool-gray-300 text-xs font-bold rounded-xl transition-colors whitespace-nowrap">
+                            Use Max
+                          </button>
+                        </div>
                         <p className="text-[11px] text-cool-gray-400 mt-1">
                           Available: {formatPrice(walletBalance)}
                         </p>
