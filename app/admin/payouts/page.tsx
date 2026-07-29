@@ -50,6 +50,7 @@ export default function AdminPayoutsPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [flwConfigured, setFlwConfigured] = useState<boolean>(true); // Dynamic check
 
   const [statusFilter, setStatusFilter] = useState('pending');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -90,6 +91,7 @@ export default function AdminPayoutsPage() {
       let fetched = json.data.payouts as PayoutRequest[];
       if (roleFilter !== 'all') fetched = fetched.filter(p => p.user?.role === roleFilter);
       setPayouts(fetched);
+      setFlwConfigured(!!json.data.flutterwaveKeyConfigured);
     } catch (err) {
       console.error(err);
       setError('Failed to load payout requests.');
@@ -194,21 +196,23 @@ export default function AdminPayoutsPage() {
       </div>
 
       {/* Manual Transfer Warning Banner */}
-      <div className="bg-amber-950/30 border border-amber-700/50 rounded-2xl p-5">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl shrink-0">⚠️</span>
-          <div>
-            <p className="text-amber-300 font-bold text-sm mb-1">Flutterwave Withdrawal Unavailable — Use Manual Bank Transfer</p>
-            <p className="text-amber-200/70 text-xs leading-relaxed">
-              Your Flutterwave collection balance has funds but the automatic NGN static account is failing.
-              <strong className="text-amber-200"> To process payouts:</strong>{' '}
-              1) Open your bank app and send the NGN amount shown to the vendor&apos;s account,{' '}
-              2) Click <strong className="text-blue-300">&quot;Mark as Manually Paid&quot;</strong> and enter your transfer reference.
-              The vendor&apos;s dashboard will update immediately.
-            </p>
+      {!flwConfigured && (
+        <div className="bg-amber-950/30 border border-amber-700/50 rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div>
+              <p className="text-amber-300 font-bold text-sm mb-1">Flutterwave Withdrawal Unavailable — Use Manual Bank Transfer</p>
+              <p className="text-amber-200/70 text-xs leading-relaxed">
+                Your Flutterwave collection balance has funds but the automatic NGN static account is failing.
+                <strong className="text-amber-200"> To process payouts:</strong>{' '}
+                1) Open your bank app and send the NGN amount shown to the vendor&apos;s account,{' '}
+                2) Click <strong className="text-blue-300">&quot;Mark as Manually Paid&quot;</strong> and enter your transfer reference.
+                The vendor&apos;s dashboard will update immediately.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

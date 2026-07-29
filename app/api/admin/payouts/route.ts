@@ -62,7 +62,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return sendSuccess({ payouts: populatedPayouts });
+    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    return sendSuccess({ 
+      payouts: populatedPayouts,
+      flutterwaveKeyConfigured: !!flwSecretKey
+    });
   } catch (err) {
     console.error('[Admin Payouts GET]', err);
     return sendServerError('Failed to fetch payout requests');
