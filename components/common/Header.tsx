@@ -49,20 +49,45 @@ export default function Header() {
       .then(r => r.json())
       .then(json => {
         if (!json.success) return;
-        setNotifications((json.data.notifications ?? []).map((n: Record<string, unknown>) => ({
+        const newNotifs = (json.data.notifications ?? []).map((n: Record<string, unknown>) => ({
           id:   String(n.id),
           text: (n.text ?? n.message ?? '') as string,
           time: new Date((n.createdAt as string) ?? Date.now()).toLocaleDateString(),
           read: (n.isRead ?? false) as boolean,
           link: (n.link ?? null) as string | null,
-        })));
+        }));
+        
+        // Push notification logic for unread updates
+        if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+          const unread = newNotifs.filter((n: any) => !n.read);
+          if (unread.length > 0) {
+            // Only trigger push for notifications that aren't already loaded/seen in state
+            unread.forEach((n: any) => {
+              const exists = notifications.some(old => old.id === n.id);
+              if (!exists) {
+                new window.Notification("New Notification | CLW", {
+                  body: n.text,
+                  icon: "/apple-icon.png",
+                });
+              }
+            });
+          }
+        }
+        setNotifications(newNotifs);
       })
       .catch(() => { /* non-critical */ });
   };
 
   useEffect(() => {
+    // Request push notification permission
+    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
+    }
     loadNotifications();
-  }, []); // mount-only — intentional
+    // Poll for notifications periodically to fire push warnings if tab is inactive
+    const pollNotifs = setInterval(loadNotifications, 20_000);
+    return () => clearInterval(pollNotifs);
+  }, [notifications]); // runs with notifications context to evaluate exists state correctly
 
   const handleNotificationClick = () => {
     setNotificationsOpen(prev => {

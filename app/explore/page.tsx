@@ -67,13 +67,13 @@ export default function ExplorePage() {
       const json = await res.json();
       if (!json.success) return;
       const mapped: TrendingPost[] = (json.data.posts ?? []).map((p: {
-        _id: string; images?: string[]; likes: number; comments: number;
+        id?: string; _id?: string; images?: string[]; likes: number; comments: number;
         authorName?: string; authorAvatar?: string;
       }) => ({
-        id:       String(p._id),
+        id:       String(p.id ?? p._id ?? ''),
         image:    p.images?.[0] ?? null,
-        likes:    p.likes,
-        comments: p.comments,
+        likes:    p.likes ?? 0,
+        comments: p.comments ?? 0,
         user: {
           username: p.authorName ?? 'user',
           avatar:   p.authorAvatar ?? null,

@@ -405,9 +405,19 @@ function MessagesContent() {
 
                 {/* Input */}
                 <div className="p-3 sm:p-4 border-t border-cool-gray-100 dark:border-charcoal-700 shrink-0 bg-white dark:bg-charcoal-800">
-                  {sendError && (
-                    <p className="text-xs text-red-500 mb-2 px-1">{sendError}</p>
-                  )}
+                  {/* Themed Emoji Reactions Shortcut */}
+                  <div className="flex gap-2.5 mb-2.5 px-1">
+                    {['✨', '🔥', '👑', '💯', '❤️', '👍'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setMessageInput((prev) => prev + emoji)}
+                        className="text-sm p-1.5 rounded-lg bg-cool-gray-50 dark:bg-charcoal-700 hover:bg-gold-500/10 hover:text-gold-500 border border-cool-gray-200/60 dark:border-charcoal-600/80 active:scale-95 transition-all"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2 items-end">
                     <textarea
                       rows={1}

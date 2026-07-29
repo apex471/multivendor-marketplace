@@ -135,8 +135,9 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             onFocus={() => setIsPaused(true)}
             onBlur={() => setIsPaused(false)}
           />
-          <button className="text-white text-xl">❤️</button>
-          <button className="text-white text-xl">📤</button>
+          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">❤️</button>
+          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">✦</button>
+          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">📤</button>
         </div>
       </div>
     </div>
