@@ -124,9 +124,9 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
   })();
 
   return (
-    <div className="fixed inset-0 z-[100] bg-charcoal-950 flex items-center justify-center"
+    <div className="fixed inset-0 z-[100] bg-charcoal-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
       onClick={onClose}>
-      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
+      <div className="relative w-full max-w-2xl h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
         onClick={e => e.stopPropagation()}>
         {/* Top Section overlays */}
         <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent">
@@ -196,9 +196,9 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
               }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
-            <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">❤️</button>
-            <button type="button" onClick={() => handleSendStoryAction("✦")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">✦</button>
-            <button type="button" onClick={() => handleSendStoryAction(`Shared this story media: ${media}`)} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">📤</button>
+            <button type="button" onClick={() => handleSendStoryAction("👍")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Thumbs Up">👍</button>
+            <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Love">❤️</button>
+            <button type="button" onClick={() => handleSendStoryAction("💬")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Comment reply">💬</button>
           </div>
         </div>
       </div>
@@ -226,6 +226,7 @@ export default function FeedPage() {
   const [isCreatingPost,    setIsCreatingPost]    = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [activeStory,       setActiveStory]       = useState<Story | null>(null);
+  const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
   const storiesRef      = useRef<HTMLDivElement>(null);
@@ -599,23 +600,71 @@ export default function FeedPage() {
                   </div>
                 </div>
               ) : post.images.length > 0 && (
-                <Link href={`/post/${post.id}`}
-                  className={`grid gap-0.5 ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  {post.images.slice(0, 4).map((image, index) => (
-                    <div key={index}
-                      className={`relative overflow-hidden ${
-                        post.images.length === 1 ? 'aspect-4/3' :
-                        post.images.length === 3 && index === 0 ? 'col-span-2 aspect-video' : 'aspect-square'
-                      }`}>
-                      <Image src={image} alt={`Post ${index + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" />
-                      {post.images.length > 4 && index === 3 && (
-                        <div className="absolute inset-0 bg-charcoal-950/60 flex items-center justify-center text-white text-2xl font-bold">
-                          +{post.images.length - 4}
-                        </div>
-                      )}
+                <div className="relative group px-4 pb-3">
+                  {post.images.length === 1 ? (
+                    <Link href={`/post/${post.id}`} className="block relative rounded-xl overflow-hidden aspect-4/3 bg-charcoal-950">
+                      <Image src={post.images[0]} alt="Post image" fill className="object-cover hover:scale-105 transition-transform duration-500" />
+                    </Link>
+                  ) : (
+                    <div className="relative rounded-xl overflow-hidden aspect-4/3 bg-charcoal-950">
+                      {/* Slides container */}
+                      <div className="w-full h-full relative">
+                        <Image
+                          src={post.images[activeImageIndexes[post.id] ?? 0]}
+                          alt={`Post image ${(activeImageIndexes[post.id] ?? 0) + 1}`}
+                          fill
+                          className="object-cover transition-opacity duration-300"
+                        />
+                      </div>
+
+                      {/* Navigation buttons */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const currentIdx = activeImageIndexes[post.id] ?? 0;
+                          const prevIdx = (currentIdx - 1 + post.images.length) % post.images.length;
+                          setActiveImageIndexes(prev => ({ ...prev, [post.id]: prevIdx }));
+                        }}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const currentIdx = activeImageIndexes[post.id] ?? 0;
+                          const nextIdx = (currentIdx + 1) % post.images.length;
+                          setActiveImageIndexes(prev => ({ ...prev, [post.id]: nextIdx }));
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                      >
+                        ›
+                      </button>
+
+                      {/* Dot indicators */}
+                      <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 z-10">
+                        {post.images.map((_, dotIdx) => (
+                          <button
+                            key={dotIdx}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveImageIndexes(prev => ({ ...prev, [post.id]: dotIdx }));
+                            }}
+                            className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                              (activeImageIndexes[post.id] ?? 0) === dotIdx ? 'bg-gold-500 scale-125' : 'bg-white/50'
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Detail overlay link */}
+                      <Link href={`/post/${post.id}`} className="absolute inset-0 z-0 cursor-default" />
                     </div>
-                  ))}
-                </Link>
+                  )}
+                </div>
               )}
 
               {/* Tagged Product Card */}

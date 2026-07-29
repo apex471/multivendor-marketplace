@@ -108,9 +108,9 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
   })();
 
   return (
-    <div className="fixed inset-0 z-[100] bg-charcoal-950 flex items-center justify-center"
+    <div className="fixed inset-0 z-[100] bg-charcoal-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
       onClick={onClose}>
-      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
+      <div className="relative w-full max-w-2xl h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
         onClick={e => e.stopPropagation()}>
         {/* Top Section overlays */}
         <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent">
@@ -188,9 +188,9 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
               }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
-            <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">❤️</button>
-            <button type="button" onClick={() => handleSendStoryAction("✦")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">✦</button>
-            <button type="button" onClick={() => handleSendStoryAction(`Shared this story media: ${media}`)} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">📤</button>
+            <button type="button" onClick={() => handleSendStoryAction("👍")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Thumbs Up">👍</button>
+            <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Love">❤️</button>
+            <button type="button" onClick={() => handleSendStoryAction("💬")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg" title="Comment reply">💬</button>
           </div>
         </div>
       </div>
