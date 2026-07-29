@@ -40,6 +40,7 @@ export async function GET(
         id:        post.id,
         content:   post.content,
         images:    post.images ?? [],
+        videos:    post.videos ?? [],
         product:   post.product ?? null,
         hashtags:  post.hashtags ?? [],
         likes:     post.likes,

@@ -67,6 +67,34 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
     else router.back();
   };
 
+  const [msgText, setMsgText] = useState('');
+
+  const handleSendStoryAction = async (contentToSend: string) => {
+    if (!story) return;
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const convoRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: story.author.id, text: contentToSend })
+      });
+      const convoJson = await convoRes.json();
+      if (!convoRes.ok || !convoJson.success) return;
+
+      const convoId = convoJson.data.conversationId;
+      await fetch(`/api/messages/${convoId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: contentToSend })
+      });
+      setMsgText('');
+      alert("Sent! Your response has been sent to direct messages.");
+    } catch (err) {
+      console.error('Failed to send story response:', err);
+    }
+  };
+
   if (isLoading) {
     return <div className="fixed inset-0 bg-black flex items-center justify-center text-white text-xl">Loading...</div>;
   }
@@ -131,13 +159,20 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
           <input
             type="text"
             placeholder="Send message"
-            className="flex-1 bg-transparent text-white placeholder-white/50 outline-none"
+            value={msgText}
+            onChange={e => setMsgText(e.target.value)}
             onFocus={() => setIsPaused(true)}
             onBlur={() => setIsPaused(false)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && msgText.trim()) {
+                handleSendStoryAction(`Story reply: "${msgText.trim()}"`);
+              }
+            }}
+            className="flex-1 bg-transparent text-white placeholder-white/50 outline-none"
           />
-          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">❤️</button>
-          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">✦</button>
-          <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">📤</button>
+          <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">❤️</button>
+          <button type="button" onClick={() => handleSendStoryAction("✦")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">✦</button>
+          <button type="button" onClick={() => handleSendStoryAction(`Shared this story media: ${story.mediaUrls[currentIndex]}`)} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">📤</button>
         </div>
       </div>
     </div>

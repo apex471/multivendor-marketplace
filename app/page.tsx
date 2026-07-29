@@ -30,25 +30,64 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
   const [idx, setIdx]       = useState(0);
   const [progress, setProgress] = useState(0);
   const [msgText, setMsgText] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
   const total = story.mediaUrls.length || 1;
 
   useEffect(() => {
-    setProgress(0);
-    const start = Date.now();
+    if (isPaused) return;
+
+    const step = 20; // check interval in ms
     const duration = 5000;
-    const frame = () => {
-      const elapsed = Date.now() - start;
-      const pct = Math.min((elapsed / duration) * 100, 100);
-      setProgress(pct);
-      if (pct < 100) requestAnimationFrame(frame);
-      else {
-        if (idx < total - 1) setIdx(i => i + 1);
-        else onClose();
-      }
-    };
-    const raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [idx, total, onClose]);
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + (step / duration) * 100;
+        if (next >= 100) {
+          if (idx < total - 1) {
+            setIdx(i => i + 1);
+            return 0;
+          } else {
+            onClose();
+            return prev;
+          }
+        }
+        return next;
+      });
+    }, step);
+
+    return () => clearInterval(interval);
+  }, [idx, total, onClose, isPaused]);
+
+  useEffect(() => {
+    setProgress(0);
+  }, [idx]);
+
+  // Submit reaction / reply to vendor conversation
+  const handleSendStoryAction = async (contentToSend: string) => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      // Find or create direct message thread with story author
+      const convoRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: story.author.id, text: contentToSend })
+      });
+      const convoJson = await convoRes.json();
+      if (!convoRes.ok || !convoJson.success) return;
+
+      const convoId = convoJson.data.conversationId;
+      // Send story reply/reaction message inside Direct Messages thread
+      await fetch(`/api/messages/${convoId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: contentToSend })
+      });
+      setMsgText('');
+      alert("Sent! Your response has been sent to direct messages.");
+    } catch (err) {
+      console.error('Failed to send story response:', err);
+    }
+  };
 
   const media = story.mediaUrls[idx];
   
@@ -111,7 +150,11 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
         </div>
 
         {/* Media Content - Scaled aspect ratio */}
-        <div className="relative flex-1 w-full h-full flex items-center justify-center">
+        <div className="relative flex-1 w-full h-full flex items-center justify-center"
+          onMouseDown={() => setIsPaused(true)}
+          onMouseUp={() => setIsPaused(false)}
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}>
           {media ? (
             <Image src={media} alt="Story content" fill className="object-contain" priority />
           ) : (
@@ -136,11 +179,18 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
               placeholder="Reply to story..."
               value={msgText}
               onChange={e => setMsgText(e.target.value)}
+              onFocus={() => setIsPaused(true)}
+              onBlur={() => setIsPaused(false)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && msgText.trim()) {
+                  handleSendStoryAction(`Story reply: "${msgText.trim()}"`);
+                }
+              }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
-            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">❤️</button>
-            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">✦</button>
-            <button className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">📤</button>
+            <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">❤️</button>
+            <button type="button" onClick={() => handleSendStoryAction("✦")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">✦</button>
+            <button type="button" onClick={() => handleSendStoryAction(`Shared this story media: ${media}`)} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-lg">📤</button>
           </div>
         </div>
       </div>
