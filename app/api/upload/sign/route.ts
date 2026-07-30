@@ -93,10 +93,16 @@ export async function POST(request: NextRequest) {
       contentType: mimeType,
     });
 
+    // Generate a long-lived signed read URL for public viewing
+    const [readUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: '12-31-2050', // Expire in 2050
+    });
+
     return sendSuccess({
       provider: 'firebase',
       uploadUrl: signedUrl,
-      publicUrl: `https://storage.googleapis.com/${bucketName}/${dest}`,
+      publicUrl: readUrl,
       mimeType,
     });
 

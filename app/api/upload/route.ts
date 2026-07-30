@@ -68,14 +68,22 @@ async function uploadToFirebaseStorage(
     resumable: false,
   });
 
+  let publicUrl = `https://storage.googleapis.com/${bucketName}/${dest}`;
+
   // Make the object publicly readable (required for <img src=...>)
   try {
     await file.makePublic();
   } catch (publicErr) {
-    console.warn('[Upload] makePublic failed — file may still be readable via signed URL:', publicErr);
+    console.warn('[Upload] makePublic failed — generating signed URL fallback:', publicErr);
+    // Generate a long-lived signed URL as a fallback for Uniform bucket-level access
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: '12-31-2050',
+    });
+    publicUrl = signedUrl;
   }
 
-  return `https://storage.googleapis.com/${bucketName}/${dest}`;
+  return publicUrl;
 }
 
 
