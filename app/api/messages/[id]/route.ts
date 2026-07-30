@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { Conversation } from '@/backend/models/Conversation';
 import { Message } from '@/backend/models/Message';
+import { User } from '@/backend/models/User';
+import { Notification } from '@/backend/models/Notification';
 import { verifyToken } from '@/backend/utils/jwt';
 import {
   sendSuccess,
@@ -124,12 +126,10 @@ export async function POST(
     try {
       const recipientId = convo.participants.find((p) => p !== payload.userId);
       if (recipientId) {
-        const { User } = require('@/backend/models/User');
         const sender = await User.findById(payload.userId);
         const senderName = sender ? `${sender.firstName} ${sender.lastName ?? ''}`.trim() : 'Someone';
         const senderAvatar = sender?.avatar || '';
 
-        const { Notification } = require('@/backend/models/Notification');
         await Notification.create({
           recipientId,
           type: 'comment',
