@@ -686,86 +686,92 @@ export default function FeedPage() {
                 </Link>
               )}
 
-              {/* Post Video or Images */}
-              {post.videos && post.videos.length > 0 ? (
-                <div className="px-4 pb-3">
-                  <div className="relative rounded-xl overflow-hidden border border-cool-gray-200 dark:border-charcoal-800 bg-charcoal-950 aspect-4/3">
-                    <video
-                      src={post.videos[0]}
-                      className="w-full h-full object-cover"
-                      controls
-                      playsInline
-                      preload="metadata"
-                    />
-                  </div>
-                </div>
-              ) : post.images.length > 0 && (
-                <div className="relative group px-4 pb-3">
-                  {post.images.length === 1 ? (
-                    <Link href={`/post/${post.id}`} className="block relative rounded-xl overflow-hidden aspect-4/3 bg-charcoal-950">
-                      <Image src={post.images[0]} alt="Post image" fill className="object-cover hover:scale-105 transition-transform duration-500" />
-                    </Link>
-                  ) : (
+              {/* Post Video and/or Images Gallery */}
+              {(() => {
+                const mediaItems = [
+                  ...(post.videos || []).map(v => ({ type: 'video' as const, url: v })),
+                  ...(post.images || []).map(img => ({ type: 'image' as const, url: img }))
+                ];
+
+                if (mediaItems.length === 0) return null;
+
+                const activeIdx = activeImageIndexes[post.id] ?? 0;
+                const currentItem = mediaItems[activeIdx] || mediaItems[0];
+
+                return (
+                  <div className="relative group px-4 pb-3">
                     <div className="relative rounded-xl overflow-hidden aspect-4/3 bg-charcoal-950">
-                      {/* Slides container */}
-                      <div className="w-full h-full relative">
-                        <Image
-                          src={post.images[activeImageIndexes[post.id] ?? 0]}
-                          alt={`Post image ${(activeImageIndexes[post.id] ?? 0) + 1}`}
-                          fill
-                          className="object-cover transition-opacity duration-300"
-                        />
-                      </div>
+                      {currentItem.type === 'video' ? (
+                        <div className="w-full h-full relative">
+                          <video
+                            src={currentItem.url}
+                            className="w-full h-full object-cover"
+                            controls
+                            playsInline
+                            preload="metadata"
+                            key={currentItem.url}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full relative">
+                          <Image
+                            src={currentItem.url}
+                            alt="Post media"
+                            fill
+                            className="object-cover"
+                          />
+                          <Link href={`/post/${post.id}`} className="absolute inset-0 z-0" />
+                        </div>
+                      )}
 
                       {/* Navigation buttons */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const currentIdx = activeImageIndexes[post.id] ?? 0;
-                          const prevIdx = (currentIdx - 1 + post.images.length) % post.images.length;
-                          setActiveImageIndexes(prev => ({ ...prev, [post.id]: prevIdx }));
-                        }}
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const currentIdx = activeImageIndexes[post.id] ?? 0;
-                          const nextIdx = (currentIdx + 1) % post.images.length;
-                          setActiveImageIndexes(prev => ({ ...prev, [post.id]: nextIdx }));
-                        }}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                      >
-                        ›
-                      </button>
-
-                      {/* Dot indicators */}
-                      <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 z-10">
-                        {post.images.map((_, dotIdx) => (
+                      {mediaItems.length > 1 && (
+                        <>
                           <button
-                            key={dotIdx}
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveImageIndexes(prev => ({ ...prev, [post.id]: dotIdx }));
+                              const prevIdx = (activeIdx - 1 + mediaItems.length) % mediaItems.length;
+                              setActiveImageIndexes(prev => ({ ...prev, [post.id]: prevIdx }));
                             }}
-                            className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                              (activeImageIndexes[post.id] ?? 0) === dotIdx ? 'bg-gold-500 scale-125' : 'bg-white/50'
-                            }`}
-                          />
-                        ))}
-                      </div>
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const nextIdx = (activeIdx + 1) % mediaItems.length;
+                              setActiveImageIndexes(prev => ({ ...prev, [post.id]: nextIdx }));
+                            }}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-lg font-bold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                          >
+                            ›
+                          </button>
 
-                      {/* Detail overlay link */}
-                      <Link href={`/post/${post.id}`} className="absolute inset-0 z-0 cursor-default" />
+                          {/* Dot indicators */}
+                          <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5 z-10">
+                            {mediaItems.map((_, dotIdx) => (
+                              <button
+                                key={dotIdx}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveImageIndexes(prev => ({ ...prev, [post.id]: dotIdx }));
+                                }}
+                                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                                  activeIdx === dotIdx ? 'bg-gold-500 scale-125' : 'bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
 
               {/* Tagged Product Card */}
               {post.product && (

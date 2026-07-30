@@ -19,8 +19,7 @@ interface Comment {
 
 interface PostData {
   id: string;
-  image: string | null;
-  video: string | null;
+  mediaItems: { url: string; type: 'image' | 'video' }[];
   caption: string;
   user: { id: string; username: string; fullName: string; avatar: string | null; verified: boolean };
   location: string;
@@ -40,6 +39,7 @@ export default function PostDetailPage() {
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [post, setPost] = useState<PostData | null>(null);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
@@ -55,8 +55,10 @@ export default function PostDetailPage() {
         const p = json.data.post;
         setPost({
           id:            p.id,
-          image:         p.images?.[0] ?? null,
-          video:         p.videos?.[0] ?? null,
+          mediaItems: [
+            ...(p.videos ?? []).map((url: string) => ({ url, type: 'video' as const })),
+            ...(p.images ?? []).map((url: string) => ({ url, type: 'image' as const }))
+          ],
           caption:       p.content,
           user: {
             id:       String(p.author.id),
@@ -212,23 +214,67 @@ export default function PostDetailPage() {
           <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-lg overflow-hidden">
             <div className="grid lg:grid-cols-2">
               {/* Image/Video Section */}
-              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center w-full min-h-[300px]">
-                {post.video ? (
-                  <video
-                    src={post.video}
-                    className="w-full h-full object-cover"
-                    controls
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : post.image ? (
-                  <Image
-                    src={post.image}
-                    alt={post.caption}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
+              <div className="relative bg-charcoal-900 aspect-square lg:aspect-auto flex items-center justify-center w-full min-h-[300px] group">
+                {post.mediaItems && post.mediaItems.length > 0 ? (
+                  (() => {
+                    const currentMedia = post.mediaItems[activeMediaIndex] || post.mediaItems[0];
+                    return (
+                      <div className="w-full h-full relative flex items-center justify-center">
+                        {currentMedia.type === 'video' ? (
+                          <video
+                            src={currentMedia.url}
+                            className="w-full h-full object-contain animate-fade-in"
+                            controls
+                            playsInline
+                            preload="metadata"
+                            key={currentMedia.url}
+                          />
+                        ) : (
+                          <Image
+                            src={currentMedia.url}
+                            alt={post.caption}
+                            fill
+                            className="object-contain animate-fade-in"
+                            priority
+                          />
+                        )}
+
+                        {/* Navigation controls */}
+                        {post.mediaItems.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMediaIndex(prev => (prev - 1 + post.mediaItems.length) % post.mediaItems.length)}
+                              className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-xl font-bold shadow-md z-10"
+                            >
+                              ‹
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMediaIndex(prev => (prev + 1) % post.mediaItems.length)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white text-xl font-bold shadow-md z-10"
+                            >
+                              ›
+                            </button>
+
+                            {/* Indicators */}
+                            <div className="absolute bottom-4 inset-x-0 flex justify-center gap-1.5 z-10">
+                              {post.mediaItems.map((_, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setActiveMediaIndex(idx)}
+                                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                    activeMediaIndex === idx ? 'bg-gold-500 scale-125' : 'bg-white/50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <span className="text-charcoal-500 text-6xl">🖼️</span>
                 )}

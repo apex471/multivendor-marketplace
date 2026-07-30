@@ -1,4 +1,6 @@
 import { db, docToObject } from '@/backend/config/firebase';
+import { User } from './User';
+import { sendWebPush } from '../utils/webPush';
 
 export interface INotification {
   id?: string;
@@ -26,15 +28,14 @@ export const Notification = {
     // Fire web push in the background non-blockingly
     (async () => {
       try {
-        const { User } = require('./User');
         const recipient = await User.findById(data.recipientId);
         if (recipient && recipient.pushSubscriptions && recipient.pushSubscriptions.length > 0) {
-          const { sendWebPush } = require('../utils/webPush');
           const payload = {
             title: data.actorName ? `${data.actorName}` : 'Certified Luxury World',
             body: data.text,
             url: data.link || '/',
             icon: data.actorAvatar || '/apple-icon.png',
+            image: data.image || undefined, // Include rich image preview!
           };
           
           const validSubscriptions: any[] = [];
