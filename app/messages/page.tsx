@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { getAuthToken } from '@/lib/api/auth';
@@ -18,6 +20,8 @@ interface ChatMessage {
   id: string;
   text: string;
   senderId: string;
+  storyId?: string | null;
+  storyMediaUrl?: string | null;
   createdAt: string;
 }
 
@@ -392,6 +396,16 @@ function MessagesContent() {
                     return (
                       <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 shadow-sm ${isMe ? 'bg-gold-600 text-white rounded-br-sm' : 'bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white rounded-bl-sm'}`}>
+                          {msg.storyMediaUrl && (
+                            <Link href={`/stories/${msg.storyId || ''}`} className="block mb-2 overflow-hidden rounded-lg border border-black/10 dark:border-white/10 hover:opacity-90 transition-opacity">
+                              <div className="relative w-[160px] h-[90px] bg-charcoal-900 flex items-center justify-center">
+                                <Image src={msg.storyMediaUrl} alt="Story Preview" fill className="object-cover" />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                  <span className="text-[9px] text-white/90 bg-black/60 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">View Story ✦</span>
+                                </div>
+                              </div>
+                            </Link>
+                          )}
                           <p className="text-sm leading-relaxed">{msg.text}</p>
                           <p className={`text-[10px] mt-1 ${isMe ? 'text-gold-100/80' : 'text-cool-gray-400'}`}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -77,12 +77,16 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
       const convoJson = await convoRes.json();
       if (!convoRes.ok || !convoJson.success) return;
 
-      const convoId = convoJson.data.conversationId;
+       const convoId = convoJson.data.conversationId;
       // Send story reply/reaction message inside Direct Messages thread
       await fetch(`/api/messages/${convoId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: contentToSend })
+        body: JSON.stringify({
+          text: contentToSend,
+          storyId: story.id,
+          storyMediaUrl: story.mediaUrls[idx] || story.mediaUrls[0],
+        })
       });
       setMsgText('');
       

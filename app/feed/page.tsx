@@ -98,7 +98,11 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
       await fetch(`/api/messages/${convoId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: contentToSend })
+        body: JSON.stringify({
+          text: contentToSend,
+          storyId: story.id,
+          storyMediaUrl: story.mediaUrls[idx] || story.mediaUrls[0],
+        })
       });
       setMsgText('');
       

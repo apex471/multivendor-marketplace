@@ -88,7 +88,11 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
       await fetch(`/api/messages/${convoId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: contentToSend })
+        body: JSON.stringify({
+          text: contentToSend,
+          storyId: story.id,
+          storyMediaUrl: story.mediaUrls[currentIndex] || story.mediaUrls[0],
+        })
       });
       setMsgText('');
       

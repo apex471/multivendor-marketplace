@@ -60,11 +60,13 @@ export async function GET(
 
     return sendSuccess({
       messages: list.map(m => ({
-        id:        m.id,
-        text:      m.text,
-        senderId:  m.senderId,
-        read:      m.read,
-        createdAt: m.createdAt,
+        id:            m.id,
+        text:          m.text,
+        senderId:      m.senderId,
+        read:          m.read,
+        storyId:       m.storyId ?? null,
+        storyMediaUrl: m.storyMediaUrl ?? null,
+        createdAt:     m.createdAt,
       })),
       page,
     });
@@ -85,7 +87,7 @@ export async function POST(
   if (!payload) return sendError('Invalid token', 401);
 
   try {
-    const { text } = await request.json();
+    const { text, storyId, storyMediaUrl } = await request.json();
     if (!text?.trim()) return sendError('Message text is required', 400);
 
     const convo = await Conversation.findById(id);
@@ -99,6 +101,8 @@ export async function POST(
       senderId:       payload.userId,
       text:           text.trim(),
       read:           false,
+      storyId:        storyId || undefined,
+      storyMediaUrl:  storyMediaUrl || undefined,
     });
 
     // Increment unread counts for other participants
@@ -132,8 +136,9 @@ export async function POST(
           actorId: payload.userId,
           actorName: senderName,
           actorAvatar: senderAvatar,
-          text: text.trim(),
-          link: `/messages/${id}`,
+          text: storyId ? `Reacted to your story: ${text.trim()}` : text.trim(),
+          link: storyId ? `/stories/${storyId}` : `/messages/${id}`,
+          image: storyMediaUrl || undefined,
           isRead: false
         });
       }
@@ -143,11 +148,13 @@ export async function POST(
 
     return sendSuccess({
       message: {
-        id:        message.id,
-        text:      message.text,
-        senderId:  payload.userId,
-        read:      false,
-        createdAt: message.createdAt,
+        id:            message.id,
+        text:          message.text,
+        senderId:      payload.userId,
+        read:          false,
+        storyId:       message.storyId ?? null,
+        storyMediaUrl: message.storyMediaUrl ?? null,
+        createdAt:     message.createdAt,
       },
     }, 'Message sent', 201);
   } catch (err) {

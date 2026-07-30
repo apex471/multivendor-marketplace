@@ -12,6 +12,7 @@ self.addEventListener('push', function(event) {
   const options = {
     body: data.body || 'You have a new update.',
     icon: data.icon || '/apple-icon.png',
+    image: data.image || undefined, // Support rich image previews on lock screen
     badge: '/apple-icon.png',
     vibrate: [100, 50, 100],
     data: {

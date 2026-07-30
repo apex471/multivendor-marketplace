@@ -7,6 +7,8 @@ export interface IMessage {
   senderName?: string;
   text: string;
   read: boolean;
+  storyId?: string;
+  storyMediaUrl?: string;
   createdAt?: Date;
 }
 
