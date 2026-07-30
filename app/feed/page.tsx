@@ -299,6 +299,15 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
               }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
+            {msgText.trim() && (
+              <button
+                type="button"
+                onClick={() => handleSendStoryAction(`Story reply: "${msgText.trim()}"`)}
+                className="text-gold-400 hover:text-gold-300 font-medium text-sm px-2 transition-colors duration-200"
+              >
+                Send
+              </button>
+            )}
           </div>
         </div>
       </div>

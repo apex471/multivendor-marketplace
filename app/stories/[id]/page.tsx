@@ -258,7 +258,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Text Reply Bar */}
-        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-3 border border-white/10">
+        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/10">
           <input
             type="text"
             placeholder="Send message..."
@@ -271,8 +271,17 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                 handleSendStoryAction(`Story reply: "${msgText.trim()}"`);
               }
             }}
-            className="flex-1 bg-transparent text-white placeholder-white/50 outline-none"
+            className="flex-1 bg-transparent text-white placeholder-white/50 outline-none text-sm"
           />
+          {msgText.trim() && (
+            <button
+              type="button"
+              onClick={() => handleSendStoryAction(`Story reply: "${msgText.trim()}"`)}
+              className="text-gold-400 hover:text-gold-300 font-medium text-sm px-2 transition-colors duration-200"
+            >
+              Send
+            </button>
+          )}
         </div>
       </div>
     </div>
