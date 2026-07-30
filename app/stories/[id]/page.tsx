@@ -133,7 +133,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
       {/* Progress bars */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 p-2">
+      <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 p-2" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
         {story.mediaUrls.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
             <div
@@ -147,7 +147,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Header */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between" style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center gap-3">
           {story.author.avatar ? (
             <Image src={story.author.avatar} alt={story.author.username} width={40} height={40} className="rounded-full border-2 border-white" />
@@ -173,7 +173,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         onTouchEnd={() => setIsPaused(false)}
       >
         <Image src={story.mediaUrls[currentIndex]} alt="Story" fill className="object-contain" priority />
-        <div className="absolute inset-0 flex">
+        <div className="absolute inset-x-0 top-24 bottom-44 flex">
           <div className="w-1/3 h-full cursor-pointer" onClick={handlePrevious} />
           <div className="w-1/3 h-full" />
           <div className="w-1/3 h-full cursor-pointer" onClick={handleNext} />
@@ -242,7 +242,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Bottom actions */}
-      <div className="absolute bottom-8 left-4 right-4 z-20 flex flex-col gap-3">
+      <div className="absolute bottom-8 left-4 right-4 z-20 flex flex-col gap-3" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {/* Luxury Reactions Bar */}
         <div className="flex justify-center gap-3">
           {['👍', '❤️', '🔥', '😮', '🙌'].map((emoji) => (

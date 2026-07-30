@@ -156,7 +156,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
       <div className="relative w-full max-w-2xl h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
         onClick={e => e.stopPropagation()}>
         {/* Top Section overlays */}
-        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent">
+        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
           {/* Progress bars */}
           <div className="flex gap-1 mb-3">
             {Array.from({ length: total }).map((_, i) => (
@@ -199,7 +199,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
           )}
 
           {/* Tap zones overlay */}
-          <div className="absolute inset-0 flex z-10">
+          <div className="absolute inset-x-0 top-24 bottom-44 flex z-10">
             <button className="w-1/3 h-full cursor-pointer" onClick={() => setIdx(i => Math.max(0, i - 1))} />
             <div className="w-1/3 h-full" />
             <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (idx < total - 1) setIdx(i => i + 1); else onClose(); }} />
@@ -268,7 +268,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
         )}
 
         {/* Bottom Actions Overlay */}
-        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3">
+        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           {/* Luxury Reactions Bar */}
           <div className="flex justify-center gap-3">
             {['👍', '❤️', '🔥', '😮', '🙌'].map((emoji) => (
