@@ -34,6 +34,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "resend": "^6.12.2",
+    "web-push": "^3.6.7",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
@@ -44,6 +45,7 @@
     "@types/node": "^25.0.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.23",
     "baseline-browser-mapping": "^2.10.13",
     "eslint": "^9.39.2",

@@ -59,6 +59,7 @@ export interface IUser {
   accountNumber?: string;
   accountName?: string;
   bankCode?: string;
+  pushSubscriptions?: any[];
   createdAt?: Date;
   updatedAt?: Date;
 }

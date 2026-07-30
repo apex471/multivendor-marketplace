@@ -79,12 +79,60 @@ export default function Header() {
   };
 
   useEffect(() => {
-    // Request push notification permission
-    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
-      window.Notification.requestPermission();
-    }
+    const registerPushNotifications = async () => {
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        return;
+      }
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        
+        let permission = Notification.permission;
+        if (permission === 'default') {
+          permission = await Notification.requestPermission();
+        }
+        
+        if (permission !== 'granted') return;
+        
+        const res = await fetch('/api/notifications/subscribe');
+        const json = await res.json();
+        if (!res.ok || !json.success || !json.data?.publicKey) return;
+        
+        const vapidKey = json.data.publicKey;
+        
+        const urlBase64ToUint8Array = (base64String: string) => {
+          const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+          const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        };
+        
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+        
+        const token = getAuthToken();
+        if (!token) return;
+        await fetch('/api/notifications/subscribe', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ subscription }),
+        });
+      } catch (err) {
+        console.error('Error setting up push notifications:', err);
+      }
+    };
+
+    registerPushNotifications();
     loadNotifications();
-    // Poll for notifications periodically to fire push warnings if tab is inactive
+    
     const pollNotifs = setInterval(loadNotifications, 20_000);
     return () => clearInterval(pollNotifs);
   }, [notifications]); // runs with notifications context to evaluate exists state correctly

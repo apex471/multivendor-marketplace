@@ -116,6 +116,31 @@ export async function POST(
       unreadCounts,
     });
 
+    // Fire in-app and push notification to the recipient
+    try {
+      const recipientId = convo.participants.find((p) => p !== payload.userId);
+      if (recipientId) {
+        const { User } = require('@/backend/models/User');
+        const sender = await User.findById(payload.userId);
+        const senderName = sender ? `${sender.firstName} ${sender.lastName ?? ''}`.trim() : 'Someone';
+        const senderAvatar = sender?.avatar || '';
+
+        const { Notification } = require('@/backend/models/Notification');
+        await Notification.create({
+          recipientId,
+          type: 'comment',
+          actorId: payload.userId,
+          actorName: senderName,
+          actorAvatar: senderAvatar,
+          text: text.trim(),
+          link: `/messages/${id}`,
+          isRead: false
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to trigger message notification:', notifErr);
+    }
+
     return sendSuccess({
       message: {
         id:        message.id,

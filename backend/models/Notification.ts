@@ -21,7 +21,41 @@ export const Notification = {
     const now = new Date();
     const doc = { ...data, isRead: data.isRead ?? false, createdAt: now };
     const ref = await db.collection(NOTIFICATIONS).add(doc);
-    return { id: ref.id, ...doc };
+    const createdNotif = { id: ref.id, ...doc };
+
+    // Fire web push in the background non-blockingly
+    (async () => {
+      try {
+        const { User } = require('./User');
+        const recipient = await User.findById(data.recipientId);
+        if (recipient && recipient.pushSubscriptions && recipient.pushSubscriptions.length > 0) {
+          const { sendWebPush } = require('../utils/webPush');
+          const payload = {
+            title: data.actorName ? `${data.actorName}` : 'Certified Luxury World',
+            body: data.text,
+            url: data.link || '/',
+            icon: data.actorAvatar || '/apple-icon.png',
+          };
+          
+          const validSubscriptions: any[] = [];
+          for (const sub of recipient.pushSubscriptions) {
+            const success = await sendWebPush(sub, payload);
+            if (success) {
+              validSubscriptions.push(sub);
+            }
+          }
+          
+          // Clean up expired subscriptions if any failed with 410/404
+          if (validSubscriptions.length !== recipient.pushSubscriptions.length) {
+            await User.updateOne(data.recipientId, { pushSubscriptions: validSubscriptions });
+          }
+        }
+      } catch (pushErr) {
+        console.error('Failed to trigger background web push notification:', pushErr);
+      }
+    })();
+
+    return createdNotif;
   },
 
   async find(
