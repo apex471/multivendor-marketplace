@@ -273,14 +273,6 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
                 {emoji}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => handleReact(`Shared this story media: ${media}`)}
-              className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-lg hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-              title="Share"
-            >
-              📤
-            </button>
           </div>
 
           {/* Reply Input */}

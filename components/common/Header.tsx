@@ -133,8 +133,23 @@ export default function Header() {
     registerPushNotifications();
     loadNotifications();
     
+    let messageListener: ((e: MessageEvent) => void) | null = null;
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      messageListener = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'PUSH_NOTIFICATION') {
+          loadNotifications();
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', messageListener);
+    }
+    
     const pollNotifs = setInterval(loadNotifications, 20_000);
-    return () => clearInterval(pollNotifs);
+    return () => {
+      clearInterval(pollNotifs);
+      if (messageListener && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', messageListener);
+      }
+    };
   }, [notifications]); // runs with notifications context to evaluate exists state correctly
 
   const handleNotificationClick = () => {

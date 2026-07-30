@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { User } from '@/backend/models/User';
 import { verifyToken } from '@/backend/utils/jwt';
-import { publicKey } from '@/backend/utils/webPush';
+import { getVapidPublicKey } from '@/backend/utils/webPush';
 import {
   sendSuccess,
   sendUnauthorized,
@@ -17,6 +17,7 @@ function getPayload(req: NextRequest) {
 
 // GET /api/notifications/subscribe — retrieve VAPID public key
 export async function GET() {
+  const publicKey = await getVapidPublicKey();
   return sendSuccess({ publicKey });
 }
 
