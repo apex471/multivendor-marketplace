@@ -243,29 +243,24 @@ export async function POST(request: NextRequest) {
     // Surface Cloudinary-specific config errors clearly
     if (msg.includes('Must supply') || msg.includes('cloud_name')) {
       return sendError(
-        'Media upload is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in Netlify environment variables.',
+        'Media upload is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in environment variables.',
         400
       );
     }
 
-    // Firebase Storage billing error — Spark plan does not support server-side uploads
+    // Firebase Storage billing error specifically
     if (
       msg.includes('billing') ||
       msg.includes('BILLING') ||
-      msg.includes('403') ||
-      msg.includes('does not have storage') ||
-      msg.includes('Firebase Storage') ||
-      msg.includes('bucket') ||
       msg.includes('BillingNotEnabled')
     ) {
       return sendError(
-        'Image upload requires Firebase Storage (Blaze plan) or Cloudinary. ' +
-        'To fix: either (A) upgrade Firebase to Blaze plan at console.firebase.google.com → your project → Upgrade, ' +
-        'or (B) add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to Netlify env vars (free at cloudinary.com).',
+        'Image upload requires the Firebase Blaze plan. Please upgrade your Firebase project at console.firebase.google.com to enable server-side bucket access.',
         400
       );
     }
 
-    return sendError(msg, 400);
+    // Return the exact error for other failure modes (e.g. permissions, wrong bucket) to enable precise troubleshooting
+    return sendError(`Upload failed: ${msg}`, 400);
   }
 }
