@@ -68,6 +68,8 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   };
 
   const [msgText, setMsgText] = useState('');
+  const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
   const handleSendStoryAction = async (contentToSend: string) => {
     if (!story) return;
@@ -89,10 +91,31 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ text: contentToSend })
       });
       setMsgText('');
-      alert("Sent! Your response has been sent to direct messages.");
+      
+      // Professional toast instead of alert
+      setToast({ message: "Response sent to direct messages! 💬", visible: true });
+      setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
     } catch (err) {
       console.error('Failed to send story response:', err);
     }
+  };
+
+  const handleReact = (emoji: string) => {
+    handleSendStoryAction(emoji);
+    
+    // Spawn floating emojis in Facebook style
+    const now = Date.now();
+    const newFloating = Array.from({ length: 6 }).map((_, i) => ({
+      id: now + i,
+      emoji,
+      left: Math.random() * 60 + 20, // percentage from left
+      delay: i * 120, // staggered entrance
+    }));
+    
+    setFloatingEmojis(prev => [...prev, ...newFloating]);
+    setTimeout(() => {
+      setFloatingEmojis(prev => prev.filter(item => !newFloating.find(nf => nf.id === item.id)));
+    }, 2200);
   };
 
   if (isLoading) {
@@ -153,12 +176,96 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      {/* Floating Emojis */}
+      <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
+        {floatingEmojis.map(fe => (
+          <span
+            key={fe.id}
+            className="absolute bottom-28 text-4xl pointer-events-none select-none animate-float-emoji opacity-0"
+            style={{
+              left: `${fe.left}%`,
+              animationDelay: `${fe.delay}ms`,
+            }}
+          >
+            {fe.emoji}
+          </span>
+        ))}
+      </div>
+
+      {/* Custom Style Injections */}
+      <style>{`
+        @keyframes floatEmoji {
+          0% {
+            transform: translateY(0) scale(0.5) rotate(0deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+            transform: translateY(-20px) scale(1.25) rotate(12deg);
+          }
+          90% {
+            opacity: 0.9;
+          }
+          100% {
+            transform: translateY(-300px) scale(0.7) rotate(-25deg);
+            opacity: 0;
+          }
+        }
+        @keyframes slideUp {
+          0% {
+            transform: translate(-50%, 24px);
+            opacity: 0;
+          }
+          100% {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
+        .animate-float-emoji {
+          animation: floatEmoji 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        .animate-slide-up {
+          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+
+      {/* Toast Notification */}
+      {toast.visible && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-md border border-gold-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-lg shadow-black/40 animate-slide-up">
+          <span className="text-gold-400 text-lg">✨</span>
+          <span className="text-white text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
       {/* Bottom actions */}
-      <div className="absolute bottom-8 left-4 right-4 z-20">
-        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-3">
+      <div className="absolute bottom-8 left-4 right-4 z-20 flex flex-col gap-3">
+        {/* Luxury Reactions Bar */}
+        <div className="flex justify-center gap-3">
+          {['👍', '❤️', '🔥', '😮', '🙌'].map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => handleReact(emoji)}
+              className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+            >
+              {emoji}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => handleReact(`Shared this story media: ${story.mediaUrls[currentIndex]}`)}
+            className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-lg hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+            title="Share"
+          >
+            📤
+          </button>
+        </div>
+
+        {/* Text Reply Bar */}
+        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-3 border border-white/10">
           <input
             type="text"
-            placeholder="Send message"
+            placeholder="Send message..."
             value={msgText}
             onChange={e => setMsgText(e.target.value)}
             onFocus={() => setIsPaused(true)}
@@ -170,9 +277,6 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             }}
             className="flex-1 bg-transparent text-white placeholder-white/50 outline-none"
           />
-          <button type="button" onClick={() => handleSendStoryAction("❤️")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">❤️</button>
-          <button type="button" onClick={() => handleSendStoryAction("✦")} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">✦</button>
-          <button type="button" onClick={() => handleSendStoryAction(`Shared this story media: ${story.mediaUrls[currentIndex]}`)} className="text-gold-400 hover:text-gold-300 hover:scale-110 active:scale-95 transition-all text-xl">📤</button>
         </div>
       </div>
     </div>
