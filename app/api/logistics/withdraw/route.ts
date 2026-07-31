@@ -80,13 +80,24 @@ export async function POST(request: NextRequest) {
       return sendError(`Insufficient balance. Current balance is $${balance.toFixed(2)}`, 400);
     }
 
-    // 3. Create the withdrawal transaction
+    // 3. Create the withdrawal transaction with instant automated payout processing
+    const txId = `WDL-${Date.now()}`;
+
+    // Initiate automated instant payout transfer
+    const { processFlutterwavePayout } = require('@/backend/utils/payoutHelper');
+    const payoutResult = await processFlutterwavePayout({
+      amount,
+      bankName,
+      accountNumber,
+      reference: txId
+    });
+
     const withdrawalTx = await Transaction.create({
-      transactionId: `WDL-${Date.now()}`,
+      transactionId: txId,
       type:          'withdrawal',
       amount,
       currency:      'USD',
-      status:        'pending', // Stays pending until Admin approves it
+      status:        payoutResult.status,
       fromUser:      payload.userId,
       description:   `Withdrawal to bank account: ${bankName} (${accountNumber})`,
       metadata: {
@@ -94,10 +105,20 @@ export async function POST(request: NextRequest) {
         accountNumber,
         role: 'logistics',
         submittedAt: new Date().toISOString(),
+        ...payoutResult.metadata
       },
     });
 
-    return sendSuccess({ transaction: withdrawalTx }, 'Withdrawal processed successfully');
+    if (payoutResult.status === 'failed') {
+      return sendError(`Withdrawal request submitted but payout failed: ${payoutResult.metadata.error || 'Check bank details'}`, 400);
+    }
+
+    return sendSuccess(
+      { transaction: withdrawalTx }, 
+      payoutResult.status === 'completed' 
+        ? 'Payout processed and completed instantly! 💸' 
+        : 'Withdrawal request submitted successfully (pending manual review)'
+    );
   } catch (err) {
     console.error('[Logistics/Withdraw POST]', err);
     return sendServerError('Failed to submit withdrawal request');
