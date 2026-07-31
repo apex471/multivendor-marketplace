@@ -5,13 +5,32 @@ export async function getBankCode(bankName: string, flwSecretKey: string): Promi
     });
     const data = await res.json();
     if (data.status === 'success' && Array.isArray(data.data)) {
-      const nameLower = bankName.toLowerCase();
-      // Try exact match first
-      let match = data.data.find((b: any) => b.name.toLowerCase() === nameLower);
+      const nameClean = bankName.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      
+      // 1. Try exact match
+      let match = data.data.find((b: any) => b.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() === nameClean);
+      
+      // 2. Try substring match
       if (!match) {
-        // Try substring match
-        match = data.data.find((b: any) => b.name.toLowerCase().includes(nameLower) || nameLower.includes(b.name.toLowerCase()));
+        match = data.data.find((b: any) => {
+          const bName = b.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+          return bName.includes(nameClean) || nameClean.includes(bName);
+        });
       }
+      
+      // 3. Try token-based keyword match for variation handling
+      if (!match) {
+        const stopWords = new Set(['bank', 'plc', 'ltd', 'limited', 'microfinance', 'mfb', 'mobile', 'money']);
+        const tokens = nameClean.split(/\s+/).filter(token => token.length > 2 && !stopWords.has(token));
+        
+        if (tokens.length > 0) {
+          match = data.data.find((b: any) => {
+            const bName = b.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            return tokens.some(token => bName.includes(token));
+          });
+        }
+      }
+      
       return match ? match.code : null;
     }
   } catch (err) {
