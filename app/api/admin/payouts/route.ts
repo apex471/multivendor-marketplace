@@ -216,7 +216,15 @@ export async function POST(request: NextRequest) {
           }),
         });
 
-        const transferData = await transferRes.json();
+        const text = await transferRes.text();
+        let transferData;
+        try {
+          transferData = JSON.parse(text);
+        } catch (parseErr) {
+          console.error('[Flutterwave HTML or Non-JSON Response]', text);
+          return sendError(`Flutterwave returned invalid response format: ${text.substring(0, 150)}`, 400);
+        }
+
         if (transferData.status !== 'success') {
           console.error('[Flutterwave Transfer API Error]', transferData);
           return sendError(

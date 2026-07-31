@@ -116,25 +116,14 @@ export async function POST(request: NextRequest) {
       return sendError(`Insufficient balance. Available: $${balance.toFixed(2)}`, 400);
     }
 
-    // 3. Create the withdrawal transaction with instant automated payout processing
+    // 3. Create a pending withdrawal transaction (requires admin approval)
     const lastDigits = accountNumber.slice(-4);
-    const txId = `WDL-${Date.now()}`;
-
-    // Initiate automated instant payout transfer
-    const { processFlutterwavePayout } = require('@/backend/utils/payoutHelper');
-    const payoutResult = await processFlutterwavePayout({
-      amount,
-      bankName,
-      accountNumber,
-      reference: txId
-    });
-
     const withdrawalTx = await Transaction.create({
-      transactionId: txId,
+      transactionId: `WDL-${Date.now()}`,
       type:          'withdrawal',
       amount,
       currency:      'USD',
-      status:        payoutResult.status,
+      status:        'pending', // Requires admin approval
       fromUser:      payload.userId,
       description:   `Withdrawal to bank account: ${bankName} (*${lastDigits})`,
       metadata: {
@@ -144,20 +133,10 @@ export async function POST(request: NextRequest) {
         routingNumber: routingNumber || undefined,
         role: payload.role,
         submittedAt: new Date().toISOString(),
-        ...payoutResult.metadata
       },
     });
 
-    if (payoutResult.status === 'failed') {
-      return sendError(`Withdrawal request submitted but payout failed: ${payoutResult.metadata.error || 'Check bank details'}`, 400);
-    }
-
-    return sendSuccess(
-      { transaction: withdrawalTx }, 
-      payoutResult.status === 'completed' 
-        ? 'Payout processed and completed instantly! 💸' 
-        : 'Withdrawal request submitted successfully (pending manual review)'
-    );
+    return sendSuccess({ transaction: withdrawalTx }, 'Withdrawal request submitted successfully');
   } catch (err) {
     console.error('[Withdraw API POST]', err);
     return sendServerError('Failed to submit withdrawal request');
