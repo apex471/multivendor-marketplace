@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
             currency: 'NGN',
             narration: `Payout for ${targetPayout.transactionId || payoutId} - Multivendor Marketplace`,
             reference: targetPayout.transactionId || `WDL-${Date.now()}`,
-            debit_currency: 'NGN',
+            debit_currency: process.env.FLUTTERWAVE_DEBIT_CURRENCY || 'NGN',
           }),
         });
 

@@ -143,7 +143,7 @@ export async function releaseEscrow(orderId: string, reason?: string) {
           currency: 'NGN',
           narration: `Escrow Release for Order ${orderId} - Multivendor Marketplace`,
           reference: `ESC-REL-${orderId}-${Date.now()}`,
-          debit_currency: 'NGN',
+          debit_currency: process.env.FLUTTERWAVE_DEBIT_CURRENCY || 'NGN',
         }),
       });
 
