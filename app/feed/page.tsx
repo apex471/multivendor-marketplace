@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Header from '../../components/common/Header';
@@ -12,7 +12,9 @@ import { getAuthToken } from '@/lib/api/auth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
-interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; }
+interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; }
+// StoryGroup aggregates all story docs from one author into a single circle
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string }[]; hasUnviewed: boolean; }
 interface PostProduct { id: string; name: string; price: number; image: string; vendor: string; vendorId: string; }
 interface Post {
   id: string; authorId: string;
@@ -40,14 +42,16 @@ function Avatar({ src, name, size = 40 }: { src: string | null; name: string; si
 }
 
 // ── Story Viewer Modal ────────────────────────────────────────────────────────
-function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) {
+function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => void }) {
   const [idx, setIdx]       = useState(0);
   const [progress, setProgress] = useState(0);
   const [msgText, setMsgText] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-  const total = story.mediaUrls.length || 1;
+  const slides = group.slides;
+  const total  = slides.length || 1;
+  const currentSlide = slides[idx];
 
   useEffect(() => {
     if (isPaused) return;
@@ -88,7 +92,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
       const convoRes = await fetch('/api/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientId: story.author.id, text: contentToSend })
+        body: JSON.stringify({ recipientId: group.author.id, text: contentToSend })
       });
       const convoJson = await convoRes.json();
       if (!convoRes.ok || !convoJson.success) return;
@@ -100,8 +104,8 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: contentToSend,
-          storyId: story.id,
-          storyMediaUrl: story.mediaUrls[idx] || story.mediaUrls[0],
+          storyId: currentSlide.storyId,
+          storyMediaUrl: currentSlide.url,
         })
       });
       setMsgText('');
@@ -132,13 +136,13 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
     }, 2200);
   };
 
-  const media = story.mediaUrls[idx];
+  const media = currentSlide?.url;
   
   // Format story creation time dynamically
   const timeString = (() => {
-    if (!story.createdAt) return 'Just now';
+    if (!currentSlide?.createdAt) return 'Just now';
     try {
-      const diffMs = Date.now() - new Date(story.createdAt).getTime();
+      const diffMs = Date.now() - new Date(currentSlide.createdAt).getTime();
       const diffMins = Math.floor(diffMs / 60000);
       if (diffMins < 1) return 'Just now';
       if (diffMins < 60) return `${diffMins}m ago`;
@@ -170,10 +174,10 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
           {/* Header */}
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/60">
-              <Avatar src={story.author.avatar ?? null} name={story.author.name || story.author.username} size={36} />
+              <Avatar src={group.author.avatar ?? null} name={group.author.name || group.author.username} size={36} />
             </div>
             <div>
-              <p className="text-white font-semibold text-sm leading-none">{story.author.name || story.author.username}</p>
+              <p className="text-white font-semibold text-sm leading-none">{group.author.name || group.author.username}</p>
               <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
             </div>
             <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
@@ -334,7 +338,7 @@ export default function FeedPage() {
   const [shareModal,        setShareModal]        = useState<string | null>(null);
   const [isCreatingPost,    setIsCreatingPost]    = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
-  const [activeStory,       setActiveStory]       = useState<Story | null>(null);
+  const [activeStory,       setActiveStory]       = useState<StoryGroup | null>(null);
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
@@ -359,16 +363,38 @@ export default function FeedPage() {
       }).catch(() => {});
   }, []);
 
-  // Stories
-  useEffect(() => {
+  // Stories — fetch once + poll every 30s so new stories appear without a page refresh
+  const fetchStories = useCallback(() => {
     const token = getAuthToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    fetch('/api/stories?limit=20', { headers })
+    fetch('/api/stories?limit=50', { headers })
       .then(r => r.json())
       .then(json => { if (json.success) setStories(json.data.stories ?? []); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchStories();
+    const interval = setInterval(fetchStories, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchStories]);
+
+  // Group stories by author — one circle per user, all their slides inside
+  const groupedStories = useMemo<StoryGroup[]>(() => {
+    const map = new Map<string, StoryGroup>();
+    for (const s of stories) {
+      const key = s.author.id;
+      if (!map.has(key)) {
+        map.set(key, { author: s.author, slides: [], hasUnviewed: false });
+      }
+      const group = map.get(key)!;
+      for (const url of s.mediaUrls) {
+        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt });
+      }
+    }
+    return Array.from(map.values());
+  }, [stories]);
 
   const fetchPosts = useCallback((pageNum: number, append: boolean) => {
     const token = getAuthToken();
@@ -483,7 +509,7 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-950">
-      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
+      {activeStory && <StoryViewer group={activeStory} onClose={() => setActiveStory(null)} />}
       <Header />
 
       <div className="max-w-2xl mx-auto px-0 sm:px-4 py-4 sm:py-8">
@@ -511,28 +537,34 @@ export default function FeedPage() {
               </button>
             )}
 
-            {/* Story Bubbles */}
-            {stories.map(story => (
-              <button key={story.id} onClick={() => setActiveStory(story)}
+            {/* Story Bubbles — one per author, accumulates all their slides */}
+            {groupedStories.map(group => (
+              <button key={group.author.id} onClick={() => setActiveStory(group)}
                 className="shrink-0 flex flex-col items-center gap-1.5 group">
                 <div className="relative w-16 h-16 sm:w-[70px] sm:h-[70px]">
                   {/* Gold ring = has story */}
                   <div className="absolute inset-0 rounded-full bg-linear-to-tr from-gold-400 via-gold-600 to-gold-800 p-[2px]">
                     <div className="w-full h-full rounded-full bg-white dark:bg-charcoal-900 p-[2px]">
                       <div className="w-full h-full rounded-full overflow-hidden">
-                        <Avatar src={story.author.avatar ?? null} name={story.author.name || story.author.username} size={66} />
+                        <Avatar src={group.author.avatar ?? null} name={group.author.name || group.author.username} size={66} />
                       </div>
                     </div>
                   </div>
+                  {/* Story count badge when > 1 slide */}
+                  {group.slides.length > 1 && (
+                    <div className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-gold-600 border-2 border-white dark:border-charcoal-900 flex items-center justify-center shadow">
+                      <span className="text-white text-[9px] font-bold">{group.slides.length}</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-[11px] text-charcoal-700 dark:text-cool-gray-300 truncate w-16 sm:w-[70px] text-center font-medium">
-                  {story.author.username || story.author.name}
+                  {group.author.username || group.author.name}
                 </p>
               </button>
             ))}
 
             {/* Empty state if no stories and no user */}
-            {!currentUser && stories.length === 0 && (
+            {!currentUser && groupedStories.length === 0 && (
               <div className="flex items-center gap-3 py-2 text-sm text-cool-gray-400 dark:text-cool-gray-500">
                 <div className="w-14 h-14 rounded-full bg-cool-gray-100 dark:bg-charcoal-800 flex items-center justify-center">
                   <svg className="w-6 h-6 text-cool-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

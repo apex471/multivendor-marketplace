@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
@@ -24,16 +24,20 @@ interface Post {
 
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
 interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; }
+// StoryGroup aggregates all story docs from one author into a single tray circle
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string }[]; }
 
 // ── Story Viewer Modal ────────────────────────────────────────────────────────
-function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) {
+function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => void }) {
   const [idx, setIdx]       = useState(0);
   const [progress, setProgress] = useState(0);
   const [msgText, setMsgText] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-  const total = story.mediaUrls.length || 1;
+  const slides = group.slides;
+  const total  = slides.length || 1;
+  const currentSlide = slides[idx];
 
   useEffect(() => {
     if (isPaused) return;
@@ -72,7 +76,7 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
       const convoRes = await fetch('/api/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientId: story.author.id, text: contentToSend })
+        body: JSON.stringify({ recipientId: group.author.id, text: contentToSend })
       });
       const convoJson = await convoRes.json();
       if (!convoRes.ok || !convoJson.success) return;
@@ -84,8 +88,8 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: contentToSend,
-          storyId: story.id,
-          storyMediaUrl: story.mediaUrls[idx] || story.mediaUrls[0],
+          storyId: currentSlide.storyId,
+          storyMediaUrl: currentSlide.url,
         })
       });
       setMsgText('');
@@ -116,13 +120,13 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
     }, 2200);
   };
 
-  const media = story.mediaUrls[idx];
+  const media = currentSlide?.url;
   
   // Format story creation time dynamically
   const timeString = (() => {
-    if (!story.createdAt) return 'Just now';
+    if (!currentSlide?.createdAt) return 'Just now';
     try {
-      const diffMs = Date.now() - new Date(story.createdAt).getTime();
+      const diffMs = Date.now() - new Date(currentSlide.createdAt).getTime();
       const diffMins = Math.floor(diffMs / 60000);
       if (diffMins < 1) return 'Just now';
       if (diffMins < 60) return `${diffMins}m ago`;
@@ -155,17 +159,17 @@ function StoryViewer({ story, onClose }: { story: Story; onClose: () => void }) 
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/60">
               <div className="w-full h-full bg-charcoal-700 rounded-full overflow-hidden relative">
-                {story.author.avatar ? (
-                  <Image src={story.author.avatar} alt={story.author.name} fill className="object-cover" />
+                {group.author.avatar ? (
+                  <Image src={group.author.avatar} alt={group.author.name} fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gold-600 flex items-center justify-center text-white font-bold text-xs">
-                    {(story.author.name || story.author.username || '?')[0].toUpperCase()}
+                    {(group.author.name || group.author.username || '?')[0].toUpperCase()}
                   </div>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-white font-semibold text-sm leading-none">{story.author.name || story.author.username}</p>
+              <p className="text-white font-semibold text-sm leading-none">{group.author.name || group.author.username}</p>
               <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
             </div>
             <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
@@ -352,7 +356,7 @@ export default function Home() {
   const [brands,   setBrands]   = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [stories,  setStories]  = useState<any[]>([]);
-  const [activeStory, setActiveStory] = useState<any | null>(null);
+  const [activeStory, setActiveStory] = useState<StoryGroup | null>(null);
 
   const brandsRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
@@ -369,21 +373,50 @@ export default function Home() {
 
   useEffect(() => {
     document.title = "Certified Luxury World | Premium Luxury Marketplace";
-    // Fetch all homepage data in parallel
+    // Fetch all homepage data in parallel (stories fetched separately with polling)
     Promise.all([
       fetch('/api/posts?limit=6').then(r => r.json()).catch(() => ({})),
       fetch('/api/vendors?limit=4').then(r => r.json()).catch(() => ({})),
       fetch('/api/brands?limit=6').then(r => r.json()).catch(() => ({})),
       fetch('/api/products?limit=18&sort=popular').then(r => r.json()).catch(() => ({})),
-      fetch('/api/stories?limit=15').then(r => r.json()).catch(() => ({})),
-    ]).then(([postsRes, vendorsRes, brandsRes, productsRes, storiesRes]) => {
-      if (postsRes?.data?.posts)    setPosts(postsRes.data.posts);
-      if (vendorsRes?.data?.vendors) setVendors(vendorsRes.data.vendors);
-      if (brandsRes?.data?.brands)  setBrands(brandsRes.data.brands);
+    ]).then(([postsRes, vendorsRes, brandsRes, productsRes]) => {
+      if (postsRes?.data?.posts)       setPosts(postsRes.data.posts);
+      if (vendorsRes?.data?.vendors)   setVendors(vendorsRes.data.vendors);
+      if (brandsRes?.data?.brands)     setBrands(brandsRes.data.brands);
       if (productsRes?.data?.products) setProducts(productsRes.data.products);
-      if (storiesRes?.data?.stories) setStories(storiesRes.data.stories);
     });
   }, []);
+
+  // Stories — separate polling so new stories appear every 30s without full page reload
+  const fetchStories = useCallback(() => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch('/api/stories?limit=50', { headers })
+      .then(r => r.json())
+      .then(json => { if (json?.data?.stories) setStories(json.data.stories); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchStories();
+    const interval = setInterval(fetchStories, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchStories]);
+
+  // Group stories by author — one circle per user like Instagram/WhatsApp
+  const groupedStories = useMemo(() => {
+    const map = new Map<string, { author: any; slides: { storyId: string; url: string; createdAt?: string }[] }>();
+    for (const s of stories) {
+      const key = s.author.id;
+      if (!map.has(key)) map.set(key, { author: s.author, slides: [] });
+      const group = map.get(key)!;
+      for (const url of (s.mediaUrls || [])) {
+        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt });
+      }
+    }
+    return Array.from(map.values());
+  }, [stories]);
 
   const getCategoryImage = (catName: string): string | null => {
     const found = products.find(p => {
@@ -527,33 +560,39 @@ export default function Home() {
       </section>
 
       {/* Stories Section */}
-      {stories.length > 0 && (
+      {groupedStories.length > 0 && (
         <section className="bg-white dark:bg-charcoal-900 border-b border-cool-gray-200 dark:border-charcoal-800">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-              {stories.map((story) => (
+              {groupedStories.map((group) => (
                 <button
-                  key={story.id}
-                  onClick={() => setActiveStory(story)}
+                  key={group.author.id}
+                  onClick={() => setActiveStory(group)}
                   className="shrink-0 text-center group touch-manipulation flex flex-col items-center"
                 >
                   <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
                     <div className="absolute inset-0 rounded-full bg-linear-to-tr from-gold-400 via-gold-600 to-gold-800 p-[2.5px] group-hover:from-gold-300 group-hover:to-gold-700 transition-all duration-200">
                       <div className="w-full h-full rounded-full bg-white dark:bg-charcoal-950 p-[2px]">
                         <div className="w-full h-full rounded-full overflow-hidden relative bg-charcoal-700">
-                          {story.author.avatar ? (
-                            <Image src={story.author.avatar} alt={story.author.username} fill className="object-cover" />
+                          {group.author.avatar ? (
+                            <Image src={group.author.avatar} alt={group.author.username} fill className="object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm bg-gold-600">
-                              {(story.author.name || story.author.username || '?')[0].toUpperCase()}
+                              {(group.author.name || group.author.username || '?')[0].toUpperCase()}
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
+                    {/* Story count badge */}
+                    {group.slides.length > 1 && (
+                      <div className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-gold-600 border-2 border-white dark:border-charcoal-900 flex items-center justify-center shadow">
+                        <span className="text-white text-[9px] font-bold">{group.slides.length}</span>
+                      </div>
+                    )}
                   </div>
                   <p className="text-[10px] sm:text-xs text-charcoal-700 dark:text-cool-gray-300 truncate w-16 sm:w-20 group-hover:text-gold-600 dark:group-hover:text-gold-400 transition-colors">
-                    {story.author.username || story.author.name}
+                    {group.author.username || group.author.name}
                   </p>
                 </button>
               ))}
@@ -562,7 +601,7 @@ export default function Home() {
         </section>
       )}
 
-      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
+      {activeStory && <StoryViewer group={activeStory} onClose={() => setActiveStory(null)} />}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12 md:py-16">
