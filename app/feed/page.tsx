@@ -12,9 +12,9 @@ import { getAuthToken } from '@/lib/api/auth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
-interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; }
+interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; viewed?: boolean; }
 // StoryGroup aggregates all story docs from one author into a single circle
-interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string }[]; hasUnviewed: boolean; }
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[]; hasUnviewed: boolean; }
 interface PostProduct { id: string; name: string; price: number; image: string; vendor: string; vendorId: string; }
 interface Post {
   id: string; authorId: string;
@@ -42,53 +42,110 @@ function Avatar({ src, name, size = 40 }: { src: string | null; name: string; si
 }
 
 // ── Story Viewer Modal ────────────────────────────────────────────────────────
-function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => void }) {
-  const [idx, setIdx]       = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [msgText, setMsgText] = useState('');
-  const [isPaused, setIsPaused] = useState(false);
+// Props: full ordered list of story groups + which group to start at
+function StoryViewer({
+  groups,
+  initialGroupIndex,
+  onClose,
+}: {
+  groups: StoryGroup[];
+  initialGroupIndex: number;
+  onClose: () => void;
+}) {
+  const [groupIdx, setGroupIdx]   = useState(initialGroupIndex);
+  const [slideIdx, setSlideIdx]   = useState(0);
+  const [progress, setProgress]   = useState(0);
+  const [msgText, setMsgText]     = useState('');
+  const [isPaused, setIsPaused]   = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
-  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-  const slides = group.slides;
-  const total  = slides.length || 1;
-  const currentSlide = slides[idx];
+  const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  // Track which storyIds we've already sent a view ping for this session
+  const viewedRef = useRef<Set<string>>(new Set());
 
+  const group        = groups[groupIdx];
+  const slides       = group?.slides ?? [];
+  const total        = slides.length || 1;
+  const currentSlide = slides[slideIdx];
+
+  // On group change: jump to first unviewed slide (Instagram behaviour)
+  useEffect(() => {
+    const g = groups[groupIdx];
+    if (!g) return;
+    const firstUnviewed = g.slides.findIndex(s => !s.viewed);
+    setSlideIdx(firstUnviewed >= 0 ? firstUnviewed : 0);
+    setProgress(0);
+  }, [groupIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark current slide as viewed via API (fire-and-forget, once per session)
+  useEffect(() => {
+    if (!currentSlide) return;
+    const key = currentSlide.storyId;
+    if (viewedRef.current.has(key)) return;
+    viewedRef.current.add(key);
+    const token = getAuthToken();
+    if (!token) return;
+    // Calling GET /api/stories/[id] marks it viewed server-side
+    fetch(`/api/stories/${key}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }, [currentSlide]);
+
+  // Auto-advance timer
   useEffect(() => {
     if (isPaused) return;
-    
-    // Auto-advance step timer progress bar logic
-    const step = 20; // ms per check
+    const step = 20;
     const duration = 5000;
     const interval = setInterval(() => {
-      setProgress((prev) => {
+      setProgress(prev => {
         const next = prev + (step / duration) * 100;
         if (next >= 100) {
-          if (idx < total - 1) {
-            setIdx(i => i + 1);
+          // Try to go to next slide in current group
+          if (slideIdx < total - 1) {
+            setSlideIdx(i => i + 1);
             return 0;
-          } else {
-            onClose();
-            return prev;
           }
+          // Try to go to next group
+          if (groupIdx < groups.length - 1) {
+            setGroupIdx(g => g + 1);
+            // slideIdx & progress reset handled by the groupIdx useEffect
+            return 0;
+          }
+          // All groups exhausted
+          onClose();
+          return prev;
         }
         return next;
       });
     }, step);
-
     return () => clearInterval(interval);
-  }, [idx, total, onClose, isPaused]);
+  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused]);
 
-  // Reset progress when slide changes
+  // Reset progress when slide index changes
   useEffect(() => {
     setProgress(0);
-  }, [idx]);
+  }, [slideIdx]);
+
+  // ── Navigate to previous group ──
+  const goToPrevGroup = () => {
+    if (groupIdx > 0) {
+      setGroupIdx(g => g - 1);
+    }
+  };
+
+  // ── Navigate to next group ──
+  const goToNextGroup = () => {
+    if (groupIdx < groups.length - 1) {
+      setGroupIdx(g => g + 1);
+    } else {
+      onClose();
+    }
+  };
 
   // Submit reaction / reply to vendor conversation
   const handleSendStoryAction = async (contentToSend: string) => {
     const token = getAuthToken();
     if (!token) return;
     try {
-      // Find or create direct message thread with story author
       const convoRes = await fetch('/api/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -98,7 +155,6 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
       if (!convoRes.ok || !convoJson.success) return;
 
       const convoId = convoJson.data.conversationId;
-      // Send story reply/reaction message inside Direct Messages thread
       await fetch(`/api/messages/${convoId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -109,8 +165,6 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
         })
       });
       setMsgText('');
-      
-      // Professional toast instead of alert
       setToast({ message: "Response sent to direct messages! 💬", visible: true });
       setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
     } catch (err) {
@@ -120,16 +174,12 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
 
   const handleReact = (emoji: string) => {
     handleSendStoryAction(emoji);
-    
-    // Spawn floating emojis in Facebook style
     const now = Date.now();
     const newFloating = Array.from({ length: 6 }).map((_, i) => ({
-      id: now + i,
-      emoji,
+      id: now + i, emoji,
       left: Math.random() * 60 + 20,
       delay: i * 120,
     }));
-    
     setFloatingEmojis(prev => [...prev, ...newFloating]);
     setTimeout(() => {
       setFloatingEmojis(prev => prev.filter(item => !newFloating.find(nf => nf.id === item.id)));
@@ -137,50 +187,82 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
   };
 
   const media = currentSlide?.url;
-  
-  // Format story creation time dynamically
+
   const timeString = (() => {
     if (!currentSlide?.createdAt) return 'Just now';
     try {
-      const diffMs = Date.now() - new Date(currentSlide.createdAt).getTime();
+      const diffMs   = Date.now() - new Date(currentSlide.createdAt).getTime();
       const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) return 'Just now';
+      if (diffMins < 1)  return 'Just now';
       if (diffMins < 60) return `${diffMins}m ago`;
-      const diffHrs = Math.floor(diffMins / 60);
-      if (diffHrs < 24) return `${diffHrs}h ago`;
+      const diffHrs  = Math.floor(diffMins / 60);
+      if (diffHrs < 24)  return `${diffHrs}h ago`;
       return `${Math.floor(diffHrs / 24)}d ago`;
-    } catch {
-      return 'Just now';
-    }
+    } catch { return 'Just now'; }
   })();
 
+  if (!group) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-charcoal-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
+    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
       onClick={onClose}>
-      <div className="relative w-full max-w-2xl h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
+
+      {/* ── Prev User Arrow (left edge) ── */}
+      {groupIdx > 0 && (
+        <button
+          onClick={e => { e.stopPropagation(); goToPrevGroup(); }}
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[110] w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-all shadow-lg"
+          aria-label="Previous story"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* ── Next User Arrow (right edge) ── */}
+      {groupIdx < groups.length - 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); goToNextGroup(); }}
+          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[110] w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-all shadow-lg"
+          aria-label="Next story"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
+      {/* ── Story Card ── */}
+      <div className="relative w-full max-w-md h-full sm:h-[92vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between shadow-2xl"
         onClick={e => e.stopPropagation()}>
-        {/* Top Section overlays */}
-        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
-          {/* Progress bars */}
+
+        {/* Top overlay */}
+        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/70 to-transparent"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
+
+          {/* Progress bars — one per slide in this group */}
           <div className="flex gap-1 mb-3">
-            {Array.from({ length: total }).map((_, i) => (
-              <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
+            {slides.map((_, i) => (
+              <div key={i} className="flex-1 h-[3px] bg-white/30 rounded-full overflow-hidden">
                 <div className="h-full bg-white rounded-full transition-none"
-                  style={{ width: i < idx ? '100%' : i === idx ? `${progress}%` : '0%' }} />
+                  style={{ width: i < slideIdx ? '100%' : i === slideIdx ? `${progress}%` : '0%' }} />
               </div>
             ))}
           </div>
 
-          {/* Header */}
+          {/* Author row */}
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/60">
               <Avatar src={group.author.avatar ?? null} name={group.author.name || group.author.username} size={36} />
             </div>
-            <div>
-              <p className="text-white font-semibold text-sm leading-none">{group.author.name || group.author.username}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm leading-none truncate">{group.author.name || group.author.username}</p>
               <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
             </div>
-            <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
+            {/* Group indicator e.g. "2 / 5" */}
+            <span className="text-white/50 text-xs mr-1">{groupIdx + 1}&thinsp;/&thinsp;{groups.length}</span>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -188,25 +270,31 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
           </div>
         </div>
 
-        {/* Media Content - Scaled aspect ratio */}
+        {/* Media */}
         <div className="relative flex-1 w-full h-full flex items-center justify-center"
           onMouseDown={() => setIsPaused(true)}
           onMouseUp={() => setIsPaused(false)}
           onTouchStart={() => setIsPaused(true)}
           onTouchEnd={() => setIsPaused(false)}>
           {media ? (
-            <Image src={media} alt="Story content" fill className="object-contain" priority />
+            <Image src={media} alt="Story" fill className="object-contain" priority />
           ) : (
-            <div className="absolute inset-0 bg-linear-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
             </div>
           )}
 
-          {/* Tap zones overlay */}
-          <div className="absolute inset-x-0 top-24 bottom-44 flex z-10">
-            <button className="w-1/3 h-full cursor-pointer" onClick={() => setIdx(i => Math.max(0, i - 1))} />
+          {/* Tap zones: left third = prev slide/group, right third = next slide/group */}
+          <div className="absolute inset-x-0 top-20 bottom-44 flex z-10">
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => {
+              if (slideIdx > 0) { setSlideIdx(i => i - 1); }
+              else { goToPrevGroup(); }
+            }} />
             <div className="w-1/3 h-full" />
-            <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (idx < total - 1) setIdx(i => i + 1); else onClose(); }} />
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => {
+              if (slideIdx < total - 1) { setSlideIdx(i => i + 1); }
+              else { goToNextGroup(); }
+            }} />
           </div>
         </div>
 
@@ -216,91 +304,54 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
             <span
               key={fe.id}
               className="absolute bottom-28 text-4xl pointer-events-none select-none animate-float-emoji opacity-0"
-              style={{
-                left: `${fe.left}%`,
-                animationDelay: `${fe.delay}ms`,
-              }}
+              style={{ left: `${fe.left}%`, animationDelay: `${fe.delay}ms` }}
             >
               {fe.emoji}
             </span>
           ))}
         </div>
 
-        {/* Custom Style Injections */}
         <style>{`
           @keyframes floatEmoji {
-            0% {
-              transform: translateY(0) scale(0.5) rotate(0deg);
-              opacity: 0;
-            }
-            10% {
-              opacity: 1;
-              transform: translateY(-20px) scale(1.25) rotate(12deg);
-            }
-            90% {
-              opacity: 0.9;
-            }
-            100% {
-              transform: translateY(-300px) scale(0.7) rotate(-25deg);
-              opacity: 0;
-            }
+            0%   { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+            10%  { opacity: 1; transform: translateY(-20px) scale(1.25) rotate(12deg); }
+            90%  { opacity: 0.9; }
+            100% { transform: translateY(-300px) scale(0.7) rotate(-25deg); opacity: 0; }
           }
           @keyframes slideUp {
-            0% {
-              transform: translate(-50%, 24px);
-              opacity: 0;
-            }
-            100% {
-              transform: translate(-50%, 0);
-              opacity: 1;
-            }
+            0%   { transform: translate(-50%, 24px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
           }
-          .animate-float-emoji {
-            animation: floatEmoji 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-          }
-          .animate-slide-up {
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
+          .animate-float-emoji { animation: floatEmoji 2s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+          .animate-slide-up    { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         `}</style>
 
-        {/* Toast Notification */}
+        {/* Toast */}
         {toast.visible && (
-          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-md border border-gold-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-lg shadow-black/40 animate-slide-up">
+          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-md border border-gold-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-lg animate-slide-up">
             <span className="text-gold-400 text-lg">✨</span>
             <span className="text-white text-sm font-medium">{toast.message}</span>
           </div>
         )}
 
-        {/* Bottom Actions Overlay */}
-        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-          {/* Luxury Reactions Bar */}
+        {/* Bottom actions */}
+        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           <div className="flex justify-center gap-3">
-            {['👍', '❤️', '🔥', '😮', '🙌'].map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => handleReact(emoji)}
-                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-              >
+            {['👍', '❤️', '🔥', '😮', '🙌'].map(emoji => (
+              <button key={emoji} type="button" onClick={() => handleReact(emoji)}
+                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 {emoji}
               </button>
             ))}
           </div>
-
-          {/* Reply Input */}
           <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/10">
             <input
-              type="text"
-              placeholder="Reply to story..."
-              value={msgText}
-              onChange={e => setMsgText(e.target.value)}
+              type="text" placeholder="Reply to story..."
+              value={msgText} onChange={e => setMsgText(e.target.value)}
               onFocus={() => setIsPaused(true)}
               onBlur={() => setIsPaused(false)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && msgText.trim()) {
-                  handleSendStoryAction(`Story reply: "${msgText.trim()}"`);
-                }
-              }}
+              onKeyDown={e => { if (e.key === 'Enter' && msgText.trim()) handleSendStoryAction(`Story reply: "${msgText.trim()}"`); }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
             {msgText.trim() && (
@@ -338,7 +389,7 @@ export default function FeedPage() {
   const [shareModal,        setShareModal]        = useState<string | null>(null);
   const [isCreatingPost,    setIsCreatingPost]    = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
-  const [activeStory,       setActiveStory]       = useState<StoryGroup | null>(null);
+  const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
@@ -390,7 +441,9 @@ export default function FeedPage() {
       }
       const group = map.get(key)!;
       for (const url of s.mediaUrls) {
-        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt });
+        const slide = { storyId: s.id, url, createdAt: s.createdAt, viewed: s.viewed ?? false };
+        group.slides.push(slide);
+        if (!slide.viewed) group.hasUnviewed = true;
       }
     }
     return Array.from(map.values());
@@ -509,7 +562,13 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-cool-gray-50 dark:bg-charcoal-950">
-      {activeStory && <StoryViewer group={activeStory} onClose={() => setActiveStory(null)} />}
+      {activeGroupIndex !== null && (
+        <StoryViewer
+          groups={groupedStories}
+          initialGroupIndex={activeGroupIndex}
+          onClose={() => setActiveGroupIndex(null)}
+        />
+      )}
       <Header />
 
       <div className="max-w-2xl mx-auto px-0 sm:px-4 py-4 sm:py-8">
@@ -538,8 +597,8 @@ export default function FeedPage() {
             )}
 
             {/* Story Bubbles — one per author, accumulates all their slides */}
-            {groupedStories.map(group => (
-              <button key={group.author.id} onClick={() => setActiveStory(group)}
+            {groupedStories.map((group, gIdx) => (
+              <button key={group.author.id} onClick={() => setActiveGroupIndex(gIdx)}
                 className="shrink-0 flex flex-col items-center gap-1.5 group">
                 <div className="relative w-16 h-16 sm:w-[70px] sm:h-[70px]">
                   {/* Gold ring = has story */}

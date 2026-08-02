@@ -25,54 +25,80 @@ interface Post {
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
 interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; }
 // StoryGroup aggregates all story docs from one author into a single tray circle
-interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string }[]; }
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[]; }
 
 // ── Story Viewer Modal ────────────────────────────────────────────────────────
-function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => void }) {
-  const [idx, setIdx]       = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [msgText, setMsgText] = useState('');
-  const [isPaused, setIsPaused] = useState(false);
+// Props: full ordered list of story groups + which group to start at
+function StoryViewer({
+  groups,
+  initialGroupIndex,
+  onClose,
+}: {
+  groups: StoryGroup[];
+  initialGroupIndex: number;
+  onClose: () => void;
+}) {
+  const [groupIdx, setGroupIdx]   = useState(initialGroupIndex);
+  const [slideIdx, setSlideIdx]   = useState(0);
+  const [progress, setProgress]   = useState(0);
+  const [msgText, setMsgText]     = useState('');
+  const [isPaused, setIsPaused]   = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
-  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-  const slides = group.slides;
-  const total  = slides.length || 1;
-  const currentSlide = slides[idx];
+  const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const viewedRef = useRef<Set<string>>(new Set());
 
+  const group        = groups[groupIdx];
+  const slides       = group?.slides ?? [];
+  const total        = slides.length || 1;
+  const currentSlide = slides[slideIdx];
+
+  // On group change: jump to first unviewed slide
+  useEffect(() => {
+    const g = groups[groupIdx];
+    if (!g) return;
+    const firstUnviewed = g.slides.findIndex(s => !s.viewed);
+    setSlideIdx(firstUnviewed >= 0 ? firstUnviewed : 0);
+    setProgress(0);
+  }, [groupIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark current slide viewed via API (once per session)
+  useEffect(() => {
+    if (!currentSlide) return;
+    const key = currentSlide.storyId;
+    if (viewedRef.current.has(key)) return;
+    viewedRef.current.add(key);
+    const token = getAuthToken();
+    if (!token) return;
+    fetch(`/api/stories/${key}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+  }, [currentSlide]);
+
+  // Auto-advance timer
   useEffect(() => {
     if (isPaused) return;
-
-    const step = 20; // check interval in ms
-    const duration = 5000;
+    const step = 20, duration = 5000;
     const interval = setInterval(() => {
-      setProgress((prev) => {
+      setProgress(prev => {
         const next = prev + (step / duration) * 100;
         if (next >= 100) {
-          if (idx < total - 1) {
-            setIdx(i => i + 1);
-            return 0;
-          } else {
-            onClose();
-            return prev;
-          }
+          if (slideIdx < total - 1) { setSlideIdx(i => i + 1); return 0; }
+          if (groupIdx < groups.length - 1) { setGroupIdx(g => g + 1); return 0; }
+          onClose(); return prev;
         }
         return next;
       });
     }, step);
-
     return () => clearInterval(interval);
-  }, [idx, total, onClose, isPaused]);
+  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused]);
 
-  useEffect(() => {
-    setProgress(0);
-  }, [idx]);
+  useEffect(() => { setProgress(0); }, [slideIdx]);
 
-  // Submit reaction / reply to vendor conversation
+  const goToPrevGroup = () => { if (groupIdx > 0) setGroupIdx(g => g - 1); };
+  const goToNextGroup = () => { if (groupIdx < groups.length - 1) setGroupIdx(g => g + 1); else onClose(); };
+
   const handleSendStoryAction = async (contentToSend: string) => {
     const token = getAuthToken();
     if (!token) return;
     try {
-      // Find or create direct message thread with story author
       const convoRes = await fetch('/api/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -80,49 +106,27 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
       });
       const convoJson = await convoRes.json();
       if (!convoRes.ok || !convoJson.success) return;
-
-       const convoId = convoJson.data.conversationId;
-      // Send story reply/reaction message inside Direct Messages thread
+      const convoId = convoJson.data.conversationId;
       await fetch(`/api/messages/${convoId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: contentToSend,
-          storyId: currentSlide.storyId,
-          storyMediaUrl: currentSlide.url,
-        })
+        body: JSON.stringify({ text: contentToSend, storyId: currentSlide.storyId, storyMediaUrl: currentSlide.url })
       });
       setMsgText('');
-      
-      // Professional toast instead of alert
       setToast({ message: "Response sent to direct messages! 💬", visible: true });
       setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
-    } catch (err) {
-      console.error('Failed to send story response:', err);
-    }
+    } catch (err) { console.error('Failed to send story response:', err); }
   };
 
   const handleReact = (emoji: string) => {
     handleSendStoryAction(emoji);
-    
-    // Spawn floating emojis in Facebook style
     const now = Date.now();
-    const newFloating = Array.from({ length: 6 }).map((_, i) => ({
-      id: now + i,
-      emoji,
-      left: Math.random() * 60 + 20,
-      delay: i * 120,
-    }));
-    
+    const newFloating = Array.from({ length: 6 }).map((_, i) => ({ id: now + i, emoji, left: Math.random() * 60 + 20, delay: i * 120 }));
     setFloatingEmojis(prev => [...prev, ...newFloating]);
-    setTimeout(() => {
-      setFloatingEmojis(prev => prev.filter(item => !newFloating.find(nf => nf.id === item.id)));
-    }, 2200);
+    setTimeout(() => setFloatingEmojis(prev => prev.filter(item => !newFloating.find(nf => nf.id === item.id))), 2200);
   };
 
   const media = currentSlide?.url;
-  
-  // Format story creation time dynamically
   const timeString = (() => {
     if (!currentSlide?.createdAt) return 'Just now';
     try {
@@ -133,29 +137,43 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
       const diffHrs = Math.floor(diffMins / 60);
       if (diffHrs < 24) return `${diffHrs}h ago`;
       return `${Math.floor(diffHrs / 24)}d ago`;
-    } catch {
-      return 'Just now';
-    }
+    } catch { return 'Just now'; }
   })();
 
+  if (!group) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-charcoal-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4"
-      onClick={onClose}>
-      <div className="relative w-full max-w-2xl h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between"
+    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center" onClick={onClose}>
+      {groupIdx > 0 && (
+        <button onClick={e => { e.stopPropagation(); goToPrevGroup(); }}
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[110] w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-all shadow-lg"
+          aria-label="Previous story">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+      {groupIdx < groups.length - 1 && (
+        <button onClick={e => { e.stopPropagation(); goToNextGroup(); }}
+          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[110] w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-all shadow-lg"
+          aria-label="Next story">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+      <div className="relative w-full max-w-md h-full sm:h-[92vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between shadow-2xl"
         onClick={e => e.stopPropagation()}>
-        {/* Top Section overlays */}
-        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/60 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
-          {/* Progress bars */}
+        <div className="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-black/70 to-transparent"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
           <div className="flex gap-1 mb-3">
-            {Array.from({ length: total }).map((_, i) => (
-              <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
+            {slides.map((_, i) => (
+              <div key={i} className="flex-1 h-[3px] bg-white/30 rounded-full overflow-hidden">
                 <div className="h-full bg-white rounded-full transition-none"
-                  style={{ width: i < idx ? '100%' : i === idx ? `${progress}%` : '0%' }} />
+                  style={{ width: i < slideIdx ? '100%' : i === slideIdx ? `${progress}%` : '0%' }} />
               </div>
             ))}
           </div>
-
-          {/* Header */}
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/60">
               <div className="w-full h-full bg-charcoal-700 rounded-full overflow-hidden relative">
@@ -168,139 +186,82 @@ function StoryViewer({ group, onClose }: { group: StoryGroup; onClose: () => voi
                 )}
               </div>
             </div>
-            <div>
-              <p className="text-white font-semibold text-sm leading-none">{group.author.name || group.author.username}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm leading-none truncate">{group.author.name || group.author.username}</p>
               <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
             </div>
-            <button onClick={onClose} className="ml-auto w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
+            <span className="text-white/50 text-xs mr-1">{groupIdx + 1}&thinsp;/&thinsp;{groups.length}</span>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
-
-        {/* Media Content - Scaled aspect ratio */}
         <div className="relative flex-1 w-full h-full flex items-center justify-center"
-          onMouseDown={() => setIsPaused(true)}
-          onMouseUp={() => setIsPaused(false)}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setIsPaused(false)}>
+          onMouseDown={() => setIsPaused(true)} onMouseUp={() => setIsPaused(false)}
+          onTouchStart={() => setIsPaused(true)} onTouchEnd={() => setIsPaused(false)}>
           {media ? (
-            <Image src={media} alt="Story content" fill className="object-contain" priority />
+            <Image src={media} alt="Story" fill className="object-contain" priority />
           ) : (
-            <div className="absolute inset-0 bg-linear-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
             </div>
           )}
-
-          {/* Tap zones overlay */}
-          <div className="absolute inset-x-0 top-24 bottom-44 flex z-10">
-            <button className="w-1/3 h-full cursor-pointer" onClick={() => setIdx(i => Math.max(0, i - 1))} />
+          <div className="absolute inset-x-0 top-20 bottom-44 flex z-10">
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (slideIdx > 0) setSlideIdx(i => i - 1); else goToPrevGroup(); }} />
             <div className="w-1/3 h-full" />
-            <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (idx < total - 1) setIdx(i => i + 1); else onClose(); }} />
+            <button className="w-1/3 h-full cursor-pointer" onClick={() => { if (slideIdx < total - 1) setSlideIdx(i => i + 1); else goToNextGroup(); }} />
           </div>
         </div>
-
-        {/* Floating Emojis */}
         <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
           {floatingEmojis.map(fe => (
-            <span
-              key={fe.id}
-              className="absolute bottom-28 text-4xl pointer-events-none select-none animate-float-emoji opacity-0"
-              style={{
-                left: `${fe.left}%`,
-                animationDelay: `${fe.delay}ms`,
-              }}
-            >
+            <span key={fe.id} className="absolute bottom-28 text-4xl pointer-events-none select-none animate-float-emoji opacity-0"
+              style={{ left: `${fe.left}%`, animationDelay: `${fe.delay}ms` }}>
               {fe.emoji}
             </span>
           ))}
         </div>
-
-        {/* Custom Style Injections */}
         <style>{`
           @keyframes floatEmoji {
-            0% {
-              transform: translateY(0) scale(0.5) rotate(0deg);
-              opacity: 0;
-            }
-            10% {
-              opacity: 1;
-              transform: translateY(-20px) scale(1.25) rotate(12deg);
-            }
-            90% {
-              opacity: 0.9;
-            }
-            100% {
-              transform: translateY(-300px) scale(0.7) rotate(-25deg);
-              opacity: 0;
-            }
+            0%   { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+            10%  { opacity: 1; transform: translateY(-20px) scale(1.25) rotate(12deg); }
+            90%  { opacity: 0.9; }
+            100% { transform: translateY(-300px) scale(0.7) rotate(-25deg); opacity: 0; }
           }
           @keyframes slideUp {
-            0% {
-              transform: translate(-50%, 24px);
-              opacity: 0;
-            }
-            100% {
-              transform: translate(-50%, 0);
-              opacity: 1;
-            }
+            0%   { transform: translate(-50%, 24px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
           }
-          .animate-float-emoji {
-            animation: floatEmoji 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-          }
-          .animate-slide-up {
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
+          .animate-float-emoji { animation: floatEmoji 2s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+          .animate-slide-up    { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         `}</style>
-
-        {/* Toast Notification */}
         {toast.visible && (
-          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-md border border-gold-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-lg shadow-black/40 animate-slide-up">
+          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-md border border-gold-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-lg animate-slide-up">
             <span className="text-gold-400 text-lg">✨</span>
             <span className="text-white text-sm font-medium">{toast.message}</span>
           </div>
         )}
-
-        {/* Bottom Actions Overlay */}
-        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-          {/* Luxury Reactions Bar */}
+        <div className="p-4 bg-gradient-to-t from-black/90 to-black/30 z-20 flex flex-col gap-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           <div className="flex justify-center gap-3">
-            {['👍', '❤️', '🔥', '😮', '🙌'].map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => handleReact(emoji)}
-                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-              >
+            {['👍', '❤️', '🔥', '😮', '🙌'].map(emoji => (
+              <button key={emoji} type="button" onClick={() => handleReact(emoji)}
+                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-gold-500/30 flex items-center justify-center text-xl hover:scale-125 active:scale-95 transition-all hover:bg-gold-500/20 hover:border-gold-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
                 {emoji}
               </button>
             ))}
           </div>
-
-          {/* Reply Input */}
           <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/10">
-            <input
-              type="text"
-              placeholder="Reply to story..."
-              value={msgText}
+            <input type="text" placeholder="Reply to story..." value={msgText}
               onChange={e => setMsgText(e.target.value)}
-              onFocus={() => setIsPaused(true)}
-              onBlur={() => setIsPaused(false)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && msgText.trim()) {
-                  handleSendStoryAction(`Story reply: "${msgText.trim()}"`);
-                }
-              }}
+              onFocus={() => setIsPaused(true)} onBlur={() => setIsPaused(false)}
+              onKeyDown={e => { if (e.key === 'Enter' && msgText.trim()) handleSendStoryAction(`Story reply: "${msgText.trim()}"`); }}
               className="flex-1 bg-transparent text-white text-sm placeholder-white/50 outline-none"
             />
             {msgText.trim() && (
-              <button
-                type="button"
-                onClick={() => handleSendStoryAction(`Story reply: "${msgText.trim()}"`)}
-                className="text-gold-400 hover:text-gold-300 font-medium text-sm px-2 transition-colors duration-200"
-              >
+              <button type="button" onClick={() => handleSendStoryAction(`Story reply: "${msgText.trim()}"`)}
+                className="text-gold-400 hover:text-gold-300 font-medium text-sm px-2 transition-colors">
                 Send
               </button>
             )}
@@ -356,7 +317,7 @@ export default function Home() {
   const [brands,   setBrands]   = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [stories,  setStories]  = useState<any[]>([]);
-  const [activeStory, setActiveStory] = useState<StoryGroup | null>(null);
+  const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
 
   const brandsRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
@@ -406,13 +367,13 @@ export default function Home() {
 
   // Group stories by author — one circle per user like Instagram/WhatsApp
   const groupedStories = useMemo(() => {
-    const map = new Map<string, { author: any; slides: { storyId: string; url: string; createdAt?: string }[] }>();
+    const map = new Map<string, { author: any; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[] }>();
     for (const s of stories) {
       const key = s.author.id;
       if (!map.has(key)) map.set(key, { author: s.author, slides: [] });
       const group = map.get(key)!;
       for (const url of (s.mediaUrls || [])) {
-        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt });
+        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt, viewed: s.viewed ?? false });
       }
     }
     return Array.from(map.values());
@@ -564,10 +525,10 @@ export default function Home() {
         <section className="bg-white dark:bg-charcoal-900 border-b border-cool-gray-200 dark:border-charcoal-800">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-              {groupedStories.map((group) => (
+              {groupedStories.map((group, gIdx) => (
                 <button
                   key={group.author.id}
-                  onClick={() => setActiveStory(group)}
+                  onClick={() => setActiveGroupIndex(gIdx)}
                   className="shrink-0 text-center group touch-manipulation flex flex-col items-center"
                 >
                   <div className="relative w-16 h-16 sm:w-20 sm:h-20 mb-1.5 sm:mb-2">
@@ -601,7 +562,13 @@ export default function Home() {
         </section>
       )}
 
-      {activeStory && <StoryViewer group={activeStory} onClose={() => setActiveStory(null)} />}
+      {activeGroupIndex !== null && (
+        <StoryViewer
+          groups={groupedStories}
+          initialGroupIndex={activeGroupIndex}
+          onClose={() => setActiveGroupIndex(null)}
+        />
+      )}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12 md:py-16">
