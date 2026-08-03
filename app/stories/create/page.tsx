@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { getAuthToken } from '../../../lib/api/auth';
+import { uploadFileDirect } from '../../../lib/api/upload';
 
 interface TextOverlay {
   id: string;
@@ -123,33 +124,10 @@ export default function CreateStoryPage() {
       // Determine the real extension from the blob type or fall back to mediaType
       const ext = mediaType === 'video' ? 'mp4' : 'jpg';
       const fileName = `story.${ext}`;
+      const file = new File([blob], fileName, { type: blob.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
 
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', blob, fileName);
-      // Pass type hint so the API handles octet-stream correctly
-      uploadFormData.append('type', mediaType ?? 'image');
-      // Stories go to their own Cloudinary folder
-      uploadFormData.append('folder', 'stories');
-
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: uploadFormData,
-      });
-
-      let uploadJson: { success: boolean; data?: { url: string }; message?: string; error?: string } | null = null;
-      try {
-        const text = await uploadRes.text();
-        uploadJson = JSON.parse(text);
-      } catch {
-        // Not a JSON response
-      }
-
-      if (!uploadRes.ok || !uploadJson || !uploadJson.success) {
-        throw new Error(uploadJson?.message ?? uploadJson?.error ?? `Upload failed (HTTP ${uploadRes.status})`);
-      }
-
-      const mediaUrl: string = uploadJson.data!.url;
+      // Direct client-side signed upload to Cloudinary/Firebase storage (bypasses server body payload limit)
+      const mediaUrl = await uploadFileDirect(file, 'stories');
 
       // ── Step 2: Create the story record ─────────────────────────────────────
       const storyRes = await fetch('/api/stories', {
