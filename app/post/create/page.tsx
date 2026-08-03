@@ -41,7 +41,7 @@ export default function CreatePostPage() {
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [taggedProducts, setTaggedProducts]   = useState<TaggedProduct[]>([]);
   const [productSearchQuery, setProductSearchQuery] = useState('');
-  const [privacy, setPrivacy]                 = useState<'public' | 'followers' | 'private'>('privacy' as any); // fallback cast
+  const [privacy, setPrivacy]                 = useState<'public' | 'followers' | 'private'>('public');
   const [allowComments, setAllowComments]     = useState(true);
   const [isPublishing, setIsPublishing]       = useState(false);
   const [isSavingDraft, setIsSavingDraft]     = useState(false);
