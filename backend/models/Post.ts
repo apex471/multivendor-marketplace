@@ -73,14 +73,9 @@ export const Post = {
       const field = opts.orderBy as keyof IPost;
       const dir   = opts.orderDir === 'asc' ? 1 : -1;
       results.sort((a, b) => {
-        const av = a[field] as Date | number | string | undefined;
-        const bv = b[field] as Date | number | string | undefined;
-        if (av == null && bv == null) return 0;
-        if (av == null) return dir;
-        if (bv == null) return -dir;
-        if (av < bv) return -dir;
-        if (av > bv) return dir;
-        return 0;
+        const av = a[field] ? new Date(a[field] as any).getTime() : 0;
+        const bv = b[field] ? new Date(b[field] as any).getTime() : 0;
+        return dir * (av - bv);
       });
     }
 

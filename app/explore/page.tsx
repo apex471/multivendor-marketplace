@@ -11,6 +11,7 @@ import { getAuthToken } from '@/lib/api/auth';
 interface TrendingPost {
   id: string;
   image: string | null;
+  video: string | null;
   likes: number;
   comments: number;
   user: {
@@ -67,11 +68,12 @@ export default function ExplorePage() {
       const json = await res.json();
       if (!json.success) return;
       const mapped: TrendingPost[] = (json.data.posts ?? []).map((p: {
-        id?: string; _id?: string; images?: string[]; likes: number; comments: number;
+        id?: string; _id?: string; images?: string[]; videos?: string[]; likes: number; comments: number;
         authorName?: string; authorAvatar?: string;
       }) => ({
         id:       String(p.id ?? p._id ?? ''),
         image:    p.images?.[0] ?? null,
+        video:    p.videos?.[0] ?? null,
         likes:    p.likes ?? 0,
         comments: p.comments ?? 0,
         user: {
@@ -276,6 +278,13 @@ export default function ExplorePage() {
                       fill
                       className="object-cover group-hover:scale-105 transition-transform"
                     />
+                  ) : post.video ? (
+                    <div className="w-full h-full relative bg-charcoal-950 flex items-center justify-center">
+                      <video src={post.video} className="w-full h-full object-cover" muted playsInline loop autoPlay />
+                      <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[9px] text-white font-bold flex items-center gap-1">
+                        <span>📹</span> <span>Video</span>
+                      </div>
+                    </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-4xl">📷</div>
                   )}
