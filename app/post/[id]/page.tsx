@@ -29,6 +29,30 @@ interface PostData {
   tags: string[];
 }
 
+function formatRelativeTime(dateInput: Date | string | number | undefined): string {
+  if (!dateInput) return 'Recently';
+  try {
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return 'Recently';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffWeeks < 4) return `${diffWeeks}w ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -68,7 +92,7 @@ export default function PostDetailPage() {
             verified:  p.author.verified,
           },
           location:      '',
-          timestamp:     new Date(p.createdAt).toLocaleDateString(),
+          timestamp:     formatRelativeTime(p.createdAt),
           likes:         p.likes,
           commentsCount: p.comments,
           tags:          p.hashtags ?? [],

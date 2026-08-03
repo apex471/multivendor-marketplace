@@ -413,6 +413,30 @@ function StoryViewer({
   );
 }
 
+function formatRelativeTime(dateInput: Date | string | number | undefined): string {
+  if (!dateInput) return 'Recently';
+  try {
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return 'Recently';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffWeeks < 4) return `${diffWeeks}w ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
 // ── Main Feed Component ───────────────────────────────────────────────────────
 export default function FeedPage() {
   const router   = useRouter();
@@ -519,7 +543,7 @@ export default function FeedPage() {
             author: { name: p.authorName, avatar: p.authorAvatar ?? null, verified: p.authorRole !== 'customer', isVendor: ['vendor','brand'].includes(p.authorRole) },
             content: p.content, images: p.images ?? [], videos: p.videos ?? [], product: p.product,
             likes: p.likes, comments: p.comments, shares: p.shares,
-            timestamp: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
+            timestamp: formatRelativeTime(p.createdAt),
             liked: p.liked ?? false, saved: false,
           }));
           if (append) setPosts(prev => [...prev, ...livePosts]);
