@@ -14,7 +14,7 @@ import { getAuthToken } from '@/lib/api/auth';
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
 interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; viewed?: boolean; }
 // StoryGroup aggregates all story docs from one author into a single circle
-interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[]; hasUnviewed: boolean; }
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; type: string; createdAt?: string; viewed?: boolean }[]; hasUnviewed: boolean; }
 interface PostProduct { id: string; name: string; price: number; image: string; vendor: string; vendorId: string; }
 interface Post {
   id: string; authorId: string;
@@ -57,15 +57,27 @@ function StoryViewer({
   const [progress, setProgress]   = useState(0);
   const [msgText, setMsgText]     = useState('');
   const [isPaused, setIsPaused]   = useState(false);
+  const [isMuted, setIsMuted]     = useState(true);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   // Track which storyIds we've already sent a view ping for this session
   const viewedRef = useRef<Set<string>>(new Set());
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const group        = groups[groupIdx];
   const slides       = group?.slides ?? [];
   const total        = slides.length || 1;
   const currentSlide = slides[slideIdx];
+
+  // Synchronize browser playing/pausing state on hold gesture
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isPaused) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isPaused]);
 
   // On group change: jump to first unviewed slide (Instagram behaviour)
   useEffect(() => {
@@ -262,6 +274,25 @@ function StoryViewer({
             </div>
             {/* Group indicator e.g. "2 / 5" */}
             <span className="text-white/50 text-xs mr-1">{groupIdx + 1}&thinsp;/&thinsp;{groups.length}</span>
+            {currentSlide?.type === 'video' && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0 mr-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? (
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                ) : (
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                )}
+              </button>
+            )}
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -277,7 +308,19 @@ function StoryViewer({
           onTouchStart={() => setIsPaused(true)}
           onTouchEnd={() => setIsPaused(false)}>
           {media ? (
-            <Image src={media} alt="Story" fill className="object-contain" priority />
+            currentSlide?.type === 'video' ? (
+              <video
+                src={media}
+                className="w-full h-full object-contain"
+                autoPlay
+                playsInline
+                muted={isMuted}
+                ref={videoRef}
+                key={media}
+              />
+            ) : (
+              <Image src={media} alt="Story" fill className="object-contain" priority />
+            )
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
@@ -440,8 +483,16 @@ export default function FeedPage() {
         map.set(key, { author: s.author, slides: [], hasUnviewed: false });
       }
       const group = map.get(key)!;
-      for (const url of s.mediaUrls) {
-        const slide = { storyId: s.id, url, createdAt: s.createdAt, viewed: s.viewed ?? false };
+      const mediaUrls = s.mediaUrls || [];
+      const mediaTypes = s.mediaTypes || [];
+      for (let i = 0; i < mediaUrls.length; i++) {
+        const slide = {
+          storyId: s.id,
+          url: mediaUrls[i],
+          type: mediaTypes[i] || 'image',
+          createdAt: s.createdAt,
+          viewed: s.viewed ?? false
+        };
         group.slides.push(slide);
         if (!slide.viewed) group.hasUnviewed = true;
       }

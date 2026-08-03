@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
         return {
           id:         s.id,
           mediaUrls:  s.mediaUrls,
+          mediaTypes: s.mediaTypes ?? [],
           filter:     s.filter,
           duration:   s.duration,
           viewCount:  s.viewedBy?.length ?? 0,

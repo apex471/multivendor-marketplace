@@ -17,18 +17,17 @@ interface Post {
   authorName?: string;
   authorAvatar?: string;
   images?: string[];
+  videos?: string[];
   caption?: string;
   likes?: number;
   comments?: number;
 }
 
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
-interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; }
+interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; }
 // StoryGroup aggregates all story docs from one author into a single tray circle
-interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[]; }
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; type: string; createdAt?: string; viewed?: boolean }[]; }
 
-// ── Story Viewer Modal ────────────────────────────────────────────────────────
-// Props: full ordered list of story groups + which group to start at
 function StoryViewer({
   groups,
   initialGroupIndex,
@@ -43,14 +42,26 @@ function StoryViewer({
   const [progress, setProgress]   = useState(0);
   const [msgText, setMsgText]     = useState('');
   const [isPaused, setIsPaused]   = useState(false);
+  const [isMuted, setIsMuted]     = useState(true);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const viewedRef = useRef<Set<string>>(new Set());
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const group        = groups[groupIdx];
   const slides       = group?.slides ?? [];
   const total        = slides.length || 1;
   const currentSlide = slides[slideIdx];
+
+  // Synchronize browser playing/pausing state on hold gesture
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isPaused) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isPaused]);
 
   // On group change: jump to first unviewed slide
   useEffect(() => {
@@ -191,6 +202,25 @@ function StoryViewer({
               <p className="text-white/60 text-xs mt-0.5">{timeString}</p>
             </div>
             <span className="text-white/50 text-xs mr-1">{groupIdx + 1}&thinsp;/&thinsp;{groups.length}</span>
+            {currentSlide?.type === 'video' && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0 mr-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? (
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                ) : (
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                )}
+              </button>
+            )}
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -202,7 +232,19 @@ function StoryViewer({
           onMouseDown={() => setIsPaused(true)} onMouseUp={() => setIsPaused(false)}
           onTouchStart={() => setIsPaused(true)} onTouchEnd={() => setIsPaused(false)}>
           {media ? (
-            <Image src={media} alt="Story" fill className="object-contain" priority />
+            currentSlide?.type === 'video' ? (
+              <video
+                src={media}
+                className="w-full h-full object-contain"
+                autoPlay
+                playsInline
+                muted={isMuted}
+                ref={videoRef}
+                key={media}
+              />
+            ) : (
+              <Image src={media} alt="Story" fill className="object-contain" priority />
+            )
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
@@ -341,7 +383,12 @@ export default function Home() {
       fetch('/api/brands?limit=6').then(r => r.json()).catch(() => ({})),
       fetch('/api/products?limit=18&sort=popular').then(r => r.json()).catch(() => ({})),
     ]).then(([postsRes, vendorsRes, brandsRes, productsRes]) => {
-      if (postsRes?.data?.posts)       setPosts(postsRes.data.posts);
+      if (postsRes?.data?.posts) {
+        setPosts(postsRes.data.posts.map((p: any) => ({
+          ...p,
+          caption: p.content || p.caption,
+        })));
+      }
       if (vendorsRes?.data?.vendors)   setVendors(vendorsRes.data.vendors);
       if (brandsRes?.data?.brands)     setBrands(brandsRes.data.brands);
       if (productsRes?.data?.products) setProducts(productsRes.data.products);
@@ -367,16 +414,24 @@ export default function Home() {
 
   // Group stories by author — one circle per user like Instagram/WhatsApp
   const groupedStories = useMemo(() => {
-    const map = new Map<string, { author: any; slides: { storyId: string; url: string; createdAt?: string; viewed?: boolean }[] }>();
+    const map = new Map<string, { author: any; slides: { storyId: string; url: string; type: string; createdAt?: string; viewed?: boolean }[] }>();
     for (const s of stories) {
       const key = s.author.id;
       if (!map.has(key)) map.set(key, { author: s.author, slides: [] });
       const group = map.get(key)!;
-      for (const url of (s.mediaUrls || [])) {
-        group.slides.push({ storyId: s.id, url, createdAt: s.createdAt, viewed: s.viewed ?? false });
+      const mediaUrls = s.mediaUrls || [];
+      const mediaTypes = s.mediaTypes || [];
+      for (let i = 0; i < mediaUrls.length; i++) {
+        group.slides.push({
+          storyId: s.id,
+          url: mediaUrls[i],
+          type: mediaTypes[i] || 'image',
+          createdAt: s.createdAt,
+          viewed: s.viewed ?? false
+        });
       }
     }
-    return Array.from(map.values());
+    return Array.from(map.values()) as unknown as StoryGroup[];
   }, [stories]);
 
   const getCategoryImage = (catName: string): string | null => {
@@ -602,10 +657,17 @@ export default function Home() {
                   <div key={postId || Math.random().toString()} className="bg-white dark:bg-charcoal-800 rounded-2xl overflow-hidden shadow-md dark:shadow-charcoal-950/50 hover:shadow-xl dark:hover:shadow-charcoal-950/70 border border-cool-gray-200/60 dark:border-charcoal-750 transition-shadow">
                     <button
                       onClick={() => postId && router.push(`/post/${postId}`)}
-                      className="relative aspect-square w-full"
+                      className="relative aspect-square w-full overflow-hidden rounded-t-2xl"
                     >
                       {post.images?.[0] ? (
-                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover" />
+                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover hover:scale-105 transition-transform duration-300" />
+                      ) : post.videos?.[0] ? (
+                        <div className="w-full h-full relative bg-charcoal-950 flex items-center justify-center">
+                          <video src={post.videos[0]} className="w-full h-full object-cover" muted playsInline loop autoPlay />
+                          <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 text-[10px] text-white font-bold flex items-center gap-1.5 shadow-md">
+                            <span>📹</span> <span>Video</span>
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-full h-full bg-charcoal-100 dark:bg-charcoal-700 flex items-center justify-center text-4xl">🖼️</div>
                       )}

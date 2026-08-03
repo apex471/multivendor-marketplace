@@ -22,7 +22,9 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -33,6 +35,16 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
       .then(json => { if (json.success) setStory(json.data.story); })
       .finally(() => setIsLoading(false));
   }, [resolvedParams.id]);
+
+  // Synchronize browser playing/pausing state on hold gesture
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isPaused) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isPaused, currentIndex]);
 
   const STORY_DURATION = (story?.duration ?? 5) * 1000;
 
@@ -161,7 +173,28 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             <div className="text-white/70 text-sm">{new Date(story.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         </div>
-        <button onClick={() => router.back()} className="text-white text-2xl hover:scale-110 transition-transform">✕</button>
+        <div className="flex items-center gap-2">
+          {story.mediaTypes[currentIndex] === 'video' && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+              className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              )}
+            </button>
+          )}
+          <button onClick={() => router.back()} className="text-white text-2xl hover:scale-110 transition-transform">✕</button>
+        </div>
       </div>
 
       {/* Story content */}
@@ -172,7 +205,19 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
       >
-        <Image src={story.mediaUrls[currentIndex]} alt="Story" fill className="object-contain" priority />
+        {story.mediaTypes[currentIndex] === 'video' ? (
+          <video
+            src={story.mediaUrls[currentIndex]}
+            className="w-full h-full object-contain"
+            autoPlay
+            playsInline
+            muted={isMuted}
+            ref={videoRef}
+            key={story.mediaUrls[currentIndex]}
+          />
+        ) : (
+          <Image src={story.mediaUrls[currentIndex]} alt="Story" fill className="object-contain" priority />
+        )}
         <div className="absolute inset-x-0 top-24 bottom-44 flex">
           <div className="w-1/3 h-full cursor-pointer" onClick={handlePrevious} />
           <div className="w-1/3 h-full" />
