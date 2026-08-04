@@ -21,6 +21,7 @@ export interface IStory {
   expiresAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  status?: 'published' | 'archived';
 }
 
 const STORIES = 'stories';
@@ -34,6 +35,7 @@ export const Story = {
       duration: data.duration ?? 5,
       textOverlays: data.textOverlays ?? [],
       viewedBy: data.viewedBy ?? [],
+      status: (data as any).status ?? 'published',
       createdAt: now,
       updatedAt: now,
     };
@@ -64,12 +66,13 @@ export const Story = {
       .limit(limit * 2)
       .get();
     const results = snap.docs.map(d => docToObject<IStory>(d)!);
-    results.sort((a, b) => {
+    const activeStories = results.filter(s => s.status !== 'archived');
+    activeStories.sort((a, b) => {
       const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bd - ad;
     });
-    return results.slice(0, limit);
+    return activeStories.slice(0, limit);
   },
 
   async updateOne(id: string, updates: Partial<IStory>): Promise<void> {

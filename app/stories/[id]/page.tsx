@@ -29,6 +29,37 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Story Edit States
+  const [isEditingStory, setIsEditingStory] = useState(false);
+  const [editFilter, setEditFilter]         = useState('none');
+  const [editDuration, setEditDuration]     = useState(5);
+  const [editTextOverlay, setEditTextOverlay] = useState('');
+
+  const getFilterStyle = (filterId: string) => {
+    const filters: Record<string, string> = {
+      none: 'none',
+      grayscale: 'grayscale(100%)',
+      sepia: 'sepia(100%)',
+      saturate: 'saturate(200%)',
+      contrast: 'contrast(150%)',
+      brightness: 'brightness(120%)',
+      warm: 'sepia(50%) saturate(150%)',
+      cool: 'hue-rotate(180deg) saturate(120%)',
+    };
+    return filters[filterId] || 'none';
+  };
+
+  const filtersList = [
+    { id: 'none', name: 'Original' },
+    { id: 'grayscale', name: 'B&W' },
+    { id: 'sepia', name: 'Sepia' },
+    { id: 'saturate', name: 'Vivid' },
+    { id: 'contrast', name: 'Contrast' },
+    { id: 'brightness', name: 'Bright' },
+    { id: 'warm', name: 'Warm' },
+    { id: 'cool', name: 'Cool' },
+  ];
+
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
@@ -55,12 +86,12 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   // Synchronize browser playing/pausing state on hold gesture
   useEffect(() => {
     if (!videoRef.current) return;
-    if (isPaused) {
+    if (isPaused || isEditingStory) {
       videoRef.current.pause();
     } else {
       videoRef.current.play().catch(() => {});
     }
-  }, [isPaused, currentIndex]);
+  }, [isPaused, currentIndex, isEditingStory]);
 
   // Native HTML5 video buffering event listeners to ensure 100% reliability
   useEffect(() => {
@@ -95,7 +126,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const STORY_DURATION = (story?.duration ?? 5) * 1000;
 
   useEffect(() => {
-    if (isPaused || isVideoLoading || !story) return;
+    if (isPaused || isVideoLoading || !story || isEditingStory) return;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -248,35 +279,92 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             </button>
           )}
           {currentUser && (currentUser.id === story.author.id || currentUser.role === 'admin') && (
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (!confirm('Are you sure you want to permanently delete this story?')) return;
-                const token = getAuthToken();
-                if (!token) return;
-                try {
-                  const res = await fetch(`/api/stories/${story.id}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
-                  const json = await res.json();
-                  if (res.ok && json.success) {
-                    router.back();
-                  } else {
-                    alert(json.message || 'Failed to delete story');
+            <>
+              {/* Edit Story button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingStory(true);
+                  setIsPaused(true);
+                  setEditFilter(story.filter || 'none');
+                  setEditDuration(story.duration || 5);
+                  setEditTextOverlay((story as any).textOverlays?.[0]?.text || '');
+                }}
+                className="w-9 h-9 flex items-center justify-center text-blue-400 hover:text-blue-500 bg-white/10 hover:bg-white/20 rounded-full transition-colors mr-1"
+                title="Edit Story"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+
+              {/* Archive Story button */}
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm('Are you sure you want to archive this story? It will be hidden from the active stories.')) return;
+                  const token = getAuthToken();
+                  if (!token) return;
+                  try {
+                    const res = await fetch(`/api/stories/${story.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                      },
+                      body: JSON.stringify({ status: 'archived' })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      router.back();
+                    } else {
+                      alert(json.message || 'Failed to archive story');
+                    }
+                  } catch {
+                    alert('Failed to archive story');
                   }
-                } catch {
-                  alert('Failed to delete story');
-                }
-              }}
-              className="w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-500 bg-white/10 hover:bg-white/20 rounded-full transition-colors mr-1"
-              title="Delete Story"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+                }}
+                className="w-9 h-9 flex items-center justify-center text-yellow-400 hover:text-yellow-500 bg-white/10 hover:bg-white/20 rounded-full transition-colors mr-1"
+                title="Archive Story"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+              </button>
+
+              {/* Delete Story button */}
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm('Are you sure you want to permanently delete this story?')) return;
+                  const token = getAuthToken();
+                  if (!token) return;
+                  try {
+                    const res = await fetch(`/api/stories/${story.id}`, {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      router.back();
+                    } else {
+                      alert(json.message || 'Failed to delete story');
+                    }
+                  } catch {
+                    alert('Failed to delete story');
+                  }
+                }}
+                className="w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-500 bg-white/10 hover:bg-white/20 rounded-full transition-colors mr-1"
+                title="Delete Story"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </>
           )}
           <button onClick={() => router.back()} className="text-white text-2xl hover:scale-110 transition-transform">✕</button>
         </div>
@@ -284,7 +372,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
 
       {/* Story content */}
       <div
-        className="relative w-full h-full max-w-lg mx-auto"
+        className="relative w-full h-full max-w-lg mx-auto flex items-center justify-center"
         onMouseDown={() => setIsPaused(true)}
         onMouseUp={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
@@ -294,6 +382,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
           <video
             src={optimizeMediaUrl(story.mediaUrls[currentIndex], 'video')}
             className="w-full h-full object-contain"
+            style={{ filter: getFilterStyle(story.filter || 'none') }}
             autoPlay
             playsInline
             muted={isMuted}
@@ -305,8 +394,136 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             onCanPlay={() => setIsVideoLoading(false)}
           />
         ) : (
-          <Image src={optimizeMediaUrl(story.mediaUrls[currentIndex], 'image')} alt="Story" fill className="object-contain" priority />
+          <Image 
+            src={optimizeMediaUrl(story.mediaUrls[currentIndex], 'image')} 
+            alt="Story" 
+            fill 
+            className="object-contain" 
+            style={{ filter: getFilterStyle(story.filter || 'none') }}
+            priority 
+          />
         )}
+
+        {/* Text Overlays */}
+        {((story as any).textOverlays || []).map((overlay: any, idx: number) => (
+          <div
+            key={idx}
+            className="absolute z-20 pointer-events-none select-none text-center px-4"
+            style={{
+              left: `${overlay.x ?? 50}%`,
+              top: `${overlay.y ?? 50}%`,
+              fontSize: `${overlay.fontSize ?? 24}px`,
+              color: overlay.color ?? '#FFFFFF',
+              fontFamily: overlay.fontFamily ?? 'Arial',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            {overlay.text}
+          </div>
+        ))}
+
+        {/* Story Edit Form Panel */}
+        {isEditingStory && (
+          <div className="absolute inset-0 z-50 bg-black/95 p-6 flex flex-col justify-center space-y-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg">Edit Story Slide</h3>
+            
+            <div>
+              <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Filter</label>
+              <div className="grid grid-cols-4 gap-2">
+                {filtersList.map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setEditFilter(f.id)}
+                    className={`py-1.5 rounded-lg border-2 text-[10px] font-semibold transition-colors ${
+                      editFilter === f.id
+                        ? 'border-gold-500 text-gold-400 bg-gold-950/20'
+                        : 'border-white/20 text-white/80 hover:border-gold-500/50'
+                    }`}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Duration (seconds)</label>
+              <input
+                type="range"
+                min="3"
+                max="15"
+                value={editDuration}
+                onChange={(e) => setEditDuration(parseInt(e.target.value))}
+                className="w-full accent-gold-500"
+              />
+              <p className="text-xs text-white/60 text-center mt-1">{editDuration} seconds</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Caption Overlay</label>
+              <input
+                type="text"
+                value={editTextOverlay}
+                onChange={(e) => setEditTextOverlay(e.target.value)}
+                placeholder="Type caption..."
+                className="w-full px-3 py-2 rounded-lg border border-white/20 bg-white/10 text-white text-sm focus:outline-none focus:border-gold-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => {
+                  setIsEditingStory(false);
+                  setIsPaused(false);
+                }}
+                className="px-4 py-2 text-xs font-semibold border border-white/20 text-white rounded-xl hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const token = getAuthToken();
+                  if (!token) return;
+                  try {
+                    const res = await fetch(`/api/stories/${story.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        filter: editFilter,
+                        duration: editDuration,
+                        textOverlays: editTextOverlay ? [{ text: editTextOverlay, x: 50, y: 50, fontSize: 24, color: '#FFFFFF', fontFamily: 'Arial' }] : []
+                      })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      setStory(prev => prev ? {
+                        ...prev,
+                        filter: editFilter,
+                        duration: editDuration,
+                        textOverlays: editTextOverlay ? [{ text: editTextOverlay, x: 50, y: 50, fontSize: 24, color: '#FFFFFF', fontFamily: 'Arial' }] : []
+                      } : null);
+                      
+                      setIsEditingStory(false);
+                      setIsPaused(false);
+                    } else {
+                      alert(json.message || 'Failed to update story');
+                    }
+                  } catch {
+                    alert('Failed to update story');
+                  }
+                }}
+                className="px-5 py-2 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold text-xs transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="absolute inset-x-0 top-24 bottom-44 flex">
           <div className="w-1/3 h-full cursor-pointer" onClick={handlePrevious} />
           <div className="w-1/3 h-full" />

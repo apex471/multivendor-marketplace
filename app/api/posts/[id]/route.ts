@@ -73,7 +73,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/posts/[id] — archive/unarchive post or change privacy
+// PATCH /api/posts/[id] — edit post or update status/privacy
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -96,10 +96,38 @@ export async function PATCH(
       return sendError('Unauthorized', 403);
     }
 
-    const { status, privacy } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const { status, privacy, content, images, videos, product, hashtags } = body;
     const updates: any = {};
+
     if (status !== undefined) updates.status = status;
     if (privacy !== undefined) updates.privacy = privacy;
+    
+    if (content !== undefined) {
+      if (!content.trim()) {
+        return sendError('Post content is required', 400);
+      }
+      updates.content = content.trim();
+    }
+    
+    if (images !== undefined) {
+      updates.images = Array.isArray(images) ? images : [];
+    }
+    
+    if (videos !== undefined) {
+      updates.videos = Array.isArray(videos) ? videos : [];
+    }
+    
+    if (product !== undefined) {
+      updates.product = product;
+    }
+    
+    if (hashtags !== undefined) {
+      if (!Array.isArray(hashtags) || hashtags.map((t: any) => String(t || '').trim()).filter(Boolean).length === 0) {
+        return sendError('Please add at least one tag to your post.', 400);
+      }
+      updates.hashtags = hashtags;
+    }
 
     if (Object.keys(updates).length === 0) {
       return sendError('No valid fields to update', 400);

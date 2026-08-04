@@ -83,3 +83,46 @@ export async function DELETE(
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
 }
+
+// PATCH /api/stories/[id] — edit story or archive
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return sendError('Authentication required', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  const payload = verifyToken(token);
+  if (!payload) return sendError('Invalid or expired token', 401);
+
+  try {
+    const story = await Story.findById(id);
+    if (!story) return sendNotFound('Story not found');
+
+    if (story.authorId !== payload.userId && payload.role !== 'admin') {
+      return sendError('Unauthorized', 403);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { status, duration, filter, textOverlays } = body;
+
+    const updates: any = {};
+    if (status !== undefined) updates.status = status;
+    if (duration !== undefined) updates.duration = duration;
+    if (filter !== undefined) updates.filter = filter;
+    if (textOverlays !== undefined) updates.textOverlays = textOverlays;
+
+    if (Object.keys(updates).length === 0) {
+      return sendError('No valid fields to update', 400);
+    }
+
+    await Story.updateOne(id, updates);
+    return sendSuccess({ id, ...updates }, 'Story updated successfully');
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
+  }
+}

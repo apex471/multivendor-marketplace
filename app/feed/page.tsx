@@ -13,15 +13,16 @@ import { optimizeMediaUrl } from '../../lib/utils/media';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
-interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; viewed?: boolean; }
+interface Story       { id: string; mediaUrls: string[]; author: StoryAuthor; expiresAt: string; createdAt?: string; mediaTypes?: string[]; viewed?: boolean; filter?: string; duration?: number; textOverlays?: any[]; }
 // StoryGroup aggregates all story docs from one author into a single circle
-interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; type: string; createdAt?: string; viewed?: boolean }[]; hasUnviewed: boolean; }
+interface StoryGroup  { author: StoryAuthor; slides: { storyId: string; url: string; type: string; createdAt?: string; viewed?: boolean; filter?: string; duration?: number; textOverlays?: any[] }[]; hasUnviewed: boolean; }
 interface PostProduct { id: string; name: string; price: number; image: string; vendor: string; vendorId: string; }
 interface Post {
   id: string; authorId: string;
   author: { name: string; avatar: string | null; verified: boolean; isVendor: boolean; };
   content: string; images: string[]; videos?: string[]; likes: number; comments: number; shares: number;
   timestamp: string; liked: boolean; saved: boolean; product?: PostProduct;
+  hashtags?: string[];
 }
 interface CurrentUser { id: string; name: string; avatar: string | null; role: string; }
 
@@ -50,12 +51,16 @@ function StoryViewer({
   onClose,
   currentUser,
   onStoryDeleted,
+  onStoryArchived,
+  onStoryUpdated,
 }: {
   groups: StoryGroup[];
   initialGroupIndex: number;
   onClose: () => void;
   currentUser?: CurrentUser | null;
   onStoryDeleted?: (storyId: string) => void;
+  onStoryArchived?: (storyId: string) => void;
+  onStoryUpdated?: (storyId: string, updates: any) => void;
 }) {
   const [groupIdx, setGroupIdx]   = useState(initialGroupIndex);
   const [slideIdx, setSlideIdx]   = useState(0);
@@ -66,6 +71,13 @@ function StoryViewer({
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  
+  // Story Edit States
+  const [isEditingStory, setIsEditingStory] = useState(false);
+  const [editFilter, setEditFilter]         = useState('none');
+  const [editDuration, setEditDuration]     = useState(5);
+  const [editTextOverlay, setEditTextOverlay] = useState('');
+
   // Track which storyIds we've already sent a view ping for this session
   const viewedRef = useRef<Set<string>>(new Set());
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,15 +87,40 @@ function StoryViewer({
   const total        = slides.length || 1;
   const currentSlide = slides[slideIdx];
 
+  const getFilterStyle = (filterId: string) => {
+    const filters: Record<string, string> = {
+      none: 'none',
+      grayscale: 'grayscale(100%)',
+      sepia: 'sepia(100%)',
+      saturate: 'saturate(200%)',
+      contrast: 'contrast(150%)',
+      brightness: 'brightness(120%)',
+      warm: 'sepia(50%) saturate(150%)',
+      cool: 'hue-rotate(180deg) saturate(120%)',
+    };
+    return filters[filterId] || 'none';
+  };
+
+  const filtersList = [
+    { id: 'none', name: 'Original' },
+    { id: 'grayscale', name: 'B&W' },
+    { id: 'sepia', name: 'Sepia' },
+    { id: 'saturate', name: 'Vivid' },
+    { id: 'contrast', name: 'Contrast' },
+    { id: 'brightness', name: 'Bright' },
+    { id: 'warm', name: 'Warm' },
+    { id: 'cool', name: 'Cool' },
+  ];
+
   // Synchronize browser playing/pausing state on hold gesture
   useEffect(() => {
     if (!videoRef.current) return;
-    if (isPaused) {
+    if (isPaused || isEditingStory) {
       videoRef.current.pause();
     } else {
       videoRef.current.play().catch(() => {});
     }
-  }, [isPaused]);
+  }, [isPaused, isEditingStory]);
 
   // Native HTML5 video buffering event listeners to ensure 100% reliability
   useEffect(() => {
@@ -140,9 +177,9 @@ function StoryViewer({
 
   // Auto-advance timer
   useEffect(() => {
-    if (isPaused || isVideoLoading) return;
+    if (isPaused || isVideoLoading || isEditingStory) return;
     const step = 20;
-    const duration = 5000;
+    const duration = (currentSlide?.duration ?? 5) * 1000;
     const interval = setInterval(() => {
       setProgress(prev => {
         const next = prev + (step / duration) * 100;
@@ -166,7 +203,7 @@ function StoryViewer({
       });
     }, step);
     return () => clearInterval(interval);
-  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused, isVideoLoading]);
+  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused, isVideoLoading, isEditingStory, currentSlide]);
 
   // Reset progress and loading states when slide index changes
   useEffect(() => {
@@ -331,53 +368,126 @@ function StoryViewer({
               </button>
             )}
             {currentUser && (currentUser.id === group.author.id || currentUser.role === 'admin') && (
-              <button
-                type="button"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!confirm('Are you sure you want to permanently delete this story?')) return;
-                  const token = getAuthToken();
-                  if (!token) return;
-                  const currentStoryId = currentSlide.storyId;
-                  try {
-                    const res = await fetch(`/api/stories/${currentStoryId}`, {
-                      method: 'DELETE',
-                      headers: { Authorization: `Bearer ${token}` }
-                    });
-                    const json = await res.json();
-                    if (res.ok && json.success) {
-                      if (onStoryDeleted) onStoryDeleted(currentStoryId);
-                      
-                      if (slides.length > 1) {
-                        if (slideIdx < slides.length - 1) {
-                          setSlideIdx(idx => idx);
-                          setProgress(0);
+              <>
+                {/* Edit Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingStory(true);
+                    setIsPaused(true);
+                    setEditFilter(currentSlide.filter || 'none');
+                    setEditDuration(currentSlide.duration || 5);
+                    setEditTextOverlay(currentSlide.textOverlays?.[0]?.text || '');
+                  }}
+                  className="w-8 h-8 flex items-center justify-center text-blue-400 hover:text-blue-500 hover:bg-white/10 rounded-full transition-colors mr-1"
+                  title="Edit Story"
+                >
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                {/* Archive Button */}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm('Are you sure you want to archive this story? It will be hidden from the active stories.')) return;
+                    const token = getAuthToken();
+                    if (!token) return;
+                    const currentStoryId = currentSlide.storyId;
+                    try {
+                      const res = await fetch(`/api/stories/${currentStoryId}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ status: 'archived' })
+                      });
+                      const json = await res.json();
+                      if (res.ok && json.success) {
+                        if (onStoryArchived) onStoryArchived(currentStoryId);
+                        
+                        if (slides.length > 1) {
+                          if (slideIdx < slides.length - 1) {
+                            setSlideIdx(idx => idx);
+                            setProgress(0);
+                          } else {
+                            setSlideIdx(idx => Math.max(0, idx - 1));
+                            setProgress(0);
+                          }
                         } else {
-                          setSlideIdx(idx => Math.max(0, idx - 1));
-                          setProgress(0);
+                          if (groupIdx < groups.length - 1) {
+                            setGroupIdx(idx => idx);
+                            setProgress(0);
+                          } else {
+                            onClose();
+                          }
                         }
                       } else {
-                        if (groupIdx < groups.length - 1) {
-                          setGroupIdx(idx => idx);
-                          setProgress(0);
-                        } else {
-                          onClose();
-                        }
+                        alert(json.message || 'Failed to archive story');
                       }
-                    } else {
-                      alert(json.message || 'Failed to delete story');
+                    } catch {
+                      alert('Failed to archive story');
                     }
-                  } catch {
-                    alert('Failed to delete story');
-                  }
-                }}
-                className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-white/10 rounded-full transition-colors mr-1"
-                title="Delete Story"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+                  }}
+                  className="w-8 h-8 flex items-center justify-center text-yellow-400 hover:text-yellow-500 hover:bg-white/10 rounded-full transition-colors mr-1"
+                  title="Archive Story"
+                >
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                </button>
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm('Are you sure you want to permanently delete this story?')) return;
+                    const token = getAuthToken();
+                    if (!token) return;
+                    const currentStoryId = currentSlide.storyId;
+                    try {
+                      const res = await fetch(`/api/stories/${currentStoryId}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` }
+                      });
+                      const json = await res.json();
+                      if (res.ok && json.success) {
+                        if (onStoryDeleted) onStoryDeleted(currentStoryId);
+                        
+                        if (slides.length > 1) {
+                          if (slideIdx < slides.length - 1) {
+                            setSlideIdx(idx => idx);
+                            setProgress(0);
+                          } else {
+                            setSlideIdx(idx => Math.max(0, idx - 1));
+                            setProgress(0);
+                          }
+                        } else {
+                          if (groupIdx < groups.length - 1) {
+                            setGroupIdx(idx => idx);
+                            setProgress(0);
+                          } else {
+                            onClose();
+                          }
+                        }
+                      } else {
+                        alert(json.message || 'Failed to delete story');
+                      }
+                    } catch {
+                      alert('Failed to delete story');
+                    }
+                  }}
+                  className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-white/10 rounded-full transition-colors mr-1"
+                  title="Delete Story"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </>
             )}
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -397,7 +507,8 @@ function StoryViewer({
             currentSlide?.type === 'video' ? (
               <video
                 src={optimizeMediaUrl(media, 'video')}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain animate-fade-in"
+                style={{ filter: getFilterStyle(currentSlide?.filter || 'none') }}
                 autoPlay
                 playsInline
                 muted={isMuted}
@@ -409,11 +520,142 @@ function StoryViewer({
                 onCanPlay={() => setIsVideoLoading(false)}
               />
             ) : (
-              <Image src={optimizeMediaUrl(media, 'image')} alt="Story" fill className="object-contain" priority />
+              <Image 
+                src={optimizeMediaUrl(media, 'image')} 
+                alt="Story" 
+                fill 
+                className="object-contain animate-fade-in" 
+                style={{ filter: getFilterStyle(currentSlide?.filter || 'none') }}
+                priority 
+              />
             )
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
+            </div>
+          )}
+
+          {/* Text Overlays */}
+          {(currentSlide?.textOverlays || []).map((overlay: any, idx: number) => (
+            <div
+              key={idx}
+              className="absolute z-20 pointer-events-none select-none text-center px-4"
+              style={{
+                left: `${overlay.x ?? 50}%`,
+                top: `${overlay.y ?? 50}%`,
+                fontSize: `${overlay.fontSize ?? 24}px`,
+                color: overlay.color ?? '#FFFFFF',
+                fontFamily: overlay.fontFamily ?? 'Arial',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              {overlay.text}
+            </div>
+          ))}
+
+          {/* Story Edit Form Panel */}
+          {isEditingStory && (
+            <div className="absolute inset-0 z-50 bg-black/90 p-6 flex flex-col justify-center space-y-6" onClick={e => e.stopPropagation()}>
+              <h3 className="text-white font-bold text-lg">Edit Story Slide</h3>
+              
+              <div>
+                <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Filter</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {filtersList.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setEditFilter(f.id)}
+                      className={`py-1.5 rounded-lg border-2 text-[10px] font-semibold transition-colors ${
+                        editFilter === f.id
+                          ? 'border-gold-500 text-gold-400 bg-gold-950/20'
+                          : 'border-white/20 text-white/80 hover:border-gold-500/50'
+                      }`}
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Duration (seconds)</label>
+                <input
+                  type="range"
+                  min="3"
+                  max="15"
+                  value={editDuration}
+                  onChange={(e) => setEditDuration(parseInt(e.target.value))}
+                  className="w-full accent-gold-500"
+                />
+                <p className="text-xs text-white/60 text-center mt-1">{editDuration} seconds</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Caption Overlay</label>
+                <input
+                  type="text"
+                  value={editTextOverlay}
+                  onChange={(e) => setEditTextOverlay(e.target.value)}
+                  placeholder="Type caption..."
+                  className="w-full px-3 py-2 rounded-lg border border-white/20 bg-white/10 text-white text-sm focus:outline-none focus:border-gold-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setIsEditingStory(false);
+                    setIsPaused(false);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold border border-white/20 text-white rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    const token = getAuthToken();
+                    if (!token) return;
+                    try {
+                      const res = await fetch(`/api/stories/${currentSlide.storyId}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                          filter: editFilter,
+                          duration: editDuration,
+                          textOverlays: editTextOverlay ? [{ text: editTextOverlay, x: 50, y: 50, fontSize: 24, color: '#FFFFFF', fontFamily: 'Arial' }] : []
+                        })
+                      });
+                      const json = await res.json();
+                      if (res.ok && json.success) {
+                        if (onStoryUpdated) {
+                          onStoryUpdated(currentSlide.storyId, {
+                            filter: editFilter,
+                            duration: editDuration,
+                            textOverlays: editTextOverlay ? [{ text: editTextOverlay, x: 50, y: 50, fontSize: 24, color: '#FFFFFF', fontFamily: 'Arial' }] : []
+                          });
+                        }
+                        currentSlide.filter = editFilter;
+                        currentSlide.duration = editDuration;
+                        currentSlide.textOverlays = editTextOverlay ? [{ text: editTextOverlay, x: 50, y: 50, fontSize: 24, color: '#FFFFFF', fontFamily: 'Arial' }] : [];
+                        
+                        setIsEditingStory(false);
+                        setIsPaused(false);
+                      } else {
+                        alert(json.message || 'Failed to update story');
+                      }
+                    } catch {
+                      alert('Failed to update story');
+                    }
+                  }}
+                  className="px-5 py-2 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold text-xs transition-colors"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           )}
 
@@ -557,6 +799,13 @@ export default function FeedPage() {
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const [mutedPosts, setMutedPosts] = useState<Record<string, boolean>>({});
   const [activePostMenu, setActivePostMenu] = useState<string | null>(null);
+  
+  // Post Edit States
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editPostContent, setEditPostContent] = useState('');
+  const [editPostHashtags, setEditPostHashtags] = useState('');
+  const [isSavingPost, setIsSavingPost] = useState(false);
+
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
   const storiesRef      = useRef<HTMLDivElement>(null);
@@ -693,7 +942,10 @@ export default function FeedPage() {
           url: mediaUrls[i],
           type: mediaTypes[i] || 'image',
           createdAt: s.createdAt,
-          viewed: s.viewed ?? false
+          viewed: s.viewed ?? false,
+          filter: s.filter,
+          duration: s.duration,
+          textOverlays: s.textOverlays
         };
         group.slides.push(slide);
         if (!slide.viewed) group.hasUnviewed = true;
@@ -822,6 +1074,8 @@ export default function FeedPage() {
           onClose={() => setActiveGroupIndex(null)}
           currentUser={currentUser}
           onStoryDeleted={(id) => setStories(prev => prev.filter(s => s.id !== id))}
+          onStoryArchived={(id) => setStories(prev => prev.filter(s => s.id !== id))}
+          onStoryUpdated={(id, updates) => setStories(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
         />
       )}
       <Header />
@@ -1040,6 +1294,17 @@ export default function FeedPage() {
                       <div className="absolute right-0 mt-1.5 w-40 bg-white dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
                         {(currentUser?.id === post.authorId || currentUser?.role === 'admin') ? (
                           <>
+                            <button
+                              onClick={() => {
+                                setEditingPost(post);
+                                setEditPostContent(post.content);
+                                setEditPostHashtags(post.hashtags ? post.hashtags.join(', ') : '');
+                                setActivePostMenu(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-200 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors flex items-center gap-2"
+                            >
+                              <span>✏️</span> Edit Post
+                            </button>
                             <button
                               onClick={() => handleArchivePost(post.id)}
                               className="w-full text-left px-4 py-2 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-200 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors flex items-center gap-2"
@@ -1400,6 +1665,99 @@ export default function FeedPage() {
           </svg>
         </Link>
       </div>
+
+      {editingPost && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" onClick={() => setEditingPost(null)}>
+          <div className="bg-white dark:bg-charcoal-900 rounded-2xl w-full max-w-lg overflow-hidden border border-cool-gray-200 dark:border-charcoal-800 shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-cool-gray-100 dark:border-charcoal-800 flex items-center justify-between">
+              <h3 className="font-bold text-charcoal-900 dark:text-white">Edit Post</h3>
+              <button onClick={() => setEditingPost(null)} className="text-cool-gray-400 hover:text-cool-gray-600 dark:hover:text-white">
+                ✕
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+              <div>
+                <label className="block text-xs font-bold text-cool-gray-500 dark:text-cool-gray-400 uppercase tracking-wider mb-2">Content</label>
+                <textarea
+                  value={editPostContent}
+                  onChange={(e) => setEditPostContent(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder-cool-gray-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 resize-none text-sm transition-all"
+                  rows={4}
+                  placeholder="What's on your mind?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-cool-gray-500 dark:text-cool-gray-400 uppercase tracking-wider mb-2">Hashtags (comma separated)</label>
+                <input
+                  type="text"
+                  value={editPostHashtags}
+                  onChange={(e) => setEditPostHashtags(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder-cool-gray-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 text-sm transition-all"
+                  placeholder="fashion, style, ootd"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-cool-gray-50 dark:bg-charcoal-950 border-t border-cool-gray-100 dark:border-charcoal-800 flex justify-end gap-3">
+              <button
+                onClick={() => setEditingPost(null)}
+                className="px-4 py-2 text-sm font-semibold border border-cool-gray-300 dark:border-charcoal-700 text-charcoal-700 dark:text-cool-gray-300 rounded-xl hover:bg-cool-gray-100 dark:hover:bg-charcoal-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!editPostContent.trim()) {
+                    alert('Post content cannot be empty');
+                    return;
+                  }
+                  const tagsList = editPostHashtags.split(',').map(t => t.trim()).filter(t => t);
+                  if (tagsList.length === 0) {
+                    alert('Please add at least one hashtag');
+                    return;
+                  }
+                  const token = getAuthToken();
+                  if (!token) return;
+                  setIsSavingPost(true);
+                  try {
+                    const res = await fetch(`/api/posts/${editingPost.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        content: editPostContent,
+                        hashtags: tagsList
+                      })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      setPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, content: editPostContent, hashtags: tagsList } : p));
+                      setEditingPost(null);
+                    } else {
+                      alert(json.message || 'Failed to update post');
+                    }
+                  } catch {
+                    alert('Failed to update post');
+                  } finally {
+                    setIsSavingPost(false);
+                  }
+                }}
+                disabled={isSavingPost}
+                className="px-5 py-2 bg-gold-600 hover:bg-gold-700 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 shadow-md shadow-gold-600/20"
+              >
+                {isSavingPost ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
