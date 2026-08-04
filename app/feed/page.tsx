@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../contexts/CartContext';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { getAuthToken } from '@/lib/api/auth';
+import { optimizeMediaUrl } from '../../lib/utils/media';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StoryAuthor { id: string; username: string; name: string; avatar?: string | null; }
@@ -62,6 +63,7 @@ function StoryViewer({
   const [msgText, setMsgText]     = useState('');
   const [isPaused, setIsPaused]   = useState(false);
   const [isMuted, setIsMuted]     = useState(true);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{ id: number; emoji: string; left: number; delay: number }[]>([]);
   const [toast, setToast]         = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   // Track which storyIds we've already sent a view ping for this session
@@ -108,7 +110,7 @@ function StoryViewer({
 
   // Auto-advance timer
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || isVideoLoading) return;
     const step = 20;
     const duration = 5000;
     const interval = setInterval(() => {
@@ -134,12 +136,13 @@ function StoryViewer({
       });
     }, step);
     return () => clearInterval(interval);
-  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused]);
+  }, [slideIdx, groupIdx, total, groups.length, onClose, isPaused, isVideoLoading]);
 
-  // Reset progress when slide index changes
+  // Reset progress and loading states when slide index changes
   useEffect(() => {
+    setIsVideoLoading(currentSlide?.type === 'video');
     setProgress(0);
-  }, [slideIdx]);
+  }, [slideIdx, currentSlide]);
 
   // ── Navigate to previous group ──
   const goToPrevGroup = () => {
@@ -363,20 +366,31 @@ function StoryViewer({
           {media ? (
             currentSlide?.type === 'video' ? (
               <video
-                src={media}
+                src={optimizeMediaUrl(media, 'video')}
                 className="w-full h-full object-contain"
                 autoPlay
                 playsInline
                 muted={isMuted}
                 ref={videoRef}
                 key={media}
+                onLoadStart={() => setIsVideoLoading(true)}
+                onWaiting={() => setIsVideoLoading(true)}
+                onPlaying={() => setIsVideoLoading(false)}
+                onCanPlay={() => setIsVideoLoading(false)}
               />
             ) : (
-              <Image src={media} alt="Story" fill className="object-contain" priority />
+              <Image src={optimizeMediaUrl(media, 'image')} alt="Story" fill className="object-contain" priority />
             )
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-gold-800 to-charcoal-900 flex items-center justify-center">
               <span className="text-6xl text-white">✦</span>
+            </div>
+          )}
+
+          {/* Buffering/Loading spinner overlay */}
+          {isVideoLoading && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40">
+              <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-white animate-spin" />
             </div>
           )}
 
@@ -1050,7 +1064,7 @@ export default function FeedPage() {
                       {currentItem.type === 'video' ? (
                         <div className="w-full h-full relative">
                           <video
-                            src={currentItem.url}
+                            src={optimizeMediaUrl(currentItem.url, 'video')}
                             className="w-full h-full object-cover cursor-pointer"
                             playsInline
                             loop
@@ -1091,7 +1105,7 @@ export default function FeedPage() {
                       ) : (
                         <div className="w-full h-full relative">
                           <Image
-                            src={currentItem.url}
+                            src={optimizeMediaUrl(currentItem.url, 'image')}
                             alt="Post media"
                             fill
                             className="object-cover"

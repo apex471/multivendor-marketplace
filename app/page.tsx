@@ -8,6 +8,7 @@ import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 import { useCart } from "../contexts/CartContext";
 import { getAuthToken } from "../lib/api/auth";
+import { optimizeMediaUrl } from "../lib/utils/media";
 import { useAuth } from "../contexts/AuthContext";
 import { useLocalization } from "../contexts/LocalizationContext";
 
@@ -660,10 +661,10 @@ export default function Home() {
                       className="relative aspect-square w-full overflow-hidden rounded-t-2xl"
                     >
                       {post.images?.[0] ? (
-                        <Image src={post.images[0]} alt={post.caption || 'Post'} fill className="object-cover hover:scale-105 transition-transform duration-300" />
+                        <Image src={optimizeMediaUrl(post.images[0], 'image')} alt={post.caption || 'Post'} fill className="object-cover hover:scale-105 transition-transform duration-300" />
                       ) : post.videos?.[0] ? (
                         <div className="w-full h-full relative bg-charcoal-950 flex items-center justify-center">
-                          <video src={post.videos[0]} className="w-full h-full object-cover" muted playsInline loop autoPlay />
+                          <video src={optimizeMediaUrl(post.videos[0], 'video')} className="w-full h-full object-cover" muted playsInline loop autoPlay />
                           <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 text-[10px] text-white font-bold flex items-center gap-1.5 shadow-md">
                             <span>📹</span> <span>Video</span>
                           </div>

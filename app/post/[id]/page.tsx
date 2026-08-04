@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
+import { optimizeMediaUrl } from '@/lib/utils/media';
 
 interface Comment {
   id: string;
@@ -246,7 +247,7 @@ export default function PostDetailPage() {
                       <div className="w-full h-full relative flex items-center justify-center">
                         {currentMedia.type === 'video' ? (
                           <video
-                            src={currentMedia.url}
+                            src={optimizeMediaUrl(currentMedia.url, 'video')}
                             className="w-full h-full object-contain animate-fade-in"
                             controls
                             playsInline
@@ -255,7 +256,7 @@ export default function PostDetailPage() {
                           />
                         ) : (
                           <Image
-                            src={currentMedia.url}
+                            src={optimizeMediaUrl(currentMedia.url, 'image')}
                             alt={post.caption}
                             fill
                             className="object-contain animate-fade-in"

@@ -4,6 +4,7 @@ import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getAuthToken } from '@/lib/api/auth';
+import { optimizeMediaUrl } from '@/lib/utils/media';
 
 interface Story {
   id: string;
@@ -25,6 +26,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const STORY_DURATION = (story?.duration ?? 5) * 1000;
 
   useEffect(() => {
-    if (isPaused || !story) return;
+    if (isPaused || isVideoLoading || !story) return;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -81,7 +83,15 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
     }, 100);
 
     return () => clearInterval(interval);
-  }, [currentIndex, isPaused, story, STORY_DURATION, router]);
+  }, [currentIndex, isPaused, isVideoLoading, story, STORY_DURATION, router]);
+
+  // Reset progress and loading states when slide index changes
+  useEffect(() => {
+    if (story) {
+      setIsVideoLoading(story.mediaTypes[currentIndex] === 'video');
+    }
+    setProgress(0);
+  }, [currentIndex, story]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) { setCurrentIndex(currentIndex - 1); setProgress(0); }
@@ -252,22 +262,33 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
       >
         {story.mediaTypes[currentIndex] === 'video' ? (
           <video
-            src={story.mediaUrls[currentIndex]}
+            src={optimizeMediaUrl(story.mediaUrls[currentIndex], 'video')}
             className="w-full h-full object-contain"
             autoPlay
             playsInline
             muted={isMuted}
             ref={videoRef}
             key={story.mediaUrls[currentIndex]}
+            onLoadStart={() => setIsVideoLoading(true)}
+            onWaiting={() => setIsVideoLoading(true)}
+            onPlaying={() => setIsVideoLoading(false)}
+            onCanPlay={() => setIsVideoLoading(false)}
           />
         ) : (
-          <Image src={story.mediaUrls[currentIndex]} alt="Story" fill className="object-contain" priority />
+          <Image src={optimizeMediaUrl(story.mediaUrls[currentIndex], 'image')} alt="Story" fill className="object-contain" priority />
         )}
         <div className="absolute inset-x-0 top-24 bottom-44 flex">
           <div className="w-1/3 h-full cursor-pointer" onClick={handlePrevious} />
           <div className="w-1/3 h-full" />
           <div className="w-1/3 h-full cursor-pointer" onClick={handleNext} />
         </div>
+
+        {/* Buffering/Loading spinner overlay */}
+        {isVideoLoading && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40">
+            <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-white animate-spin" />
+          </div>
+        )}
       </div>
 
       {/* Floating Emojis */}
