@@ -62,6 +62,36 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
     }
   }, [isPaused, currentIndex]);
 
+  // Native HTML5 video buffering event listeners to ensure 100% reliability
+  useEffect(() => {
+    const videoObj = videoRef.current;
+    if (!videoObj) return;
+
+    const handleWaiting = () => setIsVideoLoading(true);
+    const handlePlaying = () => setIsVideoLoading(false);
+    const handleCanPlay = () => setIsVideoLoading(false);
+    const handleLoadStart = () => setIsVideoLoading(true);
+
+    videoObj.addEventListener('waiting', handleWaiting);
+    videoObj.addEventListener('playing', handlePlaying);
+    videoObj.addEventListener('canplay', handleCanPlay);
+    videoObj.addEventListener('loadstart', handleLoadStart);
+
+    // Initial readyState check (HAVE_FUTURE_DATA = 3, HAVE_ENOUGH_DATA = 4)
+    if (videoObj.readyState >= 3) {
+      setIsVideoLoading(false);
+    } else if (story?.mediaTypes[currentIndex] === 'video') {
+      setIsVideoLoading(true);
+    }
+
+    return () => {
+      videoObj.removeEventListener('waiting', handleWaiting);
+      videoObj.removeEventListener('playing', handlePlaying);
+      videoObj.removeEventListener('canplay', handleCanPlay);
+      videoObj.removeEventListener('loadstart', handleLoadStart);
+    };
+  }, [currentIndex, story]);
+
   const STORY_DURATION = (story?.duration ?? 5) * 1000;
 
   useEffect(() => {
