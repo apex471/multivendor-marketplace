@@ -76,6 +76,10 @@ export const Story = {
     await db.collection(STORIES).doc(id).update({ ...updates, updatedAt: new Date() });
   },
 
+  async deleteOne(id: string): Promise<void> {
+    await db.collection(STORIES).doc(id).delete();
+  },
+
   async addViewer(id: string, userId: string): Promise<void> {
     const { FieldValue } = await import('firebase-admin/firestore');
     await db.collection(STORIES).doc(id).update({

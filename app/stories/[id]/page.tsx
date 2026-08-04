@@ -24,7 +24,21 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data?.user) {
+          const u = json.data.user;
+          setCurrentUser({ id: String(u.id), role: u.role });
+        }
+      }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -191,6 +205,37 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 </svg>
               )}
+            </button>
+          )}
+          {currentUser && (currentUser.id === story.author.id || currentUser.role === 'admin') && (
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!confirm('Are you sure you want to permanently delete this story?')) return;
+                const token = getAuthToken();
+                if (!token) return;
+                try {
+                  const res = await fetch(`/api/stories/${story.id}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  const json = await res.json();
+                  if (res.ok && json.success) {
+                    router.back();
+                  } else {
+                    alert(json.message || 'Failed to delete story');
+                  }
+                } catch {
+                  alert('Failed to delete story');
+                }
+              }}
+              className="w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-500 bg-white/10 hover:bg-white/20 rounded-full transition-colors mr-1"
+              title="Delete Story"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           )}
           <button onClick={() => router.back()} className="text-white text-2xl hover:scale-110 transition-transform">✕</button>

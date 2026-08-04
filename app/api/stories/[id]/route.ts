@@ -6,6 +6,7 @@ import {
   sendSuccess,
   sendNotFound,
   sendServerError,
+  sendError,
 } from '@/backend/utils/responseAppRouter';
 
 // GET /api/stories/[id]
@@ -48,6 +49,36 @@ export async function GET(
         } : null,
       },
     });
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// DELETE /api/stories/[id] — delete story
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return sendError('Authentication required', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  const payload = verifyToken(token);
+  if (!payload) return sendError('Invalid or expired token', 401);
+
+  try {
+    const story = await Story.findById(id);
+    if (!story) return sendNotFound('Story not found');
+
+    if (story.authorId !== payload.userId && payload.role !== 'admin') {
+      return sendError('Unauthorized', 403);
+    }
+
+    await Story.deleteOne(id);
+    return sendSuccess({ id }, 'Story deleted successfully');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }

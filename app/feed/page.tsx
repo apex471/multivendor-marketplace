@@ -47,10 +47,14 @@ function StoryViewer({
   groups,
   initialGroupIndex,
   onClose,
+  currentUser,
+  onStoryDeleted,
 }: {
   groups: StoryGroup[];
   initialGroupIndex: number;
   onClose: () => void;
+  currentUser?: CurrentUser | null;
+  onStoryDeleted?: (storyId: string) => void;
 }) {
   const [groupIdx, setGroupIdx]   = useState(initialGroupIndex);
   const [slideIdx, setSlideIdx]   = useState(0);
@@ -293,6 +297,55 @@ function StoryViewer({
                 )}
               </button>
             )}
+            {currentUser && (currentUser.id === group.author.id || currentUser.role === 'admin') && (
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm('Are you sure you want to permanently delete this story?')) return;
+                  const token = getAuthToken();
+                  if (!token) return;
+                  const currentStoryId = currentSlide.storyId;
+                  try {
+                    const res = await fetch(`/api/stories/${currentStoryId}`, {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      if (onStoryDeleted) onStoryDeleted(currentStoryId);
+                      
+                      if (slides.length > 1) {
+                        if (slideIdx < slides.length - 1) {
+                          setSlideIdx(idx => idx);
+                          setProgress(0);
+                        } else {
+                          setSlideIdx(idx => Math.max(0, idx - 1));
+                          setProgress(0);
+                        }
+                      } else {
+                        if (groupIdx < groups.length - 1) {
+                          setGroupIdx(idx => idx);
+                          setProgress(0);
+                        } else {
+                          onClose();
+                        }
+                      }
+                    } else {
+                      alert(json.message || 'Failed to delete story');
+                    }
+                  } catch {
+                    alert('Failed to delete story');
+                  }
+                }}
+                className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-white/10 rounded-full transition-colors mr-1"
+                title="Delete Story"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -459,9 +512,56 @@ export default function FeedPage() {
   const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const [mutedPosts, setMutedPosts] = useState<Record<string, boolean>>({});
+  const [activePostMenu, setActivePostMenu] = useState<string | null>(null);
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
   const storiesRef      = useRef<HTMLDivElement>(null);
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this post?')) return;
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        setActivePostMenu(null);
+      } else {
+        alert(json.message || 'Failed to delete post');
+      }
+    } catch {
+      alert('Failed to delete post');
+    }
+  };
+
+  const handleArchivePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to archive this post? It will be hidden from the public feed.')) return;
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'archived' })
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        setActivePostMenu(null);
+      } else {
+        alert(json.message || 'Failed to archive post');
+      }
+    } catch {
+      alert('Failed to archive post');
+    }
+  };
 
   // Autoplay/pause videos as they enter/leave viewport (Facebook style)
   useEffect(() => {
@@ -676,6 +776,8 @@ export default function FeedPage() {
           groups={groupedStories}
           initialGroupIndex={activeGroupIndex}
           onClose={() => setActiveGroupIndex(null)}
+          currentUser={currentUser}
+          onStoryDeleted={(id) => setStories(prev => prev.filter(s => s.id !== id))}
         />
       )}
       <Header />
@@ -878,12 +980,47 @@ export default function FeedPage() {
                   </div>
                   <p className="text-xs text-cool-gray-400 dark:text-cool-gray-500 mt-0.5">{post.timestamp}</p>
                 </div>
-                <Link href={`/post/${post.id}`}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-cool-gray-100 dark:hover:bg-charcoal-800 text-cool-gray-400 transition-colors">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                  </svg>
-                </Link>
+                <div className="relative">
+                  <button
+                    onClick={() => setActivePostMenu(activePostMenu === post.id ? null : post.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-cool-gray-100 dark:hover:bg-charcoal-800 text-cool-gray-400 hover:text-charcoal-600 dark:hover:text-cool-gray-200 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                    </svg>
+                  </button>
+                  
+                  {activePostMenu === post.id && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setActivePostMenu(null)} />
+                      <div className="absolute right-0 mt-1.5 w-40 bg-white dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                        {(currentUser?.id === post.authorId || currentUser?.role === 'admin') ? (
+                          <>
+                            <button
+                              onClick={() => handleArchivePost(post.id)}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-200 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors flex items-center gap-2"
+                            >
+                              <span>📦</span> Archive Post
+                            </button>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors flex items-center gap-2"
+                            >
+                              <span>🗑️</span> Delete Post
+                            </button>
+                          </>
+                        ) : (
+                          <Link
+                            href={`/post/${post.id}`}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-200 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors flex items-center gap-2"
+                          >
+                            <span>🔗</span> View Details
+                          </Link>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Post Content */}

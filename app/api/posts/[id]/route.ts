@@ -7,6 +7,7 @@ import {
   sendSuccess,
   sendNotFound,
   sendServerError,
+  sendError,
 } from '@/backend/utils/responseAppRouter';
 
 // GET /api/posts/[id] — public post detail
@@ -67,6 +68,75 @@ export async function GET(
             },
       },
     });
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// PATCH /api/posts/[id] — archive/unarchive post or change privacy
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return sendError('Authentication required', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyToken(token);
+  if (!decoded) return sendError('Invalid or expired token', 401);
+
+  try {
+    const post = await Post.findById(id);
+    if (!post) return sendNotFound('Post not found');
+
+    if (post.authorId !== decoded.userId && decoded.role !== 'admin') {
+      return sendError('Unauthorized', 403);
+    }
+
+    const { status, privacy } = await req.json().catch(() => ({}));
+    const updates: any = {};
+    if (status !== undefined) updates.status = status;
+    if (privacy !== undefined) updates.privacy = privacy;
+
+    if (Object.keys(updates).length === 0) {
+      return sendError('No valid fields to update', 400);
+    }
+
+    await Post.updateOne(id, updates);
+    return sendSuccess({ id, ...updates }, 'Post updated successfully');
+  } catch (err) {
+    return sendServerError(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// DELETE /api/posts/[id] — delete post
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return sendError('Authentication required', 401);
+  }
+
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyToken(token);
+  if (!decoded) return sendError('Invalid or expired token', 401);
+
+  try {
+    const post = await Post.findById(id);
+    if (!post) return sendNotFound('Post not found');
+
+    if (post.authorId !== decoded.userId && decoded.role !== 'admin') {
+      return sendError('Unauthorized', 403);
+    }
+
+    await Post.findByIdAndDelete(id);
+    return sendSuccess({ id }, 'Post deleted successfully');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }
