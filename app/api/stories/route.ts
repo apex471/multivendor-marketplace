@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return sendSuccess({
+    const responseObj = sendSuccess({
       stories: stories.map(s => {
         const author = authorMap.get(s.authorId);
         return {
@@ -90,6 +90,14 @@ export async function GET(request: NextRequest) {
         };
       }),
     });
+
+    if (!payload) {
+      responseObj.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    } else {
+      responseObj.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    }
+
+    return responseObj;
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
   }

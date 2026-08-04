@@ -458,9 +458,43 @@ export default function FeedPage() {
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
+  const [mutedPosts, setMutedPosts] = useState<Record<string, boolean>>({});
   const latestPostIdRef = useRef<string | null>(null);
   const didFetch        = useRef(false);
   const storiesRef      = useRef<HTMLDivElement>(null);
+
+  // Autoplay/pause videos as they enter/leave viewport (Facebook style)
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.6, // 60% of the video must be visible to autoplay
+    };
+
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        const video = entry.target as HTMLVideoElement;
+        if (entry.isIntersecting) {
+          video.play().catch(() => {
+            // Mute and retry if browser blocks autoplay with sound
+            video.muted = true;
+            video.play().catch(() => {});
+          });
+        } else {
+          video.pause();
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(handleIntersection, observerOptions);
+    const videos = document.querySelectorAll('video[data-autoplay]');
+    videos.forEach(v => observer.observe(v));
+
+    return () => {
+      videos.forEach(v => observer.unobserve(v));
+      observer.disconnect();
+    };
+  }, [posts, activeImageIndexes]);
 
   // Set tab title
   useEffect(() => {
@@ -880,12 +914,42 @@ export default function FeedPage() {
                         <div className="w-full h-full relative">
                           <video
                             src={currentItem.url}
-                            className="w-full h-full object-cover"
-                            controls
+                            className="w-full h-full object-cover cursor-pointer"
                             playsInline
-                            preload="metadata"
+                            loop
+                            muted={mutedPosts[post.id] !== false}
+                            data-autoplay
+                            onClick={(e) => {
+                              const video = e.currentTarget;
+                              if (video.paused) {
+                                video.play().catch(() => {});
+                              } else {
+                                video.pause();
+                              }
+                            }}
                             key={currentItem.url}
                           />
+                          {/* Toggle mute/unmute overlay button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMutedPosts(prev => ({ ...prev, [post.id]: prev[post.id] === false }));
+                            }}
+                            className="absolute bottom-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors shadow-md border border-white/10"
+                            aria-label={mutedPosts[post.id] === false ? "Mute" : "Unmute"}
+                          >
+                            {mutedPosts[post.id] === false ? (
+                              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                              </svg>
+                            )}
+                          </button>
                         </div>
                       ) : (
                         <div className="w-full h-full relative">

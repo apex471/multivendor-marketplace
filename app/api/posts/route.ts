@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return sendSuccess({
+    const responseObj = sendSuccess({
       posts: paginated.map(p => ({
         ...p,
         authorId:     String(p.authorId),
@@ -100,6 +100,16 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
       },
     });
+
+    if (!currentUserId) {
+      // Public visitors get 5s CDN caching with stale-while-revalidate for peak load protection
+      responseObj.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    } else {
+      // Authenticated users get private non-cached responses to see live liked states
+      responseObj.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    }
+
+    return responseObj;
   } catch (err) {
     console.error('[Posts] GET error:', err);
     return sendServerError('Failed to load feed');
