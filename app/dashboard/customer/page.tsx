@@ -12,10 +12,11 @@ import { useLocalization } from '@/contexts/LocalizationContext';
 
 type OrderRow = { id: string; date: string; items: number; total: number; status: string; image: string };
 type WishlistItem = { wishlistId: string; productId: string; name: string; price: number; image: string; vendor: string };
+type TicketRow = { id: string; ticketNumber: string; orderId: string; subject: string; status: string; createdAt: string };
 
 export default function CustomerDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'wishlist' | 'posts' | 'profile' | 'tickets'>('overview');
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { formatPrice } = useLocalization();
 
@@ -24,9 +25,12 @@ export default function CustomerDashboard() {
     if (!authLoading && !isAuthenticated) router.replace('/auth/login?redirect=/dashboard/customer');
   }, [authLoading, isAuthenticated, router]);
 
-  const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0 });
+  const [stats, setStats] = useState({ totalOrders: 0, totalSpent: 0, wishlistItems: 0, savedPosts: 0, openTickets: 0 });
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
+
+  const [ticketModal, setTicketModal] = useState<{ isOpen: boolean; orderId: string; subject: string; message: string; loading: boolean }>({ isOpen: false, orderId: '', subject: '', message: '', loading: false });
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({ fullName: '', email: '', phone: '', address: '' });
@@ -84,6 +88,17 @@ export default function CustomerDashboard() {
         }
       })
       .catch(() => {});
+
+    // Fetch tickets
+    fetch('/api/tickets', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) {
+          setTickets(json.data.tickets ?? []);
+          setStats(prev => ({ ...prev, openTickets: (json.data.tickets ?? []).filter((t: any) => t.status !== 'closed').length }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSaveProfile = async () => {
@@ -121,6 +136,33 @@ export default function CustomerDashboard() {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {});
+  };
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = getAuthToken();
+    if (!token) return;
+    setTicketModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: ticketModal.orderId, subject: ticketModal.subject, message: ticketModal.message })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTickets([json.data.ticket, ...tickets]);
+        setTicketModal({ isOpen: false, orderId: '', subject: '', message: '', loading: false });
+        alert('Ticket opened successfully');
+        setActiveTab('tickets');
+      } else {
+        alert(json.message || 'Failed to open ticket');
+        setTicketModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch {
+      alert('Network error');
+      setTicketModal(prev => ({ ...prev, loading: false }));
+    }
   };
 
   const recentOrders = orders.slice(0, 3);
@@ -176,6 +218,7 @@ export default function CustomerDashboard() {
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'orders', label: 'My Orders', icon: '📦' },
+                { id: 'tickets', label: 'Support Tickets', icon: '🎫' },
                 { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
                 { id: 'posts', label: 'Saved Posts', icon: '🔖' },
                 { id: 'profile', label: 'Profile', icon: '⚙️' },
@@ -228,6 +271,13 @@ export default function CustomerDashboard() {
                         </div>
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-cool-gray-400 mb-1">{order.items} items • {order.date}</p>
                         <p className="font-bold text-primary-700 dark:text-gold-400 text-sm sm:text-base">{formatPrice(order.total)}</p>
+                        {order.status === 'Delivered' && (
+                          <div className="mt-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              <span className="font-semibold">Return Policy:</span> You have 36 hours from delivery to report any issues before funds are released to the vendor.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -358,13 +408,24 @@ export default function CustomerDashboard() {
                             <button className="flex-1 sm:flex-none px-4 py-2 border border-primary-700 text-primary-700 rounded-lg hover:bg-primary-50 transition-colors font-semibold min-h-10">
                               View Details
                             </button>
-                            {order.status === 'Delivered' && (
-                              <button className="flex-1 sm:flex-none px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold min-h-10">
-                                Buy Again
+                            {tickets.find(t => t.orderId === order.id) ? (
+                              <button onClick={() => router.push(`/dashboard/tickets/${tickets.find(t => t.orderId === order.id)?.id}`)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-semibold min-h-10">
+                                View Ticket
+                              </button>
+                            ) : (
+                              <button onClick={() => setTicketModal({ isOpen: true, orderId: order.id, subject: '', message: '', loading: false })} className="flex-1 sm:flex-none px-4 py-2 border border-charcoal-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-charcoal-700 transition-colors font-semibold min-h-10">
+                                Need Help?
                               </button>
                             )}
                           </div>
                         </div>
+                        {order.status === 'Delivered' && (
+                          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              <span className="font-semibold">Return Policy:</span> You have 36 hours from delivery to report any issues with this order before funds are released to the vendor.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -451,8 +512,89 @@ export default function CustomerDashboard() {
               </div>
             </div>
           )}
+          {activeTab === 'tickets' && (
+            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
+              <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-6">Support Tickets</h2>
+              <div className="space-y-4">
+                {tickets.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">🎫</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No support tickets</h3>
+                    <p className="text-gray-600 dark:text-cool-gray-400 mb-4">If you need help with an order, you can open a ticket from the My Orders tab.</p>
+                  </div>
+                )}
+                {tickets.map((ticket) => (
+                  <div key={ticket.id} className="border border-gray-200 dark:border-charcoal-700 rounded-xl p-4 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:shadow-md transition-shadow">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{ticket.subject}</h3>
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase tracking-wider ${
+                          ticket.status === 'open' ? 'bg-green-100 text-green-700' :
+                          ticket.status === 'closed' ? 'bg-gray-100 text-gray-600' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-cool-gray-400">Order: <span className="font-mono">{ticket.orderId}</span> • Ticket: <span className="font-mono">{ticket.ticketNumber}</span></p>
+                      <p className="text-xs text-gray-500 dark:text-cool-gray-500 mt-1">Opened on {new Date(ticket.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <button onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)} className="px-5 py-2.5 bg-charcoal-900 text-white rounded-lg hover:bg-charcoal-800 transition-colors font-semibold">
+                      View Thread
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Ticket Modal */}
+      {ticketModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-charcoal-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-gray-100 dark:border-charcoal-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Open Support Ticket</h3>
+              <button onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">✕</button>
+            </div>
+            <form onSubmit={handleCreateTicket} className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-cool-gray-400 mb-4">Opening a ticket for order <span className="font-mono font-bold text-gray-900 dark:text-white">{ticketModal.orderId}</span></p>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Subject</label>
+                <input
+                  required
+                  type="text"
+                  value={ticketModal.subject}
+                  onChange={e => setTicketModal(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="What is the issue about?"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-cool-gray-300 mb-2">Message</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={ticketModal.message}
+                  onChange={e => setTicketModal(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Describe the issue in detail..."
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-charcoal-700 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-charcoal-700 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-3">
+                <button type="button" onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))} className="px-5 py-2.5 text-gray-600 dark:text-cool-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-charcoal-700 rounded-lg">
+                  Cancel
+                </button>
+                <button type="submit" disabled={ticketModal.loading} className="px-5 py-2.5 bg-primary-700 text-white font-bold rounded-lg hover:bg-primary-800 disabled:opacity-60">
+                  {ticketModal.loading ? 'Submitting...' : 'Submit Ticket'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

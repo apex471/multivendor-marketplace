@@ -55,6 +55,7 @@ export default function BrandDashboard() {
 
   // ── Payout & Wallet state ──
   const [walletBalance, setWalletBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
   const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
@@ -79,6 +80,7 @@ export default function BrandDashboard() {
       const json = await res.json();
       if (json.success) {
         setWalletBalance(json.data.balance || 0);
+        setPendingBalance(json.data.pendingBalance || 0);
         setTotalEarned(json.data.totalEarned || 0);
         setTotalWithdrawn(json.data.totalWithdrawn || 0);
         setPayoutHistory(json.data.history || []);
@@ -1022,11 +1024,13 @@ export default function BrandDashboard() {
           {activeTab === 'payouts' && (
             <div className="space-y-6 text-white">
               {/* Financial Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
-                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
+                    <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
+                  </div>
                   <button
                     onClick={() => {
                       setPayoutError('');
@@ -1040,16 +1044,28 @@ export default function BrandDashboard() {
                   </button>
                 </div>
 
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
-                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalEarned)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Pending Clearing</p>
+                    <h3 className="text-3xl font-black text-gold-400 mt-2">{formatPrice(pendingBalance)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Held in escrow for 36 hours</p>
+                  </div>
                 </div>
 
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
-                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
+                    <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalEarned)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
+                  </div>
+                </div>
+
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 relative overflow-hidden shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
+                    <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending & processed requests</p>
+                  </div>
                 </div>
               </div>
 

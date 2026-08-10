@@ -1,7 +1,7 @@
 import { db, docToObject } from '@/backend/config/firebase';
 
 export interface TicketResponse {
-  from: 'customer' | 'admin';
+  from: 'customer' | 'admin' | 'vendor';
   authorName: string;
   message: string;
   timestamp: Date;
@@ -13,6 +13,8 @@ export interface ISupportTicket {
   customerId: string;
   customerName: string;
   customerEmail: string;
+  orderId?: string;
+  vendorId?: string;
   subject: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';

@@ -54,8 +54,8 @@ export async function PATCH(
 
     // Trigger escrow release if transition to completed
     if (body.status === 'completed' && order.status !== 'completed') {
-      const { releaseEscrow } = await import('@/backend/utils/escrow');
-      await releaseEscrow(order.orderId);
+      const { initiateEscrow } = await import('@/backend/utils/escrow');
+      await initiateEscrow(order.orderId);
       mongoUpdates.paymentStatus = 'paid';
       
       // Sync in-memory store

@@ -104,6 +104,16 @@ export async function PATCH(request: NextRequest) {
 
     await Order.updateOne(order.id!, updates);
 
+    // Initiate Fiverr-style escrow when order is delivered
+    if (status === 'delivered' && order.status !== 'delivered') {
+      try {
+        const { initiateEscrow } = await import('@/backend/utils/escrow');
+        await initiateEscrow(order.orderId, 'Order delivered - Initiated 36h Escrow');
+      } catch (err) {
+        console.error('[Admin Orders] Failed to initiate escrow:', err);
+      }
+    }
+
     return sendSuccess({ order: normalize({ ...order, ...updates as Partial<IOrder> } as IOrder & { id: string }) },
       'Order updated successfully');
   } catch (err) {

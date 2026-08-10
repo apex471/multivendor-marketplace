@@ -145,8 +145,8 @@ export async function POST(request: NextRequest) {
 
     if (action === 'release') {
       const orderId = data.orderId ?? '';
-      const { releaseEscrow } = await import('@/backend/utils/escrow');
-      await releaseEscrow(orderId, reason);
+      const { initiateEscrow } = await import('@/backend/utils/escrow');
+      await initiateEscrow(orderId, reason);
 
       const fb = data.feeBreakdown as Record<string, number> | undefined;
       const subtotal = fb?.subtotal ?? data.amount;

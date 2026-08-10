@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useLocalization } from '@/contexts/LocalizationContext';
 
-type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 'payouts' | 'settings';
+type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 'payouts' | 'settings' | 'tickets';
 
 export default function VendorDashboard() {
   const router = useRouter();
@@ -26,6 +26,9 @@ export default function VendorDashboard() {
   useEffect(() => { if (user) { setAvatar(user.avatar || ''); setBanner(user.banner || ''); } }, [user]);
 
   type VendorOrder = { id: string; customer: string; date: string; items: number; total: number; status: string };
+  type TicketRow = { id: string; ticketNumber: string; orderId: string; subject: string; status: string; createdAt: string };
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
+  const [ticketModal, setTicketModal] = useState<{ isOpen: boolean; orderId: string; subject: string; message: string; loading: boolean }>({ isOpen: false, orderId: '', subject: '', message: '', loading: false });
   const [stats, setStats] = useState({ totalProducts: 0, totalOrders: 0, revenue: 0, monthlyRevenue: 0, avgRating: 0 });
   const [recentOrders, setRecentOrders] = useState<VendorOrder[]>([]);
 
@@ -41,6 +44,7 @@ export default function VendorDashboard() {
 
   // ── Payout / Wallet ───────────────────────────────────────────────────────
   const [walletBalance, setWalletBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
   const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
@@ -98,6 +102,7 @@ export default function VendorDashboard() {
       const json = await res.json();
       if (json.success) {
         setWalletBalance(json.data.balance ?? 0);
+        setPendingBalance(json.data.pendingBalance ?? 0);
         setTotalEarned(json.data.totalEarned ?? 0);
         setTotalWithdrawn(json.data.totalWithdrawn ?? 0);
         setPayoutHistory(json.data.history ?? []);
@@ -223,7 +228,11 @@ export default function VendorDashboard() {
     Promise.all([
       fetch('/api/vendor/orders', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch('/api/vendor/products?limit=1', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-    ]).then(([ordersJson, productsJson]) => {
+      fetch('/api/tickets', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([ordersJson, productsJson, ticketsJson]) => {
+      if (ticketsJson?.success) {
+        setTickets(ticketsJson.data.tickets ?? []);
+      }
       if (ordersJson?.data?.orders) {
         const rows: VendorOrder[] = (ordersJson.data.orders ?? []).map((o: { id: string; customer: string | { name?: string }; date?: string; createdAt?: string; items: number | unknown[]; total: number; status: string }) => ({
           id: o.id ?? '',
@@ -245,6 +254,34 @@ export default function VendorDashboard() {
     }).catch(() => {});
     loadPayoutData();
   }, [isLoading, isAuthenticated, user, loadPayoutData]);
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = getAuthToken();
+    if (!token) return;
+    setTicketModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: ticketModal.orderId, subject: ticketModal.subject, message: ticketModal.message })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTickets([json.data.ticket, ...tickets]);
+        setTicketModal({ isOpen: false, orderId: '', subject: '', message: '', loading: false });
+        alert('Ticket opened successfully');
+        setActiveTab('tickets');
+        setShowOrderModal(false);
+      } else {
+        alert(json.message || 'Failed to open ticket');
+        setTicketModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch {
+      alert('Network error');
+      setTicketModal(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   type VendorProduct = { id: string; name: string; price: number; stock: number; sales: number; image: string; status: string };
   const [products, setProducts] = useState<VendorProduct[]>([]);
@@ -299,7 +336,7 @@ export default function VendorDashboard() {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' }, { id: 'products', label: 'Products', icon: '📦' },
-    { id: 'orders', label: 'Orders', icon: '🛍️' }, { id: 'logistics', label: 'Logistics', icon: '🚚' },
+    { id: 'orders', label: 'Orders', icon: '🛍️' }, { id: 'tickets', label: 'Tickets', icon: '🎫' }, { id: 'logistics', label: 'Logistics', icon: '🚚' },
     { id: 'analytics', label: 'Analytics', icon: '📈' }, { id: 'payouts', label: 'Payouts', icon: '💸' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
@@ -533,12 +570,25 @@ export default function VendorDashboard() {
                     <h3 className="text-xl font-display font-bold text-white">Order Details</h3>
                     {selectedOrderId && <p className="text-xs text-cool-gray-500 mt-0.5">#{selectedOrderId.slice(-12)}</p>}
                   </div>
-                  <button
-                    onClick={() => { setShowOrderModal(false); setOrderDetail(null); setOrderActionMsg(null); }}
-                    className="text-cool-gray-400 hover:text-white text-3xl leading-none transition-colors w-10 h-10 flex items-center justify-center rounded-lg hover:bg-charcoal-700"
-                  >
-                    ×
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {selectedOrderId && (
+                      tickets.find(t => t.orderId === selectedOrderId) ? (
+                        <button onClick={() => { setShowOrderModal(false); router.push(`/dashboard/tickets/${tickets.find(t => t.orderId === selectedOrderId)?.id}`); }} className="px-3 py-1.5 bg-blue-900/40 text-blue-400 border border-blue-700/50 rounded-lg text-xs font-semibold hover:bg-blue-800/60 transition-colors">
+                          View Ticket
+                        </button>
+                      ) : (
+                        <button onClick={() => setTicketModal({ isOpen: true, orderId: selectedOrderId, subject: '', message: '', loading: false })} className="px-3 py-1.5 bg-charcoal-700 text-cool-gray-300 border border-charcoal-600 rounded-lg text-xs font-semibold hover:bg-charcoal-600 transition-colors">
+                          Open Ticket
+                        </button>
+                      )
+                    )}
+                    <button
+                      onClick={() => { setShowOrderModal(false); setOrderDetail(null); setOrderActionMsg(null); }}
+                      className="text-cool-gray-400 hover:text-white text-3xl leading-none transition-colors w-10 h-10 flex items-center justify-center rounded-lg hover:bg-charcoal-700"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -850,30 +900,44 @@ export default function VendorDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg hover:border-charcoal-600 transition-colors">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
-                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg hover:border-charcoal-600 transition-colors flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Available Balance</p>
+                    <h3 className="text-3xl font-black text-white mt-2">{formatPrice(walletBalance)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Cleared funds ready to withdraw</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
                       if (!savedPayoutAccount?.hasAccount) { setShowAccountSetup(true); return; }
                       setPayoutError(''); setPayoutSuccess(''); setShowPayoutModal(true);
                     }}
-                    className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10">
+                    disabled={walletBalance <= 0}
+                    className="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors min-h-10 disabled:opacity-50 disabled:cursor-not-allowed">
                     💳 Request Payout
                   </button>
                 </div>
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
-                  <h3 className="text-3xl font-black text-green-400 mt-2">{formatPrice(totalEarned)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Pending Clearing</p>
+                    <h3 className="text-3xl font-black text-purple-400 mt-2">{formatPrice(pendingBalance)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Held in escrow for 36 hours</p>
+                  </div>
                 </div>
-                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg">
-                  <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
-                  <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
-                  <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending &amp; processed requests</p>
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Lifetime Earnings</p>
+                    <h3 className="text-3xl font-black text-green-400 mt-2">{formatPrice(totalEarned)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Total revenue generated (released escrow)</p>
+                  </div>
+                </div>
+                <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-cool-gray-400 uppercase tracking-wider">Withdrawn / Pending</p>
+                    <h3 className="text-3xl font-black text-white mt-2">{formatPrice(totalWithdrawn)}</h3>
+                    <p className="text-[11px] text-cool-gray-500 mt-1">Includes both pending &amp; processed requests</p>
+                  </div>
                 </div>
               </div>
               <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl overflow-hidden shadow-lg">
@@ -1039,8 +1103,89 @@ export default function VendorDashboard() {
               )}
             </div>
           )}
+          {activeTab === 'tickets' && (
+            <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-4 sm:p-6 shadow-lg">
+              <h2 className="text-2xl font-display font-bold text-white mb-6">Support Tickets</h2>
+              <div className="space-y-4">
+                {tickets.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">🎫</div>
+                    <h3 className="text-lg font-bold text-white mb-2">No support tickets</h3>
+                    <p className="text-sm text-cool-gray-400">If you or a customer needs help with an order, tickets will appear here.</p>
+                  </div>
+                )}
+                {tickets.map((ticket) => (
+                  <div key={ticket.id} className="border border-charcoal-700 bg-charcoal-900/50 rounded-xl p-4 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:border-charcoal-600 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-bold text-lg text-white">{ticket.subject}</h3>
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase tracking-wider ${
+                          ticket.status === 'open' ? 'bg-green-950/60 text-green-400 border border-green-900/40' :
+                          ticket.status === 'closed' ? 'bg-charcoal-700 text-cool-gray-400 border border-charcoal-600' :
+                          'bg-blue-950/60 text-blue-400 border border-blue-900/40'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-cool-gray-400">Order: <span className="font-mono">{ticket.orderId}</span> • Ticket: <span className="font-mono">{ticket.ticketNumber}</span></p>
+                      <p className="text-xs text-cool-gray-500 mt-1">Opened on {new Date(ticket.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <button onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)} className="px-5 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-500 transition-colors font-semibold shadow-md">
+                      Resolution Center
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Ticket Modal */}
+      {ticketModal.isOpen && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
+          <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-charcoal-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">Open Support Ticket</h3>
+              <button onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))} className="text-cool-gray-400 hover:text-white text-2xl leading-none">×</button>
+            </div>
+            <form onSubmit={handleCreateTicket} className="p-6 space-y-4">
+              <p className="text-sm text-cool-gray-400 mb-4">Opening a ticket for order <span className="font-mono font-bold text-white">{ticketModal.orderId}</span></p>
+              
+              <div>
+                <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Subject</label>
+                <input
+                  required
+                  type="text"
+                  value={ticketModal.subject}
+                  onChange={e => setTicketModal(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="What is the issue about?"
+                  className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-cool-gray-300 mb-2">Message</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={ticketModal.message}
+                  onChange={e => setTicketModal(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Describe the issue in detail..."
+                  className="w-full px-4 py-3 bg-charcoal-700 border border-charcoal-600 rounded-xl text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm resize-none"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-3">
+                <button type="button" onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))} className="px-5 py-2.5 bg-charcoal-700 text-cool-gray-300 font-semibold hover:bg-charcoal-600 rounded-xl transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={ticketModal.loading} className="px-5 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 disabled:opacity-60 transition-colors">
+                  {ticketModal.loading ? 'Submitting...' : 'Submit Ticket'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

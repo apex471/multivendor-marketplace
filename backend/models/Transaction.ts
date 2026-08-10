@@ -11,7 +11,7 @@ export type TransactionType =
   | 'withdrawal'
   | 'logistics_release';
 
-export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'refunded';
+export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'pending_manual';
 
 export interface ITransaction {
   id?: string;

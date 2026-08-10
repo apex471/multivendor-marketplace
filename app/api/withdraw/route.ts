@@ -21,10 +21,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const { clearMatureEscrows } = await import('@/backend/utils/escrow');
+    await clearMatureEscrows(payload.userId);
+
     // 1. Get incoming earnings: transactions sent to this user
-    // Vendors/brands receive 'escrow_release'; logistics drivers receive 'logistics_release'
     const earningTypes = payload.role === 'logistics' ? ['logistics_release'] : ['escrow_release'];
     
+    // Calculate Pending Balance
+    let pendingEarnings = await Transaction.find({ toUser: payload.userId, status: 'pending' });
+    pendingEarnings = pendingEarnings.filter(tx => earningTypes.includes(tx.type));
+    const pendingBalance = pendingEarnings.reduce((sum, tx) => sum + tx.amount, 0);
+
+    // Calculate Completed Earnings
     let allEarnings = await Transaction.find({ toUser: payload.userId, status: 'completed' });
     allEarnings = allEarnings.filter(tx => earningTypes.includes(tx.type));
     const totalEarned = allEarnings.reduce((sum, tx) => sum + tx.amount, 0);
@@ -34,14 +42,14 @@ export async function GET(request: NextRequest) {
     
     // Count both completed and pending withdrawals to lock the balance in escrow
     const activeWithdrawals = allWithdrawals.filter(
-      tx => tx.status === 'completed' || tx.status === 'pending'
+      tx => tx.status === 'completed' || tx.status === 'pending' || tx.status === 'pending_manual'
     );
     const totalWithdrawn = activeWithdrawals.reduce((sum, tx) => sum + tx.amount, 0);
 
     const balance = Math.max(0, Number((totalEarned - totalWithdrawn).toFixed(2)));
 
     // 3. Combine and sort history
-    const combinedHistory = [...allEarnings, ...allWithdrawals].sort(
+    const combinedHistory = [...pendingEarnings, ...allEarnings, ...allWithdrawals].sort(
       (a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)
     );
 
@@ -50,6 +58,7 @@ export async function GET(request: NextRequest) {
 
     return sendSuccess({
       balance,
+      pendingBalance,
       totalEarned,
       totalWithdrawn,
       history: combinedHistory,
@@ -79,22 +88,25 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { clearMatureEscrows } = await import('@/backend/utils/escrow');
+    await clearMatureEscrows(payload.userId);
+
     const body = await request.json().catch(() => ({}));
     const amount = Number(body.amount);
 
-    // Fetch saved payout account — use as fallback if body doesn't supply bank details
+    // Fetch saved payout account
     const vendor = await User.findById(payload.userId);
     const bankName          = String(body.bankName          ?? vendor?.bankName      ?? '').trim();
     const accountNumber     = String(body.accountNumber     ?? vendor?.accountNumber ?? '').trim();
     const accountHolderName = String(body.accountHolderName ?? vendor?.accountName   ?? '').trim();
-    const routingNumber     = String(body.routingNumber     ?? '').trim();
+    const bankCode          = String(body.bankCode          ?? vendor?.bankCode      ?? '').trim();
 
     if (!amount || amount <= 0 || isNaN(amount)) {
       return sendError('Please specify a valid withdrawal amount', 400);
     }
-    if (!bankName || !accountNumber || !accountHolderName) {
+    if (!bankName || !accountNumber || !accountHolderName || !bankCode) {
       return sendError(
-        'No payout account found. Please set up your bank account in the Payouts tab before requesting a withdrawal.',
+        'No payout account found. Please set up your bank account with a valid bank code in the Payouts tab before requesting a withdrawal.',
         400
       );
     }
@@ -107,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     const allWithdrawals = await Transaction.find({ fromUser: payload.userId, type: 'withdrawal' });
     const activeWithdrawals = allWithdrawals.filter(
-      tx => tx.status === 'completed' || tx.status === 'pending'
+      tx => tx.status === 'completed' || tx.status === 'pending' || tx.status === 'pending_manual'
     );
     const totalWithdrawn = activeWithdrawals.reduce((sum, tx) => sum + tx.amount, 0);
     const balance = Math.max(0, Number((totalEarned - totalWithdrawn).toFixed(2)));
@@ -116,27 +128,78 @@ export async function POST(request: NextRequest) {
       return sendError(`Insufficient balance. Available: $${balance.toFixed(2)}`, 400);
     }
 
-    // 3. Create a pending withdrawal transaction (requires admin approval)
+    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    if (!flwSecretKey) {
+      return sendError('Flutterwave secret key is not configured on the server.', 500);
+    }
+
+    const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+    const payoutAmountNGN = Math.round(amount * NGN_RATE);
+
+    let withdrawalStatus: 'completed' | 'pending_manual' = 'pending_manual';
+    let flutterwaveData = null;
+    let errorMessage = null;
+
+    try {
+      const transferRes = await fetch('https://api.flutterwave.com/v3/transfers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${flwSecretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_bank: bankCode,
+          account_number: accountNumber,
+          amount: payoutAmountNGN,
+          currency: 'NGN',
+          narration: `Withdrawal from Multivendor Marketplace`,
+          reference: `WDL-${Date.now()}-${payload.userId.slice(-6)}`,
+          debit_currency: process.env.FLUTTERWAVE_DEBIT_CURRENCY || 'NGN',
+        }),
+      });
+
+      const transferData = await transferRes.json();
+      flutterwaveData = transferData;
+
+      if (transferData.status === 'success') {
+        withdrawalStatus = 'completed';
+      } else {
+        errorMessage = transferData.message || 'Unknown Flutterwave error';
+        console.error('[Withdrawal API Flutterwave Error]', transferData);
+      }
+    } catch (err: any) {
+      errorMessage = err.message || 'Network error';
+      console.error('[Withdrawal API Flutterwave Exception]', err);
+    }
+
+    // 3. Create the withdrawal transaction
     const lastDigits = accountNumber.slice(-4);
     const withdrawalTx = await Transaction.create({
       transactionId: `WDL-${Date.now()}`,
       type:          'withdrawal',
       amount,
       currency:      'USD',
-      status:        'pending', // Requires admin approval
+      status:        withdrawalStatus, // completed if FLW success, pending_manual if FLW failed
       fromUser:      payload.userId,
       description:   `Withdrawal to bank account: ${bankName} (*${lastDigits})`,
       metadata: {
         bankName,
         accountNumber,
         accountHolderName,
-        routingNumber: routingNumber || undefined,
+        bankCode,
         role: payload.role,
         submittedAt: new Date().toISOString(),
+        flutterwaveTransfer: flutterwaveData,
+        flutterwaveError: errorMessage,
       },
     });
 
-    return sendSuccess({ transaction: withdrawalTx }, 'Withdrawal request submitted successfully');
+    if (withdrawalStatus === 'completed') {
+       return sendSuccess({ transaction: withdrawalTx }, 'Withdrawal processed successfully via Flutterwave');
+    } else {
+       return sendSuccess({ transaction: withdrawalTx }, `Withdrawal queued for manual review. Error: ${errorMessage}`);
+    }
+
   } catch (err) {
     console.error('[Withdraw API POST]', err);
     return sendServerError('Failed to submit withdrawal request');
