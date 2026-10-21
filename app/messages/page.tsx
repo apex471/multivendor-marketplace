@@ -152,8 +152,10 @@ function MessagesContent() {
   const [mobileView,      setMobileView]      = useState<'list' | 'chat'>('list');
   const [showNewMsg,      setShowNewMsg]      = useState(false);
   const [sendError,       setSendError]       = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const didAutoOpen    = useRef(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef    = useRef(true);
+  const didAutoOpen      = useRef(false);
 
   // Guard: must be logged in
   useEffect(() => {
@@ -180,6 +182,25 @@ function MessagesContent() {
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (!chatContainerRef.current) return;
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+    isAtBottomRef.current = true;
+    setShowScrollBottom(false);
+  }, []);
+
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // When distance from bottom is greater than 90px, user has scrolled up to read history
+    const atBottom = scrollHeight - scrollTop - clientHeight < 90;
+    isAtBottomRef.current = atBottom;
+    setShowScrollBottom(!atBottom);
+  };
+
   const fetchMessages = useCallback((convoId: string) => {
     const token = getAuthToken();
     if (!token) return;
@@ -187,7 +208,11 @@ function MessagesContent() {
     setSendError('');
     fetch(`/api/messages/${convoId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(json => { if (json.success) setMessages(json.data.messages ?? []); })
+      .then(json => {
+        if (json.success) {
+          setMessages(json.data.messages ?? []);
+        }
+      })
       .finally(() => setIsLoadingMsgs(false));
   }, []);
 
@@ -195,6 +220,8 @@ function MessagesContent() {
     setSelectedConvoId(convoId);
     setMessages([]);
     setSendError('');
+    isAtBottomRef.current = true;
+    setShowScrollBottom(false);
     fetchMessages(convoId);
     setConversations(prev => prev.map(c => c.id === convoId ? { ...c, unread: 0 } : c));
     setMobileView('chat');
@@ -209,9 +236,12 @@ function MessagesContent() {
     }
   }, [searchParams, isLoadingConvos, openConversation]);
 
+  // Auto-scroll ONLY when user is at the bottom (never interrupt reading earlier messages)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (isAtBottomRef.current) {
+      scrollToBottom(false);
+    }
+  }, [messages, scrollToBottom]);
 
   const handleSendMessage = async () => {
     const text = messageInput.trim();
@@ -285,16 +315,16 @@ function MessagesContent() {
 
         <div className="bg-white dark:bg-charcoal-800 rounded-2xl shadow-lg overflow-hidden border border-cool-gray-100 dark:border-charcoal-700"
           style={{ height: 'calc(100vh - 240px)', minHeight: '520px' }}>
-          <div className="grid md:grid-cols-3 h-full">
+          <div className="grid md:grid-cols-3 h-full min-h-0">
 
             {/* ── Conversation List ─────────────────────────────────────── */}
-            <div className={`border-r border-cool-gray-100 dark:border-charcoal-700 flex flex-col overflow-hidden ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`border-r border-cool-gray-100 dark:border-charcoal-700 flex flex-col overflow-hidden min-h-0 ${mobileView === 'chat' ? 'hidden md:flex' : 'flex'}`}>
               <div className="p-4 border-b border-cool-gray-100 dark:border-charcoal-700 shrink-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-cool-gray-400 dark:text-cool-gray-500">
                   {isLoadingConvos ? 'Loading...' : `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto overscroll-contain">
                 {isLoadingConvos && (
                   <div className="space-y-px">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -353,7 +383,7 @@ function MessagesContent() {
 
             {/* ── Chat Area ─────────────────────────────────────────────── */}
             {selectedConvoId && selectedConvo ? (
-              <div className={`md:col-span-2 flex flex-col h-full ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+              <div className={`md:col-span-2 flex flex-col h-full min-h-0 relative ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
                 {/* Chat Header */}
                 <div className="p-4 border-b border-cool-gray-100 dark:border-charcoal-700 flex items-center gap-3 shrink-0 bg-white dark:bg-charcoal-800">
                   <button
@@ -371,7 +401,11 @@ function MessagesContent() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-cool-gray-50 dark:bg-charcoal-900">
+                <div
+                  ref={chatContainerRef}
+                  onScroll={handleChatScroll}
+                  className="flex-1 overflow-y-auto p-4 space-y-3 bg-cool-gray-50 dark:bg-charcoal-900 overscroll-contain"
+                >
                   {isLoadingMsgs && (
                     <div className="space-y-3">
                       {Array.from({ length: 4 }).map((_, i) => (
@@ -414,8 +448,19 @@ function MessagesContent() {
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} />
                 </div>
+
+                {/* Floating Jump to Latest button */}
+                {showScrollBottom && (
+                  <button
+                    onClick={() => scrollToBottom(true)}
+                    className="absolute bottom-24 right-6 z-20 flex items-center gap-1.5 px-3.5 py-1.5 bg-charcoal-900 dark:bg-gold-600 text-white text-xs font-semibold rounded-full shadow-lg border border-cool-gray-700/50 hover:scale-105 active:scale-95 transition-all animate-bounce"
+                    aria-label="Scroll to latest messages"
+                  >
+                    <span>↓</span>
+                    <span>Latest messages</span>
+                  </button>
+                )}
 
                 {/* Input */}
                 <div className="p-3 sm:p-4 border-t border-cool-gray-100 dark:border-charcoal-700 shrink-0 bg-white dark:bg-charcoal-800">

@@ -30,6 +30,27 @@ async function getFirebaseApp() {
   return { app, bucketName };
 }
 
+let _corsConfigured = false;
+async function ensureBucketCors(bucket: any) {
+  if (_corsConfigured) return;
+  try {
+    const [metadata] = await bucket.getMetadata();
+    if (!metadata.cors || metadata.cors.length === 0) {
+      await bucket.setCorsConfiguration([
+        {
+          origin: ['*'],
+          method: ['GET', 'PUT', 'POST', 'HEAD', 'OPTIONS'],
+          responseHeader: ['*'],
+          maxAgeSeconds: 3600,
+        },
+      ]);
+    }
+    _corsConfigured = true;
+  } catch (corsErr) {
+    console.warn('[Storage] Failed to check/set bucket CORS:', corsErr);
+  }
+}
+
 export async function POST(request: NextRequest) {
   // Auth check
   const authHeader = request.headers.get('Authorization');
@@ -84,6 +105,7 @@ export async function POST(request: NextRequest) {
 
     const dest = `clw-marketplace/${folder}/${Date.now()}-${filename}`;
     const bucket = getStorage(app).bucket(bucketName);
+    await ensureBucketCors(bucket);
     const file = bucket.file(dest);
 
     const [signedUrl] = await file.getSignedUrl({

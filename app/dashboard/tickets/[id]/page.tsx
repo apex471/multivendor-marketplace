@@ -74,8 +74,28 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
     if (isAuthenticated) fetchTicket();
   }, [id, isAuthenticated]);
 
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+
+  const scrollToBottom = (smooth = true) => {
+    if (!chatContainerRef.current) return;
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+    isAtBottomRef.current = true;
+  };
+
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 90;
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isAtBottomRef.current) {
+      scrollToBottom(false);
+    }
   }, [ticket?.responses]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -207,7 +227,11 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
         <div className="bg-charcoal-900 border border-charcoal-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col" style={{ height: '65vh' }}>
           
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div
+            ref={chatContainerRef}
+            onScroll={handleChatScroll}
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 overscroll-contain"
+          >
             {/* Initial Ticket Message */}
             <div className="flex flex-col gap-1 items-start">
               <div className="bg-charcoal-800 border border-charcoal-700 text-cool-gray-200 px-5 py-4 rounded-2xl rounded-tl-sm max-w-[85%] sm:max-w-[75%] shadow-sm">

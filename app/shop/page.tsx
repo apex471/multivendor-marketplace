@@ -68,22 +68,19 @@ const SORT_MAP: Record<string, string> = {
 
 const CATEGORY_META: Record<string, { name: string; icon: string }> = {
   all:         { name: 'All',          icon: '✦' },
-  women:       { name: "Women's",      icon: '👗' },
-  men:         { name: "Men's",        icon: '👔' },
-  accessories: { name: 'Accessories',  icon: '👜' },
-  footwear:    { name: 'Footwear',     icon: '👟' },
-  electronics: { name: 'Electronics', icon: '📱' },
-  beauty:      { name: 'Beauty',       icon: '💄' },
-  home:        { name: 'Home',         icon: '🏠' },
-  Dresses:     { name: 'Dresses',      icon: '👗' },
   Tops:        { name: 'Tops',         icon: '👚' },
   Bottoms:     { name: 'Bottoms',      icon: '👖' },
-  Outerwear:   { name: 'Outerwear',    icon: '🧥' },
+  Dresses:     { name: 'Dresses',      icon: '👗' },
   Shoes:       { name: 'Shoes',        icon: '👠' },
   Bags:        { name: 'Bags',         icon: '👜' },
+  Outerwear:   { name: 'Outerwear',    icon: '🧥' },
   Jewelry:     { name: 'Jewelry',      icon: '💍' },
+  Accessories: { name: 'Accessories',  icon: '🕶️' },
+  women:       { name: "Women's",      icon: '👗' },
+  men:         { name: "Men's",        icon: '👔' },
+  footwear:    { name: 'Footwear',     icon: '👟' },
 };
-const FALLBACK_CAT_IDS = ['all', 'women', 'men', 'accessories', 'footwear'] as const;
+const FALLBACK_CAT_IDS = ['all', 'Tops', 'Bottoms', 'Dresses', 'Shoes', 'Bags', 'Outerwear', 'Jewelry', 'Accessories'] as const;
 
 // Star rating renderer
 function Stars({ rating }: { rating: number }) {
@@ -113,10 +110,12 @@ export default function ShopPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [products,     setProducts]     = useState<UiProduct[]>([]);
-  const [total,        setTotal]        = useState(0);
-  const [dbCategories, setDbCategories] = useState<string[]>([]);
-  const [isLoading,    setIsLoading]    = useState(true);
+  const [products,      setProducts]      = useState<UiProduct[]>([]);
+  const [total,         setTotal]         = useState(0);
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [dbCategories,  setDbCategories]  = useState<string[]>([]);
+  const [isLoading,     setIsLoading]     = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
     document.title = "Shop Premium Luxury | Certified Luxury World";
@@ -130,10 +129,18 @@ export default function ShopPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
-  const fetchProducts = useCallback(async () => {
-    setIsLoading(true);
+  const fetchProducts = useCallback(async (pageToFetch: number = 1, append: boolean = false) => {
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
-      const params = new URLSearchParams({ sort: SORT_MAP[sortBy] ?? 'popular', limit: '24' });
+      const params = new URLSearchParams({
+        sort: SORT_MAP[sortBy] ?? 'popular',
+        limit: '24',
+        page: String(pageToFetch),
+      });
       if (selectedCategory !== 'all') params.set('category', selectedCategory);
       if (debouncedSearch)            params.set('search', debouncedSearch);
       const range = PRICE_RANGES[priceRange];
@@ -143,18 +150,30 @@ export default function ShopPage() {
       const res  = await fetch(`/api/products?${params}`);
       const json = await res.json();
       if (json.success) {
-        setProducts((json.data.products as ApiProduct[]).map(normalize));
+        const fetched = (json.data.products as ApiProduct[]).map(normalize);
+        setProducts(prev => (append ? [...prev, ...fetched] : fetched));
         setTotal(json.data.pagination.total);
+        setCurrentPage(pageToFetch);
         if (json.data.categories?.length) setDbCategories(json.data.categories);
       }
     } catch (err) {
       console.error('[Shop] fetch error:', err);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   }, [selectedCategory, priceRange, sortBy, debouncedSearch]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchProducts(1, false);
+  }, [fetchProducts]);
+
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    fetchProducts(nextPage, true);
+  };
 
   const categoryIds = dbCategories.length ? ['all', ...dbCategories] : [...FALLBACK_CAT_IDS];
   const categories  = categoryIds.map(id => ({
@@ -465,6 +484,42 @@ export default function ShopPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Load More Button & Progress Bar */}
+          {!isLoading && products.length > 0 && products.length < total && (
+            <div className="mt-10 mb-8 flex flex-col items-center justify-center gap-3">
+              <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 font-medium">
+                Showing <span className="font-bold text-charcoal-900 dark:text-white">{products.length}</span> of{' '}
+                <span className="font-bold text-charcoal-900 dark:text-white">{total}</span> luxury items
+              </p>
+              <div className="w-56 h-1.5 bg-cool-gray-200 dark:bg-charcoal-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gold-600 transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.min(100, Math.round((products.length / total) * 100))}%` }}
+                />
+              </div>
+              <button
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="mt-2 px-8 py-3.5 bg-gold-600 hover:bg-gold-700 active:scale-95 text-white font-semibold text-sm rounded-xl shadow-md shadow-gold-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>Loading More Luxury Items...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Load More Products</span>
+                    <span>↓</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 

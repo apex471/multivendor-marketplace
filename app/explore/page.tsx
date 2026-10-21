@@ -16,7 +16,7 @@ interface TrendingPost {
   comments: number;
   user: {
     username: string;
-    avatar: string;
+    avatar: string | null;
   };
 }
 
@@ -46,27 +46,52 @@ export default function ExplorePage() {
   const [trendingTags, setTrendingTags] = useState<{ name: string; count: number; likes: number }[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const postsSentinelRef = useRef<HTMLDivElement>(null);
+  const usersSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Dedicated refs to prevent race conditions, duplicate loads, and focus-loss scroll jumps
+  const isFetchingPostsRef = useRef(false);
+  const isFetchingUsersRef = useRef(false);
+  const postsPageRef = useRef(1);
+  const usersPageRef = useRef(1);
+  const isInitialUsersLoadRef = useRef(true);
 
   useEffect(() => {
     document.title = "Explore Trends & Style | Certified Luxury World";
   }, []);
 
-  // Debounce search
+  // Parse tag parameter from URL on client mount without causing route re-renders
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tagParam = params.get('tag');
+      if (tagParam) {
+        setSearchQuery(`#${tagParam.replace(/^#/, '')}`);
+        setActiveTab('posts');
+      }
+    }
+  }, []);
+
+  // Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounce(searchQuery), 400);
     return () => clearTimeout(t);
   }, [searchQuery]);
 
   const fetchPosts = useCallback(async (page: number, append = false) => {
+    if (isFetchingPostsRef.current && append) return;
+    isFetchingPostsRef.current = true;
     setPostsLoading(true);
+
     try {
       const token = getAuthToken();
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`/api/posts?page=${page}&limit=24`, { headers });
       const json = await res.json();
-      if (!json.success) return;
+      if (!json.success || !Array.isArray(json.data?.posts)) return;
+
       const mapped: TrendingPost[] = (json.data.posts ?? []).map((p: {
         id?: string; _id?: string; images?: string[]; videos?: string[]; likes: number; comments: number;
         authorName?: string; authorAvatar?: string;
@@ -81,15 +106,29 @@ export default function ExplorePage() {
           avatar:   p.authorAvatar ?? null,
         },
       }));
-      setTrendingPosts(prev => append ? [...prev, ...mapped] : mapped);
-      setPostsHasMore(json.data.pagination?.hasNext ?? false);
+
+      setTrendingPosts(prev => {
+        if (!append) return mapped;
+        // Deduplicate by ID to prevent duplicate React keys & layout jumps
+        const existingIds = new Set(prev.map(p => p.id));
+        const unique = mapped.filter(p => p.id && !existingIds.has(p.id));
+        return [...prev, ...unique];
+      });
+
+      setPostsHasMore(Boolean(json.data.pagination?.hasNext));
+    } catch (err) {
+      console.error('[Explore] fetchPosts error:', err);
     } finally {
       setPostsLoading(false);
+      isFetchingPostsRef.current = false;
     }
   }, []);
 
   const fetchUsers = useCallback(async (page: number, q: string, append = false) => {
+    if (isFetchingUsersRef.current && append) return;
+    isFetchingUsersRef.current = true;
     setUsersLoading(true);
+
     try {
       const token = getAuthToken();
       const headers: Record<string, string> = {};
@@ -97,11 +136,21 @@ export default function ExplorePage() {
       const qParam = q ? `&q=${encodeURIComponent(q)}` : '';
       const res = await fetch(`/api/users?page=${page}&limit=15${qParam}`, { headers });
       const json = await res.json();
-      if (!json.success) return;
-      setSuggestedUsers(prev => append ? [...prev, ...json.data.users] : json.data.users);
-      setUsersHasMore(json.data.pagination?.hasNext ?? false);
+      if (!json.success || !Array.isArray(json.data?.users)) return;
+
+      setSuggestedUsers(prev => {
+        if (!append) return json.data.users;
+        const existingIds = new Set(prev.map(u => u.id));
+        const unique = (json.data.users as SuggestedUser[]).filter(u => u.id && !existingIds.has(u.id));
+        return [...prev, ...unique];
+      });
+
+      setUsersHasMore(Boolean(json.data.pagination?.hasNext));
+    } catch (err) {
+      console.error('[Explore] fetchUsers error:', err);
     } finally {
       setUsersLoading(false);
+      isFetchingUsersRef.current = false;
     }
   }, []);
 
@@ -113,6 +162,8 @@ export default function ExplorePage() {
       if (json.success && Array.isArray(json.data.tags)) {
         setTrendingTags(json.data.tags);
       }
+    } catch (err) {
+      console.error('[Explore] fetchTags error:', err);
     } finally {
       setTagsLoading(false);
     }
@@ -133,31 +184,36 @@ export default function ExplorePage() {
   }, []);
 
   // Initial load
-  useEffect(() => { fetchPosts(1); }, [fetchPosts]);
-  useEffect(() => { fetchUsers(1, ''); }, [fetchUsers]);
+  useEffect(() => {
+    postsPageRef.current = 1;
+    fetchPosts(1, false);
+  }, [fetchPosts]);
+
+  useEffect(() => {
+    usersPageRef.current = 1;
+    fetchUsers(1, '', false);
+  }, [fetchUsers]);
+
   useEffect(() => { fetchTags(); }, [fetchTags]);
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  // Real-time polling: refresh posts every 30s, tags every 60s
+  // Periodic tag updates (every 2 minutes) without resetting user scroll or posts
   useEffect(() => {
-    const postInterval = setInterval(() => {
-      fetchPosts(1);
-      setPostsPage(1);
-    }, 30_000);
     const tagInterval = setInterval(() => {
       fetchTags();
-    }, 60_000);
-    pollRef.current = postInterval;
-    return () => {
-      clearInterval(postInterval);
-      clearInterval(tagInterval);
-    };
-  }, [fetchPosts, fetchTags]);
+    }, 120_000);
+    return () => clearInterval(tagInterval);
+  }, [fetchTags]);
 
-  // Re-fetch users on search debounce
+  // Re-fetch users on search debounce (skip initial mount to avoid duplicate fetch)
   useEffect(() => {
+    if (isInitialUsersLoadRef.current) {
+      isInitialUsersLoadRef.current = false;
+      return;
+    }
+    usersPageRef.current = 1;
     setUsersPage(1);
-    fetchUsers(1, searchDebounce);
+    fetchUsers(1, searchDebounce, false);
   }, [searchDebounce, fetchUsers]);
 
   const handleFollowUser = async (userId: string, currently: boolean) => {
@@ -170,33 +226,109 @@ export default function ExplorePage() {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     };
     if (!currently) opts.body = JSON.stringify({ followingId: userId });
-    const res = await fetch(url, opts);
-    const json = await res.json();
-    if (json.success) {
-      setSuggestedUsers(prev => prev.map(u =>
-        u.id === userId
-          ? { ...u, isFollowing: !currently, followers: json.data.followerCount ?? u.followers }
-          : u
-      ));
+    try {
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (json.success) {
+        setSuggestedUsers(prev => prev.map(u =>
+          u.id === userId
+            ? { ...u, isFollowing: !currently, followers: json.data.followerCount ?? u.followers }
+            : u
+        ));
+      }
+    } catch (err) {
+      console.error('[Explore] handleFollowUser error:', err);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // search is handled via debounce + fetchUsers
   };
 
-  const handleLoadMorePosts = () => {
-    const next = postsPage + 1;
+  const handleLoadMorePosts = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      // Crucial: blur button before it can be disabled by React re-render.
+      // In browsers, when a focused element becomes disabled, focus falls back to document.body,
+      // which triggers an automatic scroll reset back to (0, 0).
+      (e.currentTarget as HTMLElement)?.blur();
+    }
+
+    if (isFetchingPostsRef.current || postsLoading || !postsHasMore) return;
+
+    // Snapshot current scroll position to guarantee stability
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+
+    const next = postsPageRef.current + 1;
+    postsPageRef.current = next;
     setPostsPage(next);
     fetchPosts(next, true);
-  };
 
-  const handleLoadMoreUsers = () => {
-    const next = usersPage + 1;
+    // Safeguard against any browser-level scroll reset
+    if (typeof window !== 'undefined' && currentScrollY > 0) {
+      requestAnimationFrame(() => {
+        if (window.scrollY === 0 && currentScrollY > 0) {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        }
+      });
+    }
+  }, [postsLoading, postsHasMore, fetchPosts]);
+
+  const handleLoadMoreUsers = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement)?.blur();
+    }
+
+    if (isFetchingUsersRef.current || usersLoading || !usersHasMore) return;
+
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+
+    const next = usersPageRef.current + 1;
+    usersPageRef.current = next;
     setUsersPage(next);
     fetchUsers(next, searchDebounce, true);
-  };
+
+    if (typeof window !== 'undefined' && currentScrollY > 0) {
+      requestAnimationFrame(() => {
+        if (window.scrollY === 0 && currentScrollY > 0) {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        }
+      });
+    }
+  }, [usersLoading, usersHasMore, searchDebounce, fetchUsers]);
+
+  // Infinite Scroll Observer for Trending Posts
+  useEffect(() => {
+    if (activeTab !== 'posts' || !postsHasMore || postsLoading) return;
+    const sentinel = postsSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !postsLoading && !isFetchingPostsRef.current && postsHasMore) {
+        handleLoadMorePosts();
+      }
+    }, { rootMargin: '200px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTab, postsHasMore, postsLoading, handleLoadMorePosts]);
+
+  // Infinite Scroll Observer for Suggested People
+  useEffect(() => {
+    if (activeTab !== 'people' || !usersHasMore || usersLoading) return;
+    const sentinel = usersSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !usersLoading && !isFetchingUsersRef.current && usersHasMore) {
+        handleLoadMoreUsers();
+      }
+    }, { rootMargin: '200px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTab, usersHasMore, usersLoading, handleLoadMoreUsers]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
@@ -226,6 +358,7 @@ export default function ExplorePage() {
         <div className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md mb-6">
           <div className="flex border-b border-cool-gray-200 dark:border-charcoal-700">
             <button
+              type="button"
               onClick={() => setActiveTab('posts')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
                 activeTab === 'posts'
@@ -236,6 +369,7 @@ export default function ExplorePage() {
               🔥 Trending Posts
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('people')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
                 activeTab === 'people'
@@ -246,6 +380,7 @@ export default function ExplorePage() {
               👥 Suggested People
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('tags')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
                 activeTab === 'tags'
@@ -265,9 +400,9 @@ export default function ExplorePage() {
               <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">Loading posts…</div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-              {trendingPosts.map((post) => (
+              {trendingPosts.map((post, idx) => (
                 <Link
-                  key={post.id}
+                  key={post.id ? `${post.id}-${idx}` : `post-${idx}`}
                   href={`/post/${post.id}`}
                   className="group relative aspect-square overflow-hidden rounded-lg bg-gray-200"
                 >
@@ -319,15 +454,31 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            {/* Load More */}
+            {/* Infinite Scroll Sentinel & Load More */}
+            <div ref={postsSentinelRef} className="h-6 w-full pointer-events-none" />
             {postsHasMore && (
-              <div className="mt-8 text-center">
+              <div className="mt-6 mb-8 text-center">
                 <button
+                  type="button"
                   onClick={handleLoadMorePosts}
                   disabled={postsLoading}
-                  className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors disabled:opacity-50"
+                  aria-busy={postsLoading}
+                  className="px-8 py-3.5 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 mx-auto"
                 >
-                  {postsLoading ? 'Loading…' : 'Load More Posts'}
+                  {postsLoading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin text-gold-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span>Loading more posts…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>View More Posts</span>
+                      <span>↓</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -341,8 +492,8 @@ export default function ExplorePage() {
               <div className="py-16 text-center text-charcoal-500 dark:text-cool-gray-400">Loading people…</div>
             )}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {suggestedUsers.map((user) => (
-                <div key={user.id} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
+              {suggestedUsers.map((user, idx) => (
+                <div key={user.id ? `${user.id}-${idx}` : `user-${idx}`} className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6">
                   <div className="flex flex-col items-center text-center">
                     <Link href={`/profile/${user.username}`} className="mb-4">
                       <div className="relative w-20 h-20">
@@ -369,8 +520,8 @@ export default function ExplorePage() {
 
                     <Link href={`/profile/${user.username}`} className="hover:text-gold-600">
                       <h3 className="font-bold text-lg text-charcoal-900 dark:text-white mb-1">{user.fullName}</h3>
-                  </Link>
-                  <p className="text-charcoal-600 dark:text-cool-gray-400 mb-4 text-sm">
+                    </Link>
+                    <p className="text-charcoal-600 dark:text-cool-gray-400 mb-4 text-sm">
                       {user.followers.toLocaleString()} followers
                     </p>
 
@@ -382,6 +533,7 @@ export default function ExplorePage() {
                         View Profile
                       </Link>
                       <button
+                        type="button"
                         onClick={() => handleFollowUser(user.id, user.isFollowing)}
                         className={`px-4 py-2 border-2 rounded-lg font-semibold transition-colors ${
                           user.isFollowing
@@ -397,15 +549,31 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            {/* Load More */}
+            {/* Infinite Scroll Sentinel & Load More */}
+            <div ref={usersSentinelRef} className="h-6 w-full pointer-events-none" />
             {usersHasMore && (
-              <div className="mt-8 text-center">
+              <div className="mt-6 mb-8 text-center">
                 <button
+                  type="button"
                   onClick={handleLoadMoreUsers}
                   disabled={usersLoading}
-                  className="px-8 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors disabled:opacity-50"
+                  aria-busy={usersLoading}
+                  className="px-8 py-3.5 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 mx-auto"
                 >
-                  {usersLoading ? 'Loading…' : 'Load More People'}
+                  {usersLoading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin text-gold-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span>Loading more people…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>View More People</span>
+                      <span>↓</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -423,20 +591,27 @@ export default function ExplorePage() {
             )}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {trendingTags.map((tag, index) => (
-                <Link
+                <button
+                  type="button"
                   key={tag.name}
-                  href={`/explore?tag=${tag.name}`}
-                  className="bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border-l-4 border-gold-600"
+                  onClick={() => {
+                    setSearchQuery(`#${tag.name.replace(/^#/, '')}`);
+                    setActiveTab('posts');
+                    if (typeof window !== 'undefined') {
+                      window.history.pushState(null, '', `/explore?tag=${encodeURIComponent(tag.name)}`);
+                    }
+                  }}
+                  className="text-left bg-white dark:bg-charcoal-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border-l-4 border-gold-600 cursor-pointer group"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xl font-bold text-charcoal-900 dark:text-white">#{index + 1}</span>
-                    <span className="text-2xl">🔥</span>
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🔥</span>
                   </div>
                   <h3 className="text-xl font-bold text-charcoal-900 dark:text-white mb-2">#{tag.name}</h3>
                   <p className="text-charcoal-600 dark:text-cool-gray-400">
                     {tag.count.toLocaleString()} posts
                   </p>
-                </Link>
+                </button>
               ))}
             </div>
 

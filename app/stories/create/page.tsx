@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { getAuthToken } from '../../../lib/api/auth';
@@ -23,6 +22,7 @@ export default function CreateStoryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [mediaFile, setMediaFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [filter, setFilter] = useState<string>('none');
   const [duration, setDuration] = useState<number>(5);
@@ -34,7 +34,17 @@ export default function CreateStoryPage() {
   const [currentFontSize, setCurrentFontSize] = useState(24);
   const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishStatus, setPublishStatus] = useState('');
   const [publishError, setPublishError] = useState('');
+
+  // Clean up object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (mediaFile && mediaFile.startsWith('blob:')) {
+        URL.revokeObjectURL(mediaFile);
+      }
+    };
+  }, [mediaFile]);
 
   const filters = [
     { id: 'none', name: 'Original', filter: 'none' },
@@ -62,17 +72,24 @@ export default function CreateStoryPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileType = file.type.startsWith('image/') ? 'image' : 
-                    file.type.startsWith('video/') ? 'video' : null;
+    const isVid = file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|ogg)$/i.test(file.name);
+    const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+    const detectedType = isImg ? 'image' : isVid ? 'video' : null;
     
-    if (!fileType) {
-      setPublishError('Please select an image or video file.');
+    if (!detectedType) {
+      setPublishError('Please select a valid image (JPG, PNG, WebP) or video (MP4, MOV).');
       return;
     }
 
+    if (mediaFile && mediaFile.startsWith('blob:')) {
+      URL.revokeObjectURL(mediaFile);
+    }
+
+    setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setMediaFile(url);
-    setMediaType(fileType);
+    setMediaType(detectedType);
+    setPublishError('');
   };
 
   const handleAddText = () => {
@@ -106,30 +123,33 @@ export default function CreateStoryPage() {
 
     const token = getAuthToken();
     if (!token) {
-      router.push('/auth/login');
+      router.push('/auth/login?redirect=/stories/create');
       return;
     }
 
     setIsPublishing(true);
     setPublishError('');
+    setPublishStatus('Preparing and uploading media...');
     try {
-      // ── Step 1: Re-fetch the object URL as a blob and upload ────────────────
-      let blob: Blob;
-      try {
-        blob = await fetch(mediaFile).then(r => r.blob());
-      } catch {
-        throw new Error('Failed to read the selected file. Please try selecting it again.');
+      // ── Step 1: Prepare file for upload ──────────────────────────────────
+      let fileToUpload: File;
+      if (selectedFile) {
+        fileToUpload = selectedFile;
+      } else {
+        // Fallback: Re-fetch the object URL as a blob
+        const blob = await fetch(mediaFile).then(r => r.blob()).catch(() => null);
+        if (!blob) throw new Error('Could not read the selected media. Please reselect the file.');
+        const ext = mediaType === 'video' ? 'mp4' : 'jpg';
+        fileToUpload = new File([blob], `story.${ext}`, {
+          type: blob.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg'),
+        });
       }
 
-      // Determine the real extension from the blob type or fall back to mediaType
-      const ext = mediaType === 'video' ? 'mp4' : 'jpg';
-      const fileName = `story.${ext}`;
-      const file = new File([blob], fileName, { type: blob.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
-
-      // Direct client-side signed upload to Cloudinary/Firebase storage (bypasses server body payload limit)
-      const mediaUrl = await uploadFileDirect(file, 'stories');
+      // Upload file with automatic fallback to server-side API
+      const mediaUrl = await uploadFileDirect(fileToUpload, 'stories');
 
       // ── Step 2: Create the story record ─────────────────────────────────────
+      setPublishStatus('Publishing story to your feed...');
       const storyRes = await fetch('/api/stories', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -146,18 +166,30 @@ export default function CreateStoryPage() {
       try {
         storyJson = await storyRes.json();
       } catch {
-        throw new Error('Story creation failed. Please try again.');
+        throw new Error('Story creation response was invalid. Please try again.');
       }
 
       if (!storyRes.ok || !storyJson.success) {
         throw new Error(storyJson.message ?? storyJson.error ?? 'Story creation failed');
       }
 
-      router.push('/social/feed');
+      setPublishStatus('Done! Redirecting...');
+      router.push('/feed');
     } catch (err) {
-      setPublishError(err instanceof Error ? err.message : 'Failed to publish story. Please try again.');
+      console.error('[CreateStory] Publish error:', err);
+      let message = 'Failed to publish story. Please try again.';
+      if (err instanceof Error) {
+        const raw = err.message.toLowerCase();
+        if (raw.includes('load fail') || raw.includes('failed to fetch') || raw.includes('network')) {
+          message = 'Network connection interrupted during upload. Please check your internet connection and try again.';
+        } else {
+          message = err.message;
+        }
+      }
+      setPublishError(message);
     } finally {
       setIsPublishing(false);
+      setPublishStatus('');
     }
   };
 
@@ -202,11 +234,11 @@ export default function CreateStoryPage() {
                 {mediaFile ? (
                   <>
                     {mediaType === 'image' ? (
-                      <Image
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
                         src={mediaFile}
                         alt="Story preview"
-                        fill
-                        className="object-cover"
+                        className="w-full h-full object-cover"
                         style={{ filter: getFilterStyle(filter) }}
                       />
                     ) : (
@@ -465,13 +497,26 @@ export default function CreateStoryPage() {
                 {publishError}
               </div>
             )}
+            {isPublishing && publishStatus && (
+              <div className="mb-3 px-4 py-2 bg-gold-50 dark:bg-gold-900/20 border border-gold-200 dark:border-gold-800 rounded-lg text-gold-800 dark:text-gold-300 text-sm flex items-center gap-2">
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-gold-600 border-t-transparent rounded-full" />
+                {publishStatus}
+              </div>
+            )}
             {mediaFile && (
               <button
                 onClick={handlePublish}
                 disabled={isPublishing}
-                className="w-full px-6 py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-6 py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isPublishing ? 'Publishing...' : '🚀 Publish Story'}
+                {isPublishing ? (
+                  <>
+                    <span className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                    Publishing...
+                  </>
+                ) : (
+                  '🚀 Publish Story'
+                )}
               </button>
             )}
           </div>

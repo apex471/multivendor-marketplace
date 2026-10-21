@@ -1087,23 +1087,22 @@ export default function FeedPage() {
           <div ref={storiesRef} className="flex gap-4 overflow-x-auto px-4 py-4 scrollbar-hide">
 
             {/* Add Story */}
-            {currentUser && (
-              <button onClick={() => router.push('/stories/create')}
-                className="shrink-0 flex flex-col items-center gap-1.5 group">
-                <div className="relative w-16 h-16 sm:w-[70px] sm:h-[70px]">
-                  <div className="w-full h-full rounded-full overflow-hidden ring-2 ring-cool-gray-200 dark:ring-charcoal-700">
-                    <Avatar src={currentUser.avatar} name={currentUser.name} size={70} />
-                  </div>
-                  {/* Plus badge */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-gold-600 border-2 border-white dark:border-charcoal-900 flex items-center justify-center shadow-md">
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </div>
+            <button onClick={() => router.push(currentUser ? '/stories/create' : '/auth/login?redirect=/stories/create')}
+              className="shrink-0 flex flex-col items-center gap-1.5 group"
+              aria-label="Post a new story">
+              <div className="relative w-16 h-16 sm:w-[70px] sm:h-[70px]">
+                <div className="w-full h-full rounded-full overflow-hidden ring-2 ring-cool-gray-200 dark:ring-charcoal-700 bg-cool-gray-100 dark:bg-charcoal-800">
+                  <Avatar src={currentUser?.avatar ?? null} name={currentUser?.name || 'You'} size={70} />
                 </div>
-                <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 font-medium truncate w-16 sm:w-[70px] text-center">Your Story</p>
-              </button>
-            )}
+                {/* Plus badge */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-gold-600 border-2 border-white dark:border-charcoal-900 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 font-medium truncate w-16 sm:w-[70px] text-center">Your Story</p>
+            </button>
 
             {/* Story Bubbles — one per author, accumulates all their slides */}
             {groupedStories.map((group, gIdx) => (
