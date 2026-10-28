@@ -23,7 +23,7 @@ interface SavedAddress {
 
 export default function ShippingPage() {
   const router = useRouter();
-  const { checkoutData, couriers, loadingCouriers, updateShippingAddress, updateCourierId } = useCheckout();
+  const { checkoutData, couriers, loadingCouriers, refreshingRates, updateShippingAddress, updateCourierId, refreshCourierRates } = useCheckout();
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId);
@@ -39,7 +39,12 @@ export default function ShippingPage() {
         if (json.success) {
           setSavedAddresses(json.data.addresses ?? []);
           const def = (json.data.addresses ?? []).find((a: SavedAddress) => a.isDefault);
-          if (def) { setSelectedAddressId(def.id); updateShippingAddress(def); }
+          if (def) {
+            setSelectedAddressId(def.id);
+            updateShippingAddress(def);
+            // Refresh live rates using the default address
+            refreshCourierRates(def.city || def.state || 'Lagos', 1);
+          }
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -48,6 +53,8 @@ export default function ShippingPage() {
   const handleAddressSelect = (address: SavedAddress) => {
     setSelectedAddressId(address.id);
     updateShippingAddress(address);
+    // Fetch live rates for the newly selected city/state
+    refreshCourierRates(address.city || address.state || 'Lagos', 1);
   };
 
   const handleNewAddressSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -317,9 +324,12 @@ export default function ShippingPage() {
             {!showNewAddressForm && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">Choose Delivery Method</h3>
-                {loadingCouriers ? (
-                  <div className="flex items-center justify-center py-10">
+                {loadingCouriers || refreshingRates ? (
+                  <div className="flex items-center justify-center py-10 gap-3">
                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold-600 border-t-transparent" />
+                    <span className="text-sm text-charcoal-500 dark:text-cool-gray-400">
+                      {loadingCouriers ? 'Loading delivery options…' : 'Fetching live rates…'}
+                    </span>
                   </div>
                 ) : couriers.length === 0 ? (
                   <div className="text-center py-6 text-charcoal-500">No delivery providers currently available.</div>

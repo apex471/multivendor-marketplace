@@ -85,6 +85,7 @@ export async function GET(
         orderRef:           order.orderId,
         status:             order.status,
         trackingNumber:     order.trackingNumber ?? null,
+        courierPlusWaybillNumber: order.courierPlusWaybillNumber ?? null,
         customer:           order.customerName,
         dropoffAddress:     dropoff,
         courierName:        order.courier?.name ?? null,

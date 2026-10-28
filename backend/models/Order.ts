@@ -56,6 +56,10 @@ export interface IOrder {
   total: number;
   couponCode?: string;
   trackingNumber?: string;
+  courierPlusWaybillNumber?: string;
+  courierPlusTrackingId?: string;
+  courierPlusStatus?: string;
+  courierPlusEvents?: unknown[];
   assignedDriverId?: string;
   assignedDriverName?: string;
   acceptedAt?: Date;

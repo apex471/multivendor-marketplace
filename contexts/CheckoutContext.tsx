@@ -52,6 +52,7 @@ interface CheckoutContextType {
   checkoutData: CheckoutData;
   couriers: any[];
   loadingCouriers: boolean;
+  refreshingRates: boolean;
   updateCartItems: (items: CartItem[]) => void;
   updateCartItem: (itemId: string, quantity: number) => void;
   removeCartItem: (itemId: string) => void;
@@ -61,6 +62,7 @@ interface CheckoutContextType {
   applyCoupon: (code: string) => void;
   calculateTotals: () => void;
   clearCheckout: () => void;
+  refreshCourierRates: (destination: string, weight?: number) => Promise<void>;
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -81,48 +83,105 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   const [couriers, setCouriers] = useState<any[]>([]);
   const [loadingCouriers, setLoadingCouriers] = useState(true);
+  const [refreshingRates, setRefreshingRates] = useState(false);
 
-  // Fetch real logistics providers on mount
+  // ── CourierPlus fallback option ─────────────────────────────────────────
+  const COURIERPLUS_FALLBACK = {
+    id: 'courierplus-standard',
+    name: 'CourierPlus Standard',
+    carrier: 'CourierPlus',
+    tagline: 'Reliable nationwide delivery',
+    icon: '🚚',
+    price: 2500,
+    deliveryDays: '3-5 business days',
+    estimatedDate: '3-5 business days',
+    features: ['Nationwide Coverage', 'Real-time Tracking'],
+    tracking: 'standard',
+    insurance: true,
+    signature: true,
+    available: true,
+  };
+
+  // Helper: map a raw CourierPlus rate to the courier card shape
+  const mapRate = (rate: any, idx: number) => ({
+    id: rate.id || `courierplus-${idx}`,
+    name: rate.name || 'CourierPlus',
+    carrier: rate.carrier || 'CourierPlus',
+    tagline: rate.tagline || 'Reliable nationwide delivery',
+    icon: '🚚',
+    price: Number(rate.price ?? rate.amount ?? 2500),
+    deliveryDays: rate.deliveryDays || rate.estimatedDelivery || '3-5 business days',
+    estimatedDate: rate.estimatedDelivery || rate.deliveryDays || '3-5 business days',
+    features: rate.features || ['Nationwide Coverage', 'Real-time Tracking'],
+    tracking: 'standard',
+    insurance: true,
+    signature: true,
+    available: rate.available !== false,
+  });
+
+  // Helper: apply a new couriers list and set default selection
+  const applyCouriers = (mapped: any[]) => {
+    setCouriers(mapped);
+    setCheckoutData(prev => {
+      const defaultId = mapped[0]?.id || '';
+      const courier = mapped.find((c: any) => c.id === defaultId) || { price: 0 };
+      const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const discountAmount = (subtotal * prev.discount) / 100;
+      const tax = (subtotal - discountAmount) * 0.08;
+      return {
+        ...prev,
+        selectedCourierId: defaultId,
+        shippingCost: courier.price,
+        total: subtotal - discountAmount + courier.price + tax,
+      };
+    });
+  };
+
+  /**
+   * Fetch live rates from CourierPlus and update the couriers list.
+   * Called on mount (with defaults) and again whenever the shipping address changes.
+   */
+  const refreshCourierRates = async (destination: string, weight = 1) => {
+    setRefreshingRates(true);
+    try {
+      const { getAuthToken } = await import('@/lib/api/auth');
+      const token = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/api/courierplus/rates', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          origin: 'Lagos', // default origin hub
+          destination,
+          weight,
+          description: 'Marketplace order',
+        }),
+      });
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data?.rates) && json.data.rates.length > 0) {
+        const mapped = json.data.rates.map(mapRate);
+        applyCouriers(mapped);
+      } else {
+        applyCouriers([COURIERPLUS_FALLBACK]);
+      }
+    } catch {
+      applyCouriers([COURIERPLUS_FALLBACK]);
+    } finally {
+      setRefreshingRates(false);
+    }
+  };
+
+  // Fetch live CourierPlus rates on mount with sensible defaults
   useEffect(() => {
-    fetch('/api/logistics/providers')
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && d.data?.providers?.length > 0) {
-          const mapped = d.data.providers.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            carrier: p.name,
-            tagline: p.description || 'Reliable logistics services',
-            icon: p.logo ? '🚚' : '📦',
-            price: Number(p.baseFee || 10),
-            deliveryDays: p.estimatedDelivery || '3-5 business days',
-            estimatedDate: p.estimatedDelivery || '3-5 business days',
-            features: p.features || [],
-            tracking: 'standard',
-            insurance: true,
-            signature: true,
-            available: p.isActive !== false,
-          }));
-          setCouriers(mapped);
-          
-          // Set default selected courier ID
-          setCheckoutData(prev => {
-            const defaultId = mapped[0]?.id || '';
-            const courier = mapped.find((c: any) => c.id === defaultId) || { price: 0 };
-            const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const discountAmount = (subtotal * prev.discount) / 100;
-            const tax = (subtotal - discountAmount) * 0.08;
-            return {
-              ...prev,
-              selectedCourierId: defaultId,
-              shippingCost: courier.price,
-              total: subtotal - discountAmount + courier.price + tax
-            };
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCouriers(false));
+    refreshCourierRates('Lagos', 1).finally(() => setLoadingCouriers(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateCartItems = (items: CartItem[]) => {
@@ -221,6 +280,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         checkoutData,
         couriers,
         loadingCouriers,
+        refreshingRates,
         updateCartItems,
         updateCartItem,
         removeCartItem,
@@ -229,7 +289,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         updateCourierId,
         applyCoupon,
         calculateTotals,
-        clearCheckout
+        clearCheckout,
+        refreshCourierRates,
       }}
     >
       {children}

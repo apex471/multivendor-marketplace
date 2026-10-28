@@ -18,6 +18,8 @@ interface TrackingData {
   orderRef: string;
   status: string;
   trackingNumber: string | null;
+  courierPlusWaybillNumber?: string | null;
+  courierPlusTrackingEvents?: CourierPlusTrackingEvent[];
   customer: string;
   dropoffAddress: string;
   courierName: string | null;
@@ -33,6 +35,14 @@ interface TrackingData {
   timeline: TrackingTimelineItem[];
   items: Array<{ name: string; quantity: number; price: number }>;
   total: number;
+}
+
+interface CourierPlusTrackingEvent {
+  status?: string;
+  description?: string;
+  timestamp?: string;
+  location?: string;
+  [key: string]: unknown;
 }
 
 function TrackingDetail({ orderIdPromise }: { orderIdPromise: Promise<string> }) {
@@ -54,7 +64,30 @@ function TrackingDetail({ orderIdPromise }: { orderIdPromise: Promise<string> })
         if (!json.success) {
           throw new Error(json.message || 'Failed to load tracking details');
         }
-        setData(json.data.tracking);
+
+        const trackingData: TrackingData = json.data.tracking;
+
+        // If the order has a CourierPlus waybill, fetch live tracking and merge
+        const waybill =
+          (json.data.tracking?.courierPlusWaybillNumber as string | null | undefined) ||
+          null;
+        if (waybill) {
+          try {
+            const cpRes = await fetch(`/api/courierplus/track/${encodeURIComponent(waybill)}`);
+            const cpJson = await cpRes.json();
+            if (cpJson.success && cpJson.data?.tracking) {
+              const cpTracking = cpJson.data.tracking;
+              const cpEvents: CourierPlusTrackingEvent[] =
+                cpTracking.events || cpTracking.history || cpTracking.timeline || [];
+              trackingData.courierPlusWaybillNumber = waybill;
+              trackingData.courierPlusTrackingEvents = cpEvents;
+            }
+          } catch {
+            // Non-fatal — just skip merging
+          }
+        }
+
+        setData(trackingData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load tracking');
       } finally {
@@ -103,6 +136,16 @@ function TrackingDetail({ orderIdPromise }: { orderIdPromise: Promise<string> })
             </h1>
             {data.trackingNumber && (
               <p className="text-xs text-cool-gray-400 mt-1 font-mono">Tracking ID: {data.trackingNumber}</p>
+            )}
+            {data.courierPlusWaybillNumber && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold">
+                  CourierPlus Waybill
+                </span>
+                <span className="text-xs font-mono font-bold text-charcoal-900 dark:text-white">
+                  {data.courierPlusWaybillNumber}
+                </span>
+              </div>
             )}
           </div>
           <span className="px-3.5 py-1.5 bg-gold-500/10 text-gold-600 dark:text-gold-400 border border-gold-500/20 text-xs font-bold rounded-full uppercase tracking-wider">
@@ -182,6 +225,45 @@ function TrackingDetail({ orderIdPromise }: { orderIdPromise: Promise<string> })
           })}
         </div>
       </div>
+
+      {/* CourierPlus Live Carrier Checkpoints */}
+      {data.courierPlusTrackingEvents && data.courierPlusTrackingEvents.length > 0 && (
+        <div className="bg-white dark:bg-charcoal-900 border border-cool-gray-150 dark:border-charcoal-800 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-charcoal-900 dark:text-white flex items-center gap-2">
+              <span>🚚</span> CourierPlus Live Checkpoints
+            </h2>
+            <span className="text-[10px] text-cool-gray-400">Direct Carrier Updates</span>
+          </div>
+          <div className="space-y-3">
+            {data.courierPlusTrackingEvents.map((evt, i) => (
+              <div
+                key={i}
+                className="p-3 rounded-xl bg-cool-gray-50 dark:bg-charcoal-800 border border-cool-gray-100 dark:border-charcoal-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2"
+              >
+                <div>
+                  <p className="text-xs font-semibold text-charcoal-900 dark:text-white">
+                    {evt.description || evt.status || 'Checkpoint reached'}
+                  </p>
+                  {evt.location && (
+                    <p className="text-[10px] text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">
+                      📍 {evt.location}
+                    </p>
+                  )}
+                </div>
+                {evt.timestamp && (
+                  <p className="text-[10px] text-cool-gray-400 font-mono shrink-0">
+                    {new Date(evt.timestamp).toLocaleString([], {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
