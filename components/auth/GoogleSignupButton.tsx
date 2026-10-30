@@ -31,7 +31,8 @@ export default function GoogleSignupButton({
       }
 
       // Send Google token to backend for signup/signin
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const response = await fetch(`${apiUrl}/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

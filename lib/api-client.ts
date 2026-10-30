@@ -3,7 +3,9 @@
  * Base configuration for making HTTP requests
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = typeof window !== 'undefined'
+  ? '/api'
+  : (process.env.NEXT_PUBLIC_API_URL || '/api');
 
 interface RequestConfig extends RequestInit {
   token?: string;

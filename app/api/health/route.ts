@@ -29,8 +29,7 @@ export async function GET(req: NextRequest) {
   let dbStatus = '';
   let dbError = '';
   try {
-    // Try querying a dummy collection to verify connection to Firestore
-    await db.collection('_health_check').limit(1).get();
+    await db.collection('users').limit(1).get();
     dbStatus = '✅ connected';
   } catch (err: unknown) {
     dbStatus = '❌ failed';
