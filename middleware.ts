@@ -11,7 +11,11 @@ export function middleware(req: NextRequest) {
   const isLocal = hostname.includes('localhost');
   
   // Set the default base domain
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (isLocal ? 'localhost:3000' : 'certifiedluxuryworld.com');
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (
+    isLocal
+      ? 'localhost:3000'
+      : (hostname.includes('cluxuryworld.com') ? 'cluxuryworld.com' : 'certifiedluxuryworld.com')
+  );
 
   // We check if the request is to a subdomain
   if (hostname.includes(rootDomain)) {
