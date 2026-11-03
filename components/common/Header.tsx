@@ -40,6 +40,7 @@ export default function Header() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const loadNotifications = () => {
@@ -57,14 +58,13 @@ export default function Header() {
           link: (n.link ?? null) as string | null,
         }));
         
-        // Push notification logic for unread updates
+        // Push notification logic for unread updates without triggering re-render loops
         if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
           const unread = newNotifs.filter((n: any) => !n.read);
           if (unread.length > 0) {
-            // Only trigger push for notifications that aren't already loaded/seen in state
             unread.forEach((n: any) => {
-              const exists = notifications.some(old => old.id === n.id);
-              if (!exists) {
+              if (!seenNotificationIdsRef.current.has(n.id)) {
+                seenNotificationIdsRef.current.add(n.id);
                 new window.Notification("New Notification | CLW", {
                   body: n.text,
                   icon: "/apple-icon.png",
@@ -150,7 +150,8 @@ export default function Header() {
         navigator.serviceWorker.removeEventListener('message', messageListener);
       }
     };
-  }, [notifications]); // runs with notifications context to evaluate exists state correctly
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount to prevent infinite re-fetch loop
 
   const handleNotificationClick = () => {
     setNotificationsOpen(prev => {

@@ -78,7 +78,7 @@ export default function CheckoutPage() {
   const [shippingInfo, setShippingInfo] = useState({
     fullName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', country: 'United States',
   });
-  const [selectedCourierId, setSelectedCourierId] = useState<string>('quickbox');
+  const [selectedCourierId, setSelectedCourierId] = useState<string>('courierplus-standard');
   const [paymentInfo, setPaymentInfo] = useState({
     cardNumber: '', cardName: '', expiryDate: '', cvv: '', saveCard: false,
   });
@@ -87,39 +87,16 @@ export default function CheckoutPage() {
   const [paymentMethodType, setPaymentMethodType] = useState<'card' | 'bank'>('card');
 
   const [couriers, setCouriers] = useState<any[]>(COURIERS);
-  const [_loadingCouriers, setLoadingCouriers] = useState(true);
+  const [_loadingCouriers, setLoadingCouriers] = useState(false);
 
   useEffect(() => {
-    fetch('/api/logistics/providers')
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && d.data?.providers?.length > 0) {
-          const mapped = d.data.providers.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            carrier: p.name,
-            tagline: p.description || 'Reliable logistics services',
-            icon: p.logo ? '🚚' : '📦',
-            price: Number(p.baseFee || 10),
-            deliveryDays: p.estimatedDelivery || '3-5 business days',
-            estimatedDate: p.estimatedDelivery || '3-5 business days',
-            features: p.features || [],
-            tracking: 'standard',
-            insurance: true,
-            signature: true,
-            available: true,
-          }));
-          setCouriers(mapped);
-          if (mapped.length > 0) {
-            setSelectedCourierId(mapped[0].id);
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCouriers(false));
+    // CourierPlus is the exclusive logistics partner
+    setCouriers(COURIERS);
+    setSelectedCourierId(COURIERS[0].id);
+    setLoadingCouriers(false);
   }, []);
 
-  const selectedCourier = couriers.find(c => c.id === selectedCourierId) ?? couriers[0] ?? COURIERS[2];
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId) ?? couriers[0] ?? COURIERS[0];
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = selectedCourier.price;
   const fees = calculateFees(subtotal, shipping);

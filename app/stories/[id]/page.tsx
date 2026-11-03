@@ -93,6 +93,30 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
     }
   }, [isPaused, currentIndex, isEditingStory]);
 
+  // Synchronize muted / audio state directly on HTML5 video element for zero audio lag
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      if (!isMuted) {
+        videoRef.current.volume = 1.0;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [isMuted, currentIndex]);
+
+  const toggleSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
+      if (!nextMuted) {
+        videoRef.current.volume = 1.0;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  };
+
   // Native HTML5 video buffering event listeners to ensure 100% reliability
   useEffect(() => {
     const videoObj = videoRef.current;
@@ -262,9 +286,9 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
           {story.mediaTypes[currentIndex] === 'video' && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+              onClick={toggleSound}
               className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              aria-label={isMuted ? "Unmute" : "Mute"}
+              aria-label={isMuted ? "Unmute sound" : "Mute sound"}
             >
               {isMuted ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -385,12 +409,20 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             style={{ filter: getFilterStyle(story.filter || 'none') }}
             autoPlay
             playsInline
+            preload="auto"
+            crossOrigin="anonymous"
             muted={isMuted}
             ref={videoRef}
             key={story.mediaUrls[currentIndex]}
             onLoadStart={() => setIsVideoLoading(true)}
             onWaiting={() => setIsVideoLoading(true)}
-            onPlaying={() => setIsVideoLoading(false)}
+            onPlaying={() => {
+              setIsVideoLoading(false);
+              if (videoRef.current && !isMuted) {
+                videoRef.current.muted = false;
+                videoRef.current.volume = 1.0;
+              }
+            }}
             onCanPlay={() => setIsVideoLoading(false)}
           />
         ) : (
@@ -401,6 +433,17 @@ export default function StoryViewerPage({ params }: { params: Promise<{ id: stri
             className="object-contain" 
             style={{ filter: getFilterStyle(story.filter || 'none') }}
             priority 
+          />
+        )}
+
+        {/* Preload next slide video audio/data to prevent sound lag on transition */}
+        {currentIndex < story.mediaUrls.length - 1 && story.mediaTypes[currentIndex + 1] === 'video' && (
+          <video
+            src={optimizeMediaUrl(story.mediaUrls[currentIndex + 1], 'video')}
+            preload="auto"
+            muted
+            className="hidden pointer-events-none"
+            aria-hidden="true"
           />
         )}
 

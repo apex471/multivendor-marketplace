@@ -41,6 +41,8 @@ export interface IUser {
   isActive: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   applicationStatus: 'none' | 'pending' | 'approved' | 'rejected';
   applicationNotes?: string;
   suspensionReason?: string;
@@ -152,6 +154,11 @@ export const User = {
       delete (user as any).emailVerificationExpires;
     }
     return user;
+  },
+
+  // ── Find by Email ─────────────────────────────────────────────────────────
+  async findByEmail(email: string, options?: { includePassword?: boolean; includeVerification?: boolean }): Promise<(IUser & { id: string }) | null> {
+    return this.findOne({ email }, options);
   },
 
   // ── Find many ────────────────────────────────────────────────────────────

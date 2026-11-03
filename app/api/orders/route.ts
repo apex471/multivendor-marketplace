@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         zipCode: shippingInfo.zipCode, country: shippingInfo.country ?? 'United States',
       },
       paymentMethod: { type: paymentMethod?.type ?? 'card', cardLast4: paymentMethod?.cardNumber?.slice(-4), cardHolder: paymentMethod?.cardHolder },
-      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: fees.shipping, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
+      courier: { id: courierId ?? 'courierplus-standard', name: courierName ?? 'CourierPlus Standard Delivery', icon: courierIcon ?? '🚚', price: fees.shipping, eta: courierEta ?? '2–4 business days', carrier: courierCarrier ?? 'CourierPlus Nigeria', tracking: courierTracking ?? 'realtime' },
       subtotal:     fees.subtotal,
       shippingCost: fees.shipping,
       tax:          fees.tax,
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
       orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',
-      courier: { id: courierId ?? 'quickbox', name: courierName ?? 'QuickBox Express', icon: courierIcon ?? '🚀', price: fees.shipping, eta: courierEta ?? '—', carrier: courierCarrier ?? '—', tracking: courierTracking ?? 'standard' },
+      courier: { id: courierId ?? 'courierplus-standard', name: courierName ?? 'CourierPlus Standard Delivery', icon: courierIcon ?? '🚚', price: fees.shipping, eta: courierEta ?? '2–4 business days', carrier: courierCarrier ?? 'CourierPlus Nigeria', tracking: courierTracking ?? 'realtime' },
     };
     OrderStore.add(inMemoryOrder);
 

@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAuthToken } from '@/lib/api/auth';
 import { useLocalization } from '@/contexts/LocalizationContext';
 
-type TabType = 'overview' | 'products' | 'orders' | 'logistics' | 'analytics' | 'payouts' | 'settings' | 'tickets';
+type TabType = 'overview' | 'products' | 'orders' | 'tickets' | 'logistics' | 'archives' | 'analytics' | 'payouts' | 'settings';
 
 export default function VendorDashboard() {
   const router = useRouter();
@@ -22,6 +22,40 @@ export default function VendorDashboard() {
   const [banner, setBanner] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+
+  // ── Archives State ────────────────────────────────────────────────────────
+  type ArchiveItem = {
+    id: string;
+    itemType: 'story' | 'post' | 'product';
+    title: string;
+    thumbnail: string | null;
+    status: string;
+    mediaUrls?: string[];
+    mediaTypes?: string[];
+    viewsCount?: number;
+    likesCount?: number;
+    commentsCount?: number;
+    price?: number;
+    category?: string;
+    stock?: number;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+  const [archives, setArchives] = useState<{
+    stories: ArchiveItem[];
+    posts: ArchiveItem[];
+    products: ArchiveItem[];
+    counts: { stories: number; posts: number; products: number; total: number };
+  }>({
+    stories: [],
+    posts: [],
+    products: [],
+    counts: { stories: 0, posts: 0, products: 0, total: 0 },
+  });
+  const [archiveFilter, setArchiveFilter] = useState<'all' | 'stories' | 'posts' | 'products'>('all');
+  const [loadingArchives, setLoadingArchives] = useState(false);
+  const [archiveActionLoading, setArchiveActionLoading] = useState<string | null>(null);
+  const [archiveMsg, setArchiveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => { if (user) { setAvatar(user.avatar || ''); setBanner(user.banner || ''); } }, [user]);
 
@@ -129,6 +163,72 @@ export default function VendorDashboard() {
   useEffect(() => {
     if (activeTab === 'payouts') loadPayoutData();
   }, [activeTab, loadPayoutData]);
+
+  // ── Archives Handlers ───────────────────────────────────────────────────
+  const loadArchives = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setLoadingArchives(true);
+    setArchiveMsg(null);
+    try {
+      const res = await fetch('/api/vendor/archives', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setArchives({
+          stories: json.data.stories || [],
+          posts: json.data.posts || [],
+          products: json.data.products || [],
+          counts: json.data.counts || { stories: 0, posts: 0, products: 0, total: 0 },
+        });
+      }
+    } catch {
+      setArchiveMsg({ type: 'error', text: 'Failed to load archives' });
+    } finally {
+      setLoadingArchives(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'archives') {
+      loadArchives();
+    }
+  }, [activeTab, loadArchives]);
+
+  const handleArchiveAction = async (itemType: 'story' | 'post' | 'product', itemId: string, action: 'restore' | 'delete') => {
+    if (action === 'delete' && !confirm('Are you sure you want to permanently delete this archived item? This cannot be undone.')) {
+      return;
+    }
+    const token = getAuthToken();
+    if (!token) return;
+    setArchiveActionLoading(itemId);
+    setArchiveMsg(null);
+    try {
+      const res = await fetch('/api/vendor/archives', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ itemType, itemId, action }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setArchiveMsg({
+          type: 'success',
+          text: action === 'restore' ? 'Item restored to active status!' : 'Item deleted permanently.',
+        });
+        await loadArchives();
+      } else {
+        setArchiveMsg({ type: 'error', text: json.message || 'Action failed' });
+      }
+    } catch {
+      setArchiveMsg({ type: 'error', text: 'Network error — please try again.' });
+    } finally {
+      setArchiveActionLoading(null);
+    }
+  };
 
   // ── Fetch a single order's full details ──────────────────────────────────
   const openOrderDetail = useCallback(async (orderId: string) => {
@@ -337,6 +437,7 @@ export default function VendorDashboard() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' }, { id: 'products', label: 'Products', icon: '📦' },
     { id: 'orders', label: 'Orders', icon: '🛍️' }, { id: 'tickets', label: 'Tickets', icon: '🎫' }, { id: 'logistics', label: 'Logistics', icon: '🚚' },
+    { id: 'archives', label: 'Archives', icon: '🗄️' },
     { id: 'analytics', label: 'Analytics', icon: '📈' }, { id: 'payouts', label: 'Payouts', icon: '💸' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
@@ -1136,6 +1237,198 @@ export default function VendorDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── ARCHIVES TAB ── */}
+          {activeTab === 'archives' && (
+            <div className="bg-charcoal-800 border border-charcoal-700 rounded-xl p-4 sm:p-6 shadow-lg space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-charcoal-700">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-display font-bold text-white flex items-center gap-2">
+                    <span>🗄️</span> Vendor Archives
+                  </h2>
+                  <p className="text-xs sm:text-sm text-cool-gray-400 mt-1">
+                    Manage your hidden stories, feed posts, and inactive products. Restoring an item returns it to active public view.
+                  </p>
+                </div>
+                <button
+                  onClick={loadArchives}
+                  disabled={loadingArchives}
+                  className="self-start sm:self-auto px-4 py-2 bg-charcoal-700 hover:bg-charcoal-600 text-cool-gray-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <span className={loadingArchives ? 'animate-spin' : ''}>🔄</span>
+                  Refresh
+                </button>
+              </div>
+
+              {/* Status Message */}
+              {archiveMsg && (
+                <div
+                  className={`p-3.5 rounded-xl text-xs font-medium border ${
+                    archiveMsg.type === 'success'
+                      ? 'bg-green-950/60 border-green-800/60 text-green-300'
+                      : 'bg-red-950/60 border-red-800/60 text-red-300'
+                  }`}
+                >
+                  {archiveMsg.text}
+                </div>
+              )}
+
+              {/* Filter Tabs */}
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { id: 'all', label: 'All Items', count: archives.counts.total },
+                  { id: 'stories', label: 'Stories', count: archives.counts.stories },
+                  { id: 'posts', label: 'Feed Posts', count: archives.counts.posts },
+                  { id: 'products', label: 'Products', count: archives.counts.products },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setArchiveFilter(f.id as typeof archiveFilter)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      archiveFilter === f.id
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-charcoal-900/80 text-cool-gray-400 hover:text-white border border-charcoal-700'
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        archiveFilter === f.id
+                          ? 'bg-purple-800 text-white'
+                          : 'bg-charcoal-800 text-cool-gray-400'
+                      }`}
+                    >
+                      {f.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Archive Items Grid */}
+              {loadingArchives ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-cool-gray-400">Loading your archives...</p>
+                </div>
+              ) : (() => {
+                const filteredItems: ArchiveItem[] = [
+                  ...(archiveFilter === 'all' || archiveFilter === 'stories' ? archives.stories : []),
+                  ...(archiveFilter === 'all' || archiveFilter === 'posts' ? archives.posts : []),
+                  ...(archiveFilter === 'all' || archiveFilter === 'products' ? archives.products : []),
+                ];
+
+                if (filteredItems.length === 0) {
+                  return (
+                    <div className="text-center py-16 border border-dashed border-charcoal-700 rounded-2xl p-6">
+                      <span className="text-5xl block mb-3">📦</span>
+                      <h3 className="text-base font-bold text-white mb-1">
+                        No archived {archiveFilter !== 'all' ? archiveFilter : 'items'}
+                      </h3>
+                      <p className="text-xs text-cool-gray-400 max-w-md mx-auto">
+                        When you archive stories, posts, or products from your store, they are safely preserved here and can be restored back to your catalog at any time.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredItems.map((item) => (
+                      <div
+                        key={`${item.itemType}-${item.id}`}
+                        className="bg-charcoal-900/70 border border-charcoal-700 rounded-xl overflow-hidden hover:border-charcoal-600 transition-all flex flex-col justify-between"
+                      >
+                        {/* Media Preview */}
+                        <div className="relative aspect-video w-full bg-charcoal-950 flex items-center justify-center overflow-hidden">
+                          {item.thumbnail ? (
+                            <Image
+                              src={item.thumbnail}
+                              alt={item.title}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="text-4xl text-cool-gray-600">
+                              {item.itemType === 'story' ? '📱' : item.itemType === 'post' ? '🖼️' : '🛍️'}
+                            </div>
+                          )}
+                          <span
+                            className={`absolute top-2.5 left-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              item.itemType === 'story'
+                                ? 'bg-pink-950/80 text-pink-300 border border-pink-700/50'
+                                : item.itemType === 'post'
+                                ? 'bg-blue-950/80 text-blue-300 border border-blue-700/50'
+                                : 'bg-gold-950/80 text-gold-300 border border-gold-700/50'
+                            }`}
+                          >
+                            {item.itemType}
+                          </span>
+                        </div>
+
+                        {/* Card Info */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h4 className="text-sm font-bold text-white line-clamp-1 mb-1">
+                              {item.title}
+                            </h4>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-cool-gray-400 mb-3">
+                              {item.itemType === 'product' && item.price !== undefined && (
+                                <span className="font-semibold text-gold-400">
+                                  {formatPrice(item.price)}
+                                </span>
+                              )}
+                              {item.itemType === 'story' && item.viewsCount !== undefined && (
+                                <span>👁️ {item.viewsCount} views</span>
+                              )}
+                              {item.itemType === 'post' && item.likesCount !== undefined && (
+                                <span>❤️ {item.likesCount} likes</span>
+                              )}
+                              {item.createdAt && (
+                                <span>
+                                  {new Date(item.createdAt).toLocaleDateString([], {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-3 border-t border-charcoal-800 flex items-center justify-between gap-2">
+                            <button
+                              onClick={() => handleArchiveAction(item.itemType, item.id, 'restore')}
+                              disabled={archiveActionLoading === item.id}
+                              className="flex-1 py-1.5 px-3 bg-purple-600/90 hover:bg-purple-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              {archiveActionLoading === item.id ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <span>↩️</span>
+                                  <span>Restore</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleArchiveAction(item.itemType, item.id, 'delete')}
+                              disabled={archiveActionLoading === item.id}
+                              className="py-1.5 px-3 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-300 rounded-lg text-xs font-semibold transition-colors"
+                              title="Delete permanently"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

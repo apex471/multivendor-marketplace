@@ -1,5 +1,5 @@
 // ─── Shared courier definitions ───────────────────────────────────────────────
-// Used by: app/checkout/page.tsx, app/checkout/shipping/page.tsx, contexts/CheckoutContext.tsx
+// Only CourierPlus is enabled as the official platform logistics provider.
 
 export interface Courier {
   id: string;
@@ -21,87 +21,38 @@ export interface Courier {
 
 export const COURIERS: Courier[] = [
   {
-    id: 'ecopost',
-    name: 'EcoPost Free',
-    carrier: 'EcoPost Logistics',
-    tagline: 'Budget-friendly & carbon-neutral',
-    icon: '🌿',
-    price: 0,
-    deliveryDays: '7–14 business days',
-    estimatedDate: 'Apr 28 – May 8',
-    features: ['Basic tracking', 'Eco-packaging', 'Carbon neutral delivery'],
-    badge: 'Free',
-    badgeVariant: 'green',
-    tracking: 'basic',
-    insurance: false,
-    signature: false,
-    available: true,
-  },
-  {
-    id: 'swiftship',
-    name: 'SwiftShip Standard',
-    carrier: 'SwiftShip Express',
-    tagline: 'Reliable everyday delivery',
-    icon: '📦',
-    price: 5.99,
-    deliveryDays: '5–7 business days',
-    estimatedDate: 'Apr 17–21',
-    features: ['Full tracking', 'SMS updates', 'Secure packaging', 'Drop-safe handling'],
-    tracking: 'standard',
-    insurance: false,
-    signature: false,
-    available: true,
-  },
-  {
-    id: 'quickbox',
-    name: 'QuickBox Express',
-    carrier: 'QuickBox Courier',
-    tagline: 'Fast, tracked & fully insured',
-    icon: '🚀',
-    price: 12.99,
-    deliveryDays: '2–3 business days',
-    estimatedDate: 'Apr 14–15',
-    features: ['Real-time GPS tracking', 'SMS & Email updates', 'Up to $200 insurance', 'Priority handling', 'Delivery photo'],
-    badge: 'Most Popular',
+    id: 'courierplus-standard',
+    name: 'CourierPlus Standard Delivery',
+    carrier: 'CourierPlus Nigeria',
+    tagline: 'Reliable nationwide delivery across all 36 states',
+    icon: '🚚',
+    price: 2500,
+    deliveryDays: '2–4 business days',
+    estimatedDate: '2–4 business days',
+    features: ['Full live GPS tracking', 'SMS & Email dispatch alerts', 'Secure tamper-evident packaging', 'Doorstep delivery'],
+    badge: 'Official Carrier',
     badgeVariant: 'gold',
     tracking: 'realtime',
     insurance: true,
-    signature: false,
+    signature: true,
     available: true,
   },
   {
-    id: 'flashrun',
-    name: 'FlashRunner Next Day',
-    carrier: 'FlashRunner Logistics',
-    tagline: 'In your hands by tomorrow',
+    id: 'courierplus-express',
+    name: 'CourierPlus Express Priority',
+    carrier: 'CourierPlus Nigeria',
+    tagline: 'Expedited priority delivery with premium handling',
     icon: '⚡',
-    price: 24.99,
-    deliveryDays: '1 business day',
-    estimatedDate: 'Apr 11',
-    features: ['Live GPS tracking', 'Dedicated courier', 'Signature required', 'Up to $500 insurance', 'Saturday delivery', 'Priority packaging'],
+    price: 4500,
+    deliveryDays: '1–2 business days',
+    estimatedDate: 'Next day / 48 hrs',
+    features: ['Minute-by-minute tracking', 'Dedicated dispatch courier', 'Signature & photo on delivery', 'Up to ₦500,000 transit cover', 'Priority dispatch handling'],
     badge: 'Fastest',
     badgeVariant: 'orange',
     tracking: 'realtime',
     insurance: true,
     signature: true,
     available: true,
-  },
-  {
-    id: 'zerowait',
-    name: 'ZeroWait Same Day',
-    carrier: 'ZeroWait Urban Delivery',
-    tagline: 'Order now, receive today',
-    icon: '🏎️',
-    price: 34.99,
-    deliveryDays: 'Same day',
-    estimatedDate: 'Today by 9 pm',
-    features: ['Minute-by-minute tracking', 'Photo on delivery', 'Premium packaging', 'Up to $1000 insurance', 'Signature required'],
-    badge: 'Ultra Fast',
-    badgeVariant: 'red',
-    tracking: 'realtime',
-    insurance: true,
-    signature: true,
-    available: false, // geo-limited — not available in all areas
   },
 ];
 
@@ -120,7 +71,7 @@ export const TRACKING_LABEL: Record<string, string> = {
   realtime: '📡 Real-time GPS',
 };
 
-/** Look up shipping cost by courier ID (defaults to QuickBox if not found) */
+/** Look up shipping cost by courier ID (defaults to CourierPlus Standard) */
 export function getCourierById(id: string): Courier {
-  return COURIERS.find(c => c.id === id) ?? COURIERS[2];
+  return COURIERS.find(c => c.id === id) ?? COURIERS[0];
 }

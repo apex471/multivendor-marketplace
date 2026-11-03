@@ -29,11 +29,13 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const [notifications, total, unreadCount] = await Promise.all([
-      Notification.find(filter, { limit, skip, orderBy: 'createdAt', orderDir: 'desc' }),
-      Notification.countDocuments(filter),
-      Notification.countDocuments({ recipientId: payload.userId, isRead: false }),
-    ]);
+    // Perform a single query to eliminate redundant round-trips to Firestore
+    const all = await Notification.find({ recipientId: payload.userId });
+    const unreadCount = all.filter(n => !n.isRead).length;
+
+    const filtered = unread ? all.filter(n => !n.isRead) : all;
+    const total = filtered.length;
+    const notifications = filtered.slice(skip, skip + limit);
 
     return sendSuccess({
       notifications: notifications.map(n => ({

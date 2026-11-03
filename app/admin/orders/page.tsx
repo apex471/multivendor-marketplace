@@ -253,12 +253,9 @@ export default function OrderManagementPage() {
                 onChange={(e) => setCourierFilter(e.target.value)}
                 className="w-full px-4 py-2 bg-white dark:bg-charcoal-700 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-900 dark:text-white rounded-lg focus:ring-2 focus:ring-gold-500"
               >
-                <option value="all">All Couriers</option>
-                <option value="ecopost">🌿 EcoPost Free</option>
-                <option value="swiftship">📦 SwiftShip Standard</option>
-                <option value="quickbox">🚀 QuickBox Express</option>
-                <option value="flashrun">⚡ FlashRunner Next Day</option>
-                <option value="zerowait">🏠️ ZeroWait Same Day</option>
+                <option value="all">All Couriers (CourierPlus)</option>
+                <option value="courierplus-standard">🚚 CourierPlus Standard Delivery</option>
+                <option value="courierplus-express">⚡ CourierPlus Express Priority</option>
               </select>
             </div>
           </div>

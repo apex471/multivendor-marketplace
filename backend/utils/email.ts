@@ -631,4 +631,79 @@ export async function sendAdminNotificationEmail(opts: {
   return sendEmail({ to: adminEmail, subject, html, text });
 }
 
+/**
+ * Send password reset email with secure token link.
+ */
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  firstName?: string;
+  resetLink: string;
+  code?: string;
+}): Promise<EmailResult> {
+  const { to, firstName = 'there', resetLink, code } = opts;
+  const subject = `Reset Your Password | ${APP_NAME}`;
+
+  // Log in dev mode for immediate test access without waiting for email
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\n🔑 [Dev Password Reset] Link for ${to}:\n    ${resetLink}\n    Code: ${code ?? 'N/A'}\n`);
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin: 0; padding: 0; background: #0f1012; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; }
+    .wrapper { max-width: 540px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .header { background: #16181d; padding: 36px 40px; text-align: center; border-bottom: 2px solid #d4af37; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+    .header p { margin: 6px 0 0; color: #d4af37; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+    .body { padding: 36px 40px; }
+    .body p { margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #d4af37, #b8962e); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 15px; margin: 20px 0; box-shadow: 0 4px 14px rgba(212,175,55,0.35); text-align: center; }
+    .code-box { background: #fdfaf3; border: 1px dashed #d4af37; border-radius: 10px; padding: 18px 24px; text-align: center; margin: 24px 0; }
+    .code { font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #b8962e; font-family: 'Courier New', monospace; margin: 0; }
+    .footer { padding: 24px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; }
+    .footer p { margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5; }
+    .security-note { font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 12px 16px; border-radius: 8px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>✨ ${APP_NAME}</h1>
+      <p>Password Reset Request</p>
+    </div>
+    <div class="body">
+      <p>Hello <strong>${firstName}</strong>,</p>
+      <p>We received a request to reset the password for your ${APP_NAME} account. Click the secure button below to set a new password:</p>
+      
+      <div style="text-align: center;">
+        <a href="${resetLink}" class="btn">Reset My Password &rarr;</a>
+      </div>
+
+      ${code ? `
+      <p style="text-align:center; font-size: 13px; color: #6b7280; margin-top: 20px;">Or use this verification code:</p>
+      <div class="code-box">
+        <p class="code">${code}</p>
+      </div>` : ''}
+
+      <div class="security-note">
+        <strong>🔒 Security Notice:</strong> This link is valid for <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email — your account remains completely secure.
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
+      <p style="margin-top: 6px;">Questions? Contact our client concierge support team.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hello ${firstName},\n\nWe received a request to reset your password for ${APP_NAME}.\n\nReset your password here: ${resetLink}\n\n${code ? `Your verification code is: ${code}\n\n` : ''}This link will expire in 1 hour.\n\nIf you did not request this, please ignore this email.`;
+
+  return sendEmail({ to, subject, html, text });
+}
+
 
