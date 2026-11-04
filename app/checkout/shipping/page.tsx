@@ -43,7 +43,7 @@ export default function ShippingPage() {
             setSelectedAddressId(def.id);
             updateShippingAddress(def);
             // Refresh live rates using the default address
-            refreshCourierRates(def.city || def.state || 'Lagos', 1);
+            refreshCourierRates({ state: def.state, city: def.city, address: def.addressLine1 }, 1);
           }
         }
       });
@@ -54,7 +54,7 @@ export default function ShippingPage() {
     setSelectedAddressId(address.id);
     updateShippingAddress(address);
     // Fetch live rates for the newly selected city/state
-    refreshCourierRates(address.city || address.state || 'Lagos', 1);
+    refreshCourierRates({ state: address.state, city: address.city, address: address.addressLine1 }, 1);
   };
 
   const handleNewAddressSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -82,6 +82,7 @@ export default function ShippingPage() {
       if (json.success) setSavedAddresses(json.data.addresses ?? []);
     }
     updateShippingAddress(newAddress);
+    refreshCourierRates({ state: newAddress.state, city: newAddress.city, address: newAddress.addressLine1 }, 1);
     setShowNewAddressForm(false);
     router.push('/checkout/payment');
   };

@@ -17,6 +17,13 @@ export interface Courier {
   insurance: boolean;
   signature: boolean;
   available: boolean;
+  breakdown?: {
+    baseTariff?: number;
+    vat?: number;
+    onforwarding?: number;
+    amountDue?: number;
+    serviceType?: string;
+  };
 }
 
 export const COURIERS: Courier[] = [

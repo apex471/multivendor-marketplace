@@ -4,13 +4,22 @@ import { verifyToken } from '@/backend/utils/jwt';
 import {
   sendSuccess,
   sendError,
-  sendUnauthorized,
   sendServerError,
 } from '@/backend/utils/responseAppRouter';
 
 // ─── POST /api/courierplus/rates ──────────────────────────────────────────────
-// Accepts { origin, destination, weight, description?, quantity? }
-// Returns live shipping rates from CourierPlus.
+// Accepts:
+//   destination?: string
+//   state?: string
+//   city?: string
+//   address?: string
+//   country?: string
+//   weight?: number
+//   origin?: string
+//   description?: string
+//   quantity?: number
+//
+// Calculates live dynamic shipping rates directly from CourierPlus Tariff Engine.
 // Auth: optional Bearer JWT (allows unauthenticated guest rate checks during checkout)
 export async function POST(req: NextRequest) {
   // Optional JWT verification — don't block guest shoppers from checking shipping rates
@@ -19,58 +28,72 @@ export async function POST(req: NextRequest) {
   if (token) {
     const decoded = verifyToken(token);
     if (!decoded) {
-      // Invalid/expired token logged, but still allow checkout rate calculation
       console.warn('[CourierPlus/Rates] Request has invalid/expired token, proceeding as guest');
     }
   }
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { origin, destination, weight, description, quantity } = body as {
+    const {
+      origin = 'Lagos',
+      destination,
+      state,
+      city,
+      address,
+      country = 'Nigeria',
+      weight = 1,
+      description = 'Marketplace Luxury Order',
+      quantity = 1,
+      declaredValue,
+    } = body as {
       origin?: string;
       destination?: string;
+      state?: string;
+      city?: string;
+      address?: string;
+      country?: string;
       weight?: number;
       description?: string;
       quantity?: number;
+      declaredValue?: number;
     };
 
-    if (!origin || !destination || weight === undefined || weight === null) {
-      return sendError('origin, destination, and weight are required', 400);
+    const targetDestination = (destination || state || city || address || 'Lagos').trim();
+
+    if (!targetDestination) {
+      return sendError('A destination state, city, or address is required to calculate shipping rates', 400);
     }
 
     const result = await courierPlusClient.getShippingRates(
       origin,
-      destination,
-      weight,
-      { description, quantity }
+      targetDestination,
+      Number(weight) || 1,
+      {
+        city: city || targetDestination,
+        state: state || targetDestination,
+        address,
+        country,
+        description,
+        quantity,
+        declaredValue,
+      }
     );
 
-    if (!result.success) {
-      // Return a graceful fallback rate so checkout never breaks
-      const fallback = [
-        {
-          id: 'courierplus-standard',
-          name: 'CourierPlus Standard',
-          carrier: 'CourierPlus',
-          price: 2500,
-          currency: 'NGN',
-          estimatedDelivery: '3-5 business days',
-          deliveryDays: '3-5 days',
-        },
-      ];
-      return sendSuccess(
-        { rates: fallback, fallback: true, apiError: result.error },
-        'Rates fetched (fallback)'
-      );
+    if (!result.success || !result.data) {
+      return sendError(result.error || 'Failed to fetch CourierPlus shipping rates', 500);
     }
 
-    // Normalise — the API may return rates at top level or nested
-    const rawData = (result.data ?? {}) as Record<string, unknown>;
-    const rates =
-      (rawData.rates as unknown[]) ??
-      (Array.isArray(rawData) ? rawData : [rawData]);
-
-    return sendSuccess({ rates }, 'Shipping rates fetched');
+    return sendSuccess(
+      {
+        rates: result.data.rates,
+        destinationState: result.data.destinationState,
+        destinationTown: result.data.destinationTown,
+        isLive: result.data.isLive,
+      },
+      result.data.isLive
+        ? 'Live CourierPlus shipping rates calculated'
+        : 'CourierPlus standard regional tariff rates applied'
+    );
   } catch (err) {
     console.error('[CourierPlus/Rates] Unexpected error:', err);
     return sendServerError('Failed to fetch shipping rates');

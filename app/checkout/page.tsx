@@ -76,7 +76,7 @@ export default function CheckoutPage() {
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState({
-    fullName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', country: 'United States',
+    fullName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', country: 'Nigeria',
   });
   const [selectedCourierId, setSelectedCourierId] = useState<string>('courierplus-standard');
   const [paymentInfo, setPaymentInfo] = useState({
@@ -89,11 +89,38 @@ export default function CheckoutPage() {
   const [couriers, setCouriers] = useState<any[]>(COURIERS);
   const [_loadingCouriers, setLoadingCouriers] = useState(false);
 
+  // Fetch live CourierPlus tariff based on delivery location
+  const fetchLiveCourierRates = useCallback(async (stateName?: string, cityName?: string, addressStr?: string) => {
+    setLoadingCouriers(true);
+    try {
+      const res = await fetch('/api/courierplus/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: stateName || shippingInfo.state || 'Lagos',
+          city: cityName || shippingInfo.city || 'Ikeja',
+          address: addressStr || shippingInfo.address || '',
+          weight: Math.max(1, cartItems.length * 0.8),
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.rates?.length > 0) {
+        setCouriers(data.data.rates);
+        setSelectedCourierId(prev => {
+          const exists = data.data.rates.some((r: any) => r.id === prev);
+          return exists ? prev : data.data.rates[0].id;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch live CourierPlus rates:', err);
+    } finally {
+      setLoadingCouriers(false);
+    }
+  }, [cartItems.length, shippingInfo.state, shippingInfo.city, shippingInfo.address]);
+
   useEffect(() => {
-    // CourierPlus is the exclusive logistics partner
-    setCouriers(COURIERS);
-    setSelectedCourierId(COURIERS[0].id);
-    setLoadingCouriers(false);
+    fetchLiveCourierRates(shippingInfo.state || 'Lagos', shippingInfo.city || 'Ikeja', shippingInfo.address);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedCourier = couriers.find(c => c.id === selectedCourierId) ?? couriers[0] ?? COURIERS[0];
@@ -103,11 +130,13 @@ export default function CheckoutPage() {
   const { buyerServiceFee, tax, buyerTotal: total } = fees;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleShippingSubmit = (e: React.FormEvent) => {
+  const handleShippingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shippingInfo.fullName || !shippingInfo.email || !shippingInfo.address || !shippingInfo.city || !shippingInfo.zipCode) {
+    if (!shippingInfo.fullName || !shippingInfo.email || !shippingInfo.address || !shippingInfo.city) {
       toastWarning('Please fill in all required fields'); return;
     }
+    // Fetch live rates for this exact location before entering Courier step
+    await fetchLiveCourierRates(shippingInfo.state, shippingInfo.city, shippingInfo.address);
     setCurrentStep(2);
   };
 
@@ -371,10 +400,20 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* ── Section label bar ───────────────────────────────────── */}
-                <div className="bg-cool-gray-50 dark:bg-charcoal-900 px-5 py-2.5 border-b border-cool-gray-200 dark:border-charcoal-700">
+                <div className="bg-cool-gray-50 dark:bg-charcoal-900 px-5 py-2.5 border-b border-cool-gray-200 dark:border-charcoal-700 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-charcoal-400 dark:text-cool-gray-500">
                     Select a delivery option
                   </p>
+                  {_loadingCouriers ? (
+                    <span className="text-[11px] font-medium text-gold-600 dark:text-gold-400 flex items-center gap-1.5 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gold-500 animate-ping" />
+                      Calculating live CourierPlus rates for {shippingInfo.city || shippingInfo.state || 'your location'}...
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <span>✓</span> Live CourierPlus Tariff Applied ({shippingInfo.city || 'Lagos'}, {shippingInfo.state || 'Nigeria'})
+                    </span>
+                  )}
                 </div>
 
                 {/* ── Courier rows ────────────────────────────────────────── */}
