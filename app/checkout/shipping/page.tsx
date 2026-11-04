@@ -8,6 +8,8 @@ import { useCheckout } from '../../../contexts/CheckoutContext';
 import { BADGE_STYLES, TRACKING_LABEL } from '../../../lib/couriers';
 import { getAuthToken } from '../../../lib/api/auth';
 import { useLocalization } from '../../../contexts/LocalizationContext';
+import { calculateParcelSpecs } from '@/lib/parcel';
+import { NIGERIA_STATE_CODE_MAP } from '@/lib/courierplus';
 
 interface SavedAddress {
   id: string;
@@ -28,9 +30,14 @@ export default function ShippingPage() {
   const { checkoutData, couriers, loadingCouriers, refreshingRates, updateShippingAddress, updateCourierId, refreshCourierRates } = useCheckout();
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId);
-  const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: '', name: 'CourierPlus Standard Delivery', price: 2.33, icon: '🚚', tagline: '', deliveryDays: '2-4 days', estimatedDate: '2-4 days', features: [], tracking: 'realtime', insurance: true, signature: true, available: true, carrier: 'CourierPlus Nigeria' };
+  const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId || '');
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+
+  // Calculate parcel specs dynamically based on cart items
+  const parcel = calculateParcelSpecs(checkoutData.cartItems);
+  const hasSelectedAddress = Boolean(selectedAddressId || (checkoutData.shippingAddress && (checkoutData.shippingAddress.state || checkoutData.shippingAddress.city)));
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId);
+  const shippingCost = selectedCourier ? selectedCourier.price : 0;
 
   useEffect(() => {
     const token = getAuthToken();
@@ -39,24 +46,37 @@ export default function ShippingPage() {
       .then(r => r.json())
       .then(json => {
         if (json.success) {
-          setSavedAddresses(json.data.addresses ?? []);
-          const def = (json.data.addresses ?? []).find((a: SavedAddress) => a.isDefault);
+          const list: SavedAddress[] = json.data.addresses ?? [];
+          setSavedAddresses(list);
+          const def = list.find((a: SavedAddress) => a.isDefault) || (list.length > 0 ? list[0] : null);
           if (def) {
             setSelectedAddressId(def.id);
             updateShippingAddress(def);
-            // Refresh live rates using the default address
-            refreshCourierRates({ state: def.state, city: def.city, address: def.addressLine1 }, 1);
+            // Refresh live rates using the default address & dynamic parcel weight
+            const p = calculateParcelSpecs(checkoutData.cartItems);
+            refreshCourierRates({ state: def.state, city: def.city, address: def.addressLine1 }, p.billableWeight);
           }
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // When live rates arrive, ensure the first option is selected if not already
+  useEffect(() => {
+    if (couriers.length > 0) {
+      if (!selectedCourierId || !couriers.some(c => c.id === selectedCourierId)) {
+        setSelectedCourierId(couriers[0].id);
+        updateCourierId(couriers[0].id);
+      }
+    }
+  }, [couriers, selectedCourierId, updateCourierId]);
+
   const handleAddressSelect = (address: SavedAddress) => {
     setSelectedAddressId(address.id);
     updateShippingAddress(address);
-    // Fetch live rates for the newly selected city/state
-    refreshCourierRates({ state: address.state, city: address.city, address: address.addressLine1 }, 1);
+    // Calculate CourierPlus rates for newly selected location and parcel size
+    const p = calculateParcelSpecs(checkoutData.cartItems);
+    refreshCourierRates({ state: address.state, city: address.city, address: address.addressLine1 }, p.billableWeight);
   };
 
   const handleNewAddressSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -70,7 +90,7 @@ export default function ShippingPage() {
       city: formData.get('city') as string,
       state: formData.get('state') as string,
       zipCode: formData.get('zipCode') as string,
-      country: formData.get('country') as string,
+      country: (formData.get('country') as string) || 'Nigeria',
       isDefault: formData.get('isDefault') === 'on'
     };
     const token = getAuthToken();
@@ -84,16 +104,22 @@ export default function ShippingPage() {
       if (json.success) setSavedAddresses(json.data.addresses ?? []);
     }
     updateShippingAddress(newAddress);
-    refreshCourierRates({ state: newAddress.state, city: newAddress.city, address: newAddress.addressLine1 }, 1);
+    setSelectedAddressId('custom-new');
+    // Calculate dynamic rates for the new location & parcel size
+    const p = calculateParcelSpecs(checkoutData.cartItems);
+    refreshCourierRates({ state: newAddress.state, city: newAddress.city, address: newAddress.addressLine1 }, p.billableWeight);
     setShowNewAddressForm(false);
-    router.push('/checkout/payment');
   };
 
   const [addressError, setAddressError] = useState('');
 
   const handleContinue = () => {
     if (!selectedAddressId && !checkoutData.shippingAddress) {
-      setAddressError('Please select a shipping address to continue.');
+      setAddressError('Please select or add a delivery address to continue.');
+      return;
+    }
+    if (!selectedCourierId || !selectedCourier) {
+      setAddressError('Please select a CourierPlus delivery option to continue.');
       return;
     }
     setAddressError('');
@@ -273,17 +299,24 @@ export default function ShippingPage() {
                         type="text"
                         name="state"
                         required
+                        list="nigerian-states-shipping"
+                        placeholder="e.g. Lagos, Abuja FCT, Rivers"
                         className="w-full px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
                       />
+                      <datalist id="nigerian-states-shipping">
+                        {Object.values(NIGERIA_STATE_CODE_MAP).map(s => (
+                          <option key={s.code} value={s.name} />
+                        ))}
+                      </datalist>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-charcoal-900 dark:text-white mb-2">
-                        ZIP Code *
+                        ZIP / Postal Code
                       </label>
                       <input
                         type="text"
                         name="zipCode"
-                        required
+                        placeholder="100001"
                         className="w-full px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
                       />
                     </div>
@@ -295,11 +328,13 @@ export default function ShippingPage() {
                     <select
                       name="country"
                       required
+                      defaultValue="Nigeria"
                       className="w-full px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-900 dark:text-white"
                     >
+                      <option value="Nigeria">Nigeria</option>
                       <option value="United States">United States</option>
-                      <option value="Canada">Canada</option>
                       <option value="United Kingdom">United Kingdom</option>
+                      <option value="Canada">Canada</option>
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
@@ -327,82 +362,101 @@ export default function ShippingPage() {
             {!showNewAddressForm && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-charcoal-900 dark:text-white mb-4">Choose Delivery Method</h3>
-                {loadingCouriers || refreshingRates ? (
-                  <div className="flex items-center justify-center py-10 gap-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold-600 border-t-transparent" />
-                    <span className="text-sm text-charcoal-500 dark:text-cool-gray-400">
-                      {loadingCouriers ? 'Loading delivery options…' : 'Fetching live rates…'}
-                    </span>
+                {!hasSelectedAddress ? (
+                  <div className="p-6 rounded-xl border border-dashed border-gold-300 dark:border-charcoal-600 bg-gold-50/30 dark:bg-charcoal-800/40 text-center space-y-2">
+                    <div className="text-3xl">📍</div>
+                    <h4 className="font-bold text-charcoal-900 dark:text-white text-base">Select Your Delivery Address</h4>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 max-w-md mx-auto">
+                      CourierPlus calculates exact delivery tariffs based on your parcel size (<strong className="text-charcoal-700 dark:text-cool-gray-300">{parcel.summaryText}</strong>) and destination. Please select or add your address above.
+                    </p>
+                  </div>
+                ) : loadingCouriers || refreshingRates ? (
+                  <div className="p-8 rounded-xl border border-gold-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-800 text-center space-y-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold-600 border-t-transparent mx-auto" />
+                    <p className="text-sm font-semibold text-charcoal-900 dark:text-white">
+                      Calculating CourierPlus rates for {checkoutData.shippingAddress?.city || checkoutData.shippingAddress?.state || 'your location'}...
+                    </p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">
+                      Analyzing parcel size: {parcel.summaryText}
+                    </p>
                   </div>
                 ) : couriers.length === 0 ? (
-                  <div className="text-center py-6 text-charcoal-500">No delivery providers currently available.</div>
+                  <div className="text-center py-6 text-charcoal-500">No delivery providers currently available for this area.</div>
                 ) : (
-                  <div className="space-y-3">
-                    {couriers.map((courier) => {
-                      const isSelected    = selectedCourierId === courier.id;
-                      const isUnavailable = !courier.available;
-                      return (
-                        <label
-                          key={courier.id}
-                          className={`relative flex gap-4 p-4 rounded-xl border-2 transition-all ${
-                            isUnavailable
-                              ? 'opacity-50 cursor-not-allowed border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-900'
-                              : isSelected
-                              ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10 cursor-pointer'
-                              : 'border-cool-gray-200 dark:border-charcoal-600 bg-white dark:bg-charcoal-800 hover:border-gold-300 hover:bg-gold-50/40 dark:hover:bg-gold-900/5 cursor-pointer'
-                          }`}
-                        >
-                          <input type="radio" name="courier" value={courier.id}
-                            checked={isSelected} disabled={isUnavailable}
-                            onChange={() => setSelectedCourierId(courier.id)}
-                            className="mt-1 w-4 h-4 shrink-0 accent-gold-600" />
-                          <div className="text-3xl leading-none mt-0.5 shrink-0 select-none">{courier.icon}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <span className="font-bold text-charcoal-900 dark:text-white text-sm sm:text-base">{courier.name}</span>
-                              {courier.badge && courier.badgeVariant && (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BADGE_STYLES[courier.badgeVariant]}`}>
-                                  {courier.badge}
-                                </span>
-                              )}
-                              {isUnavailable && (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 text-charcoal-500 dark:text-cool-gray-400">
-                                  Not available in your area
-                                </span>
-                              )}
+                  <div>
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-cool-gray-50 dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-charcoal-600 dark:text-cool-gray-400">📦 Parcel: <strong className="text-charcoal-900 dark:text-white">{parcel.summaryText}</strong></span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span>✓</span> Live CourierPlus Tariff Applied ({checkoutData.shippingAddress?.city || checkoutData.shippingAddress?.state})
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {couriers.map((courier) => {
+                        const isSelected    = selectedCourierId === courier.id;
+                        const isUnavailable = !courier.available;
+                        return (
+                          <label
+                            key={courier.id}
+                            className={`relative flex gap-4 p-4 rounded-xl border-2 transition-all ${
+                              isUnavailable
+                                ? 'opacity-50 cursor-not-allowed border-cool-gray-200 dark:border-charcoal-700 bg-cool-gray-50 dark:bg-charcoal-900'
+                                : isSelected
+                                ? 'border-gold-500 bg-gold-50 dark:bg-gold-900/10 cursor-pointer'
+                                : 'border-cool-gray-200 dark:border-charcoal-600 bg-white dark:bg-charcoal-800 hover:border-gold-300 hover:bg-gold-50/40 dark:hover:bg-gold-900/5 cursor-pointer'
+                            }`}
+                          >
+                            <input type="radio" name="courier" value={courier.id}
+                              checked={isSelected} disabled={isUnavailable}
+                              onChange={() => setSelectedCourierId(courier.id)}
+                              className="mt-1 w-4 h-4 shrink-0 accent-gold-600" />
+                            <div className="text-3xl leading-none mt-0.5 shrink-0 select-none">{courier.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className="font-bold text-charcoal-900 dark:text-white text-sm sm:text-base">{courier.name}</span>
+                                {courier.badge && courier.badgeVariant && (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BADGE_STYLES[courier.badgeVariant]}`}>
+                                    {courier.badge}
+                                  </span>
+                                )}
+                                {isUnavailable && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 text-charcoal-500 dark:text-cool-gray-400">
+                                    Not available in your area
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mb-2">{courier.tagline}</p>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                                <span className="flex items-center gap-1 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300">🕐 {courier.deliveryDays}</span>
+                                <span className="flex items-center gap-1 text-xs text-charcoal-500 dark:text-cool-gray-400">📅 Est. <strong className="text-charcoal-700 dark:text-cool-gray-300">{courier.estimatedDate}</strong></span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{TRACKING_LABEL[courier.tracking || 'standard']}</span>
+                                {courier.insurance && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">🛡️ Insured</span>}
+                                {courier.signature && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">✍️ Signature</span>}
+                                {Array.isArray(courier.features) && courier.features.slice(2).map((f: string, i: number) => (
+                                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{f}</span>
+                                ))}
+                              </div>
                             </div>
-                            <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mb-2">{courier.tagline}</p>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-                              <span className="flex items-center gap-1 text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300">🕐 {courier.deliveryDays}</span>
-                              <span className="flex items-center gap-1 text-xs text-charcoal-500 dark:text-cool-gray-400">📅 Est. <strong className="text-charcoal-700 dark:text-cool-gray-300">{courier.estimatedDate}</strong></span>
+                            <div className="text-right shrink-0 ml-2">
+                              <div className={`font-bold text-lg leading-tight ${
+                                courier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
+                              }`}>
+                                {courier.price === 0 ? 'FREE' : formatPrice(courier.price)}
+                              </div>
+                              <div className="text-[10px] text-charcoal-500 dark:text-cool-gray-400 mt-0.5 max-w-20 text-right leading-tight">{courier.carrier}</div>
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{TRACKING_LABEL[courier.tracking || 'standard']}</span>
-                              {courier.insurance && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">🛡️ Insured</span>}
-                              {courier.signature && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">✍️ Signature</span>}
-                              {Array.isArray(courier.features) && courier.features.slice(2).map((f: string, i: number) => (
-                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">{f}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0 ml-2">
-                            <div className={`font-bold text-lg leading-tight ${
-                              courier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
-                            }`}>
-                              {courier.price === 0 ? 'FREE' : formatPrice(courier.price)}
-                            </div>
-                            <div className="text-[10px] text-charcoal-500 dark:text-cool-gray-400 mt-0.5 max-w-20 text-right leading-tight">{courier.carrier}</div>
-                          </div>
-                        </label>
-                      );
-                    })}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 <div className="mt-4 p-3 rounded-lg bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700 flex items-start gap-2">
                   <span className="text-sm mt-0.5 shrink-0">ℹ️</span>
                   <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">
-                    Estimates are for business days and may vary for multi-vendor orders.
-                    Same-day delivery is only available in select metropolitan areas.
+                    Tariffs are calculated directly via CourierPlus API based on delivery location and parcel weight.
+                    Same-day delivery is available in select metropolitan zones.
                   </p>
                 </div>
               </div>
@@ -427,17 +481,21 @@ export default function ShippingPage() {
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <div>
                     <span>Delivery</span>
-                    <div className="text-xs text-charcoal-400 dark:text-cool-gray-500 mt-0.5">{selectedCourier.icon} {selectedCourier.name}</div>
+                    {selectedCourier ? (
+                      <div className="text-xs text-charcoal-400 dark:text-cool-gray-500 mt-0.5">{selectedCourier.icon} {selectedCourier.name}</div>
+                    ) : (
+                      <div className="text-xs text-charcoal-400 dark:text-cool-gray-500 mt-0.5">Calculated with address</div>
+                    )}
                   </div>
-                  <span className={selectedCourier.price === 0 ? 'text-green-600 dark:text-green-400 font-semibold' : ''}>
-                    {selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)}
+                  <span className={selectedCourier?.price === 0 ? 'text-green-600 dark:text-green-400 font-semibold' : ''}>
+                    {selectedCourier ? (selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)) : '—'}
                   </span>
                 </div>
               </div>
               <div className="flex justify-between text-lg font-bold text-charcoal-900 dark:text-white mb-6">
                 <span>Total</span>
                 <span className="text-gold-600">
-                  {formatPrice(checkoutData.subtotal - (checkoutData.subtotal * checkoutData.discount / 100) + selectedCourier.price)}
+                  {formatPrice(checkoutData.subtotal - (checkoutData.subtotal * checkoutData.discount / 100) + shippingCost)}
                 </span>
               </div>
               {!showNewAddressForm && (

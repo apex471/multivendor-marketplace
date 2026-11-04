@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { calculateParcelSpecs } from '@/lib/parcel';
 
 interface CartItem {
   id: string;
@@ -62,7 +63,7 @@ interface CheckoutContextType {
   applyCoupon: (code: string) => void;
   calculateTotals: () => void;
   clearCheckout: () => void;
-  refreshCourierRates: (destination: string | { state?: string; city?: string; address?: string }, weight?: number) => Promise<void>;
+  refreshCourierRates: (destination?: string | { state?: string; city?: string; address?: string } | null, weight?: number) => Promise<void>;
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -82,7 +83,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   });
 
   const [couriers, setCouriers] = useState<any[]>([]);
-  const [loadingCouriers, setLoadingCouriers] = useState(true);
+  const [loadingCouriers, setLoadingCouriers] = useState(false);
   const [refreshingRates, setRefreshingRates] = useState(false);
 
   // ── CourierPlus fallback options ─────────────────────────────────────────
@@ -179,10 +180,41 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   /**
    * Fetch live rates from CourierPlus and update the couriers list.
-   * Called on mount and whenever the shipping address / destination changes.
+   * Only called when the client provides their delivery location (State / City / Address).
+   * Calculates dynamic parcel size & weight from cart items.
    */
-  const refreshCourierRates = async (destination: string | { state?: string; city?: string; address?: string }, weight = 1) => {
+  const refreshCourierRates = async (destination?: string | { state?: string; city?: string; address?: string } | null, weight?: number) => {
+    if (!destination) {
+      setCouriers([]);
+      setCheckoutData(prev => {
+        const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discountAmount = (subtotal * prev.discount) / 100;
+        const tax = (subtotal - discountAmount) * 0.08;
+        return {
+          ...prev,
+          selectedCourierId: '',
+          shippingCost: 0,
+          total: subtotal - discountAmount + tax,
+        };
+      });
+      return;
+    }
+
+    const stateStr = typeof destination === 'string' ? '' : (destination.state || '');
+    const cityStr = typeof destination === 'string' ? destination : (destination.city || destination.address || '');
+    const targetDest = typeof destination === 'string' ? destination : (stateStr || cityStr);
+
+    if (!targetDest || !targetDest.trim()) {
+      setCouriers([]);
+      return;
+    }
+
+    // Dynamic parcel size & volumetric weight calculation from cart items
+    const parcel = calculateParcelSpecs(checkoutData.cartItems);
+    const safeWeight = (weight && weight > 0) ? weight : parcel.billableWeight;
+
     setRefreshingRates(true);
+    setLoadingCouriers(true);
     try {
       const { getAuthToken } = await import('@/lib/api/auth');
       const token = getAuthToken();
@@ -193,16 +225,15 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const payload = typeof destination === 'string'
-        ? { origin: 'Lagos', destination, weight }
-        : {
-            origin: 'Lagos',
-            state: destination.state,
-            city: destination.city,
-            address: destination.address,
-            destination: destination.state || destination.city || 'Lagos',
-            weight,
-          };
+      const payload = {
+        origin: 'Lagos',
+        state: stateStr,
+        city: cityStr,
+        address: typeof destination === 'string' ? destination : destination.address,
+        destination: targetDest,
+        weight: safeWeight,
+        description: parcel.summaryText,
+      };
 
       const res = await fetch('/api/courierplus/rates', {
         method: 'POST',
@@ -221,14 +252,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       applyCouriers(COURIERPLUS_FALLBACKS);
     } finally {
       setRefreshingRates(false);
+      setLoadingCouriers(false);
     }
   };
-
-  // Fetch live CourierPlus rates on mount with sensible defaults
-  useEffect(() => {
-    refreshCourierRates('Lagos', 1).finally(() => setLoadingCouriers(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const updateCartItems = (items: CartItem[]) => {
     setCheckoutData(prev => ({ ...prev, cartItems: items }));
@@ -255,6 +281,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   const updateShippingAddress = (address: ShippingAddress) => {
     setCheckoutData(prev => ({ ...prev, shippingAddress: address }));
+    if (address && (address.state || address.city)) {
+      refreshCourierRates(address);
+    }
   };
 
   const updatePaymentMethod = (payment: PaymentMethod) => {
