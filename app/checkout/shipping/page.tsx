@@ -7,6 +7,7 @@ import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
 import { BADGE_STYLES, TRACKING_LABEL } from '../../../lib/couriers';
 import { getAuthToken } from '../../../lib/api/auth';
+import { useLocalization } from '../../../contexts/LocalizationContext';
 
 interface SavedAddress {
   id: string;
@@ -23,11 +24,12 @@ interface SavedAddress {
 
 export default function ShippingPage() {
   const router = useRouter();
+  const { formatPrice } = useLocalization();
   const { checkoutData, couriers, loadingCouriers, refreshingRates, updateShippingAddress, updateCourierId, refreshCourierRates } = useCheckout();
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [selectedCourierId, setSelectedCourierId] = useState<string>(checkoutData.selectedCourierId);
-  const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: '', name: 'Standard Courier', price: 10, icon: '📦', tagline: '', deliveryDays: '3-5 days', estimatedDate: '3-5 days', features: [], tracking: 'standard', insurance: true, signature: true, available: true, carrier: 'Courier' };
+  const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: '', name: 'CourierPlus Standard Delivery', price: 2.33, icon: '🚚', tagline: '', deliveryDays: '2-4 days', estimatedDate: '2-4 days', features: [], tracking: 'realtime', insurance: true, signature: true, available: true, carrier: 'CourierPlus Nigeria' };
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
   useEffect(() => {
@@ -387,7 +389,7 @@ export default function ShippingPage() {
                             <div className={`font-bold text-lg leading-tight ${
                               courier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'
                             }`}>
-                              {courier.price === 0 ? 'FREE' : `$${courier.price.toFixed(2)}`}
+                              {courier.price === 0 ? 'FREE' : formatPrice(courier.price)}
                             </div>
                             <div className="text-[10px] text-charcoal-500 dark:text-cool-gray-400 mt-0.5 max-w-20 text-right leading-tight">{courier.carrier}</div>
                           </div>
@@ -414,12 +416,12 @@ export default function ShippingPage() {
               <div className="space-y-3 mb-4 pb-4 border-b border-cool-gray-300 dark:border-charcoal-700">
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Subtotal</span>
-                  <span>${checkoutData.subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(checkoutData.subtotal)}</span>
                 </div>
                 {checkoutData.discount > 0 && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>Discount</span>
-                    <span>-${((checkoutData.subtotal * checkoutData.discount) / 100).toFixed(2)}</span>
+                    <span>-{formatPrice((checkoutData.subtotal * checkoutData.discount) / 100)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
@@ -428,14 +430,14 @@ export default function ShippingPage() {
                     <div className="text-xs text-charcoal-400 dark:text-cool-gray-500 mt-0.5">{selectedCourier.icon} {selectedCourier.name}</div>
                   </div>
                   <span className={selectedCourier.price === 0 ? 'text-green-600 dark:text-green-400 font-semibold' : ''}>
-                    {selectedCourier.price === 0 ? 'FREE' : `$${selectedCourier.price.toFixed(2)}`}
+                    {selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)}
                   </span>
                 </div>
               </div>
               <div className="flex justify-between text-lg font-bold text-charcoal-900 dark:text-white mb-6">
                 <span>Total</span>
                 <span className="text-gold-600">
-                  ${(checkoutData.subtotal - (checkoutData.subtotal * checkoutData.discount / 100) + selectedCourier.price).toFixed(2)}
+                  {formatPrice(checkoutData.subtotal - (checkoutData.subtotal * checkoutData.discount / 100) + selectedCourier.price)}
                 </span>
               </div>
               {!showNewAddressForm && (

@@ -105,10 +105,15 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (data.success && data.data?.rates?.length > 0) {
-        setCouriers(data.data.rates);
+        // Ensure rates are in USD base (defensive safeguard against raw NGN)
+        const normalizedRates = data.data.rates.map((r: any) => ({
+          ...r,
+          price: Number(r.price) > 100 ? Math.round((Number(r.price) / 1500) * 100) / 100 : Number(r.price),
+        }));
+        setCouriers(normalizedRates);
         setSelectedCourierId(prev => {
-          const exists = data.data.rates.some((r: any) => r.id === prev);
-          return exists ? prev : data.data.rates[0].id;
+          const exists = normalizedRates.some((r: any) => r.id === prev);
+          return exists ? prev : normalizedRates[0].id;
         });
       }
     } catch (err) {

@@ -7,7 +7,8 @@ export interface Courier {
   carrier: string;
   tagline: string;
   icon: string;
-  price: number;
+  price: number; // Base USD price (for platform checkout & currency conversion)
+  priceNgn?: number; // Exact Naira price from CourierPlus tariff
   deliveryDays: string;
   estimatedDate: string;
   features: string[];
@@ -33,7 +34,8 @@ export const COURIERS: Courier[] = [
     carrier: 'CourierPlus Nigeria',
     tagline: 'Reliable nationwide delivery across all 36 states',
     icon: '🚚',
-    price: 2500,
+    price: 2.33, // $2.33 USD base (converts to ₦3,500 via formatPrice)
+    priceNgn: 3500,
     deliveryDays: '2–4 business days',
     estimatedDate: '2–4 business days',
     features: ['Full live GPS tracking', 'SMS & Email dispatch alerts', 'Secure tamper-evident packaging', 'Doorstep delivery'],
@@ -50,7 +52,8 @@ export const COURIERS: Courier[] = [
     carrier: 'CourierPlus Nigeria',
     tagline: 'Expedited priority delivery with premium handling',
     icon: '⚡',
-    price: 4500,
+    price: 3.67, // $3.67 USD base (converts to ₦5,500 via formatPrice)
+    priceNgn: 5500,
     deliveryDays: '1–2 business days',
     estimatedDate: 'Next day / 48 hrs',
     features: ['Minute-by-minute tracking', 'Dedicated dispatch courier', 'Signature & photo on delivery', 'Up to ₦500,000 transit cover', 'Priority dispatch handling'],

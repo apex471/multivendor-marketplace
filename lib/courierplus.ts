@@ -119,7 +119,9 @@ export interface ShippingRate {
   carrier: string;
   tagline: string;
   icon: string;
-  price: number;
+  price: number; // Base USD price (for checkout calculations & formatPrice)
+  priceNgn?: number; // Exact raw Naira price from CourierPlus tariff
+  currency?: string;
   deliveryDays: string;
   estimatedDate: string;
   features: string[];
@@ -368,9 +370,16 @@ export class CourierPlusClient {
         const estimatedDays  = Number(tariffData.estimatedDeliveryDays ?? tariffData.expecteDeliveryDay ?? 3);
         const serviceType    = String(tariffData.serviceType ?? (destStateCode === originStateCode ? 'metro' : 'direct'));
 
-        const standardPrice  = Math.max(1500, Math.round(totalAmount));
-        // Express priority: expedited dispatch + priority transit handling
-        const expressPrice   = Math.round(standardPrice * 1.4);
+        // CourierPlus tariff is returned in Nigerian Naira (NGN).
+        // Since platform products and checkout base currency is USD, we normalise the tariff
+        // into USD so formatPrice(price) renders the exact Naira amount, preventing 1,500x double-conversion.
+        const NGN_RATE = Number(process.env.USD_TO_NGN_RATE || 1500);
+
+        const standardPriceNgn = Math.max(1500, Math.round(totalAmount));
+        const standardPriceUsd = Math.round((standardPriceNgn / NGN_RATE) * 100) / 100;
+
+        const expressPriceNgn  = Math.round(standardPriceNgn * 1.4);
+        const expressPriceUsd  = Math.round((expressPriceNgn / NGN_RATE) * 100) / 100;
 
         const standardDaysText = estimatedDays <= 2
           ? '1–2 business days'
@@ -389,7 +398,9 @@ export class CourierPlusClient {
               ? 'Intra-city metro direct delivery'
               : 'Interstate nationwide delivery across Nigeria',
             icon: '🚚',
-            price: standardPrice,
+            price: standardPriceUsd,
+            priceNgn: standardPriceNgn,
+            currency: 'NGN',
             deliveryDays: standardDaysText,
             estimatedDate: standardDaysText,
             features: [
@@ -409,7 +420,7 @@ export class CourierPlusClient {
               baseTariff,
               vat,
               onforwarding,
-              amountDue: standardPrice,
+              amountDue: standardPriceNgn,
               serviceType,
             },
           },
@@ -419,7 +430,9 @@ export class CourierPlusClient {
             carrier: 'CourierPlus Nigeria',
             tagline: 'Expedited priority dispatch with dedicated courier handling',
             icon: '⚡',
-            price: expressPrice,
+            price: expressPriceUsd,
+            priceNgn: expressPriceNgn,
+            currency: 'NGN',
             deliveryDays: expressDaysText,
             estimatedDate: 'Priority / Next day',
             features: [
@@ -439,7 +452,7 @@ export class CourierPlusClient {
               baseTariff: Math.round(baseTariff * 1.4),
               vat: Math.round(vat * 1.4),
               onforwarding,
-              amountDue: expressPrice,
+              amountDue: expressPriceNgn,
               serviceType: 'express',
             },
           },
@@ -493,6 +506,13 @@ export class CourierPlusClient {
       expressPrice  += extraKg * 1600;
     }
 
+    // CourierPlus tariff is in NGN. Convert to base USD for the platform's price field.
+    const NGN_RATE = Number(process.env.USD_TO_NGN_RATE || 1500);
+    const standardPriceNgn = standardPrice;
+    const standardPriceUsd = Math.round((standardPriceNgn / NGN_RATE) * 100) / 100;
+    const expressPriceNgn  = expressPrice;
+    const expressPriceUsd  = Math.round((expressPriceNgn / NGN_RATE) * 100) / 100;
+
     const fallbackRates: ShippingRate[] = [
       {
         id: 'courierplus-standard',
@@ -502,7 +522,9 @@ export class CourierPlusClient {
           ? 'Intra-city metro direct delivery'
           : 'Interstate nationwide delivery across Nigeria',
         icon: '🚚',
-        price: standardPrice,
+        price: standardPriceUsd,
+        priceNgn: standardPriceNgn,
+        currency: 'NGN',
         deliveryDays: daysText,
         estimatedDate: daysText,
         features: [
@@ -524,7 +546,9 @@ export class CourierPlusClient {
         carrier: 'CourierPlus Nigeria',
         tagline: 'Expedited priority delivery with premium handling',
         icon: '⚡',
-        price: expressPrice,
+        price: expressPriceUsd,
+        priceNgn: expressPriceNgn,
+        currency: 'NGN',
         deliveryDays: destStateCode === 'LOS' ? 'Same day / Next day' : '1–2 business days',
         estimatedDate: 'Priority / Expedited',
         features: [

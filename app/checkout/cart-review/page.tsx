@@ -7,9 +7,11 @@ import Image from 'next/image';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
+import { useLocalization } from '../../../contexts/LocalizationContext';
 
 export default function CartReviewPage() {
   const router = useRouter();
+  const { formatPrice } = useLocalization();
   const { checkoutData, updateCartItem, removeCartItem, applyCoupon, calculateTotals } = useCheckout();
   const { cartItems, subtotal, discount, couponCode } = checkoutData;
 
@@ -114,7 +116,7 @@ export default function CartReviewPage() {
                           {item.color && <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Color: {item.color}</p>}
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gold-600">${item.price.toFixed(2)}</p>
+                          <p className="font-bold text-gold-600">{formatPrice(item.price)}</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
@@ -145,7 +147,7 @@ export default function CartReviewPage() {
                       <div className="mt-2 text-right">
                         <span className="text-sm text-charcoal-600 dark:text-cool-gray-400">
                           Subtotal: <span className="font-semibold text-charcoal-900 dark:text-white">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {formatPrice(item.price * item.quantity)}
                           </span>
                         </span>
                       </div>
@@ -190,18 +192,18 @@ export default function CartReviewPage() {
                 <div className="space-y-3 mb-4 pb-4 border-b border-cool-gray-300 dark:border-charcoal-700">
                   <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                     <span>Subtotal ({cartItems.length} items)</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600 dark:text-green-400">
                       <span>Discount ({discount}%)</span>
-                      <span>-${discountAmount.toFixed(2)}</span>
+                      <span>-{formatPrice(discountAmount)}</span>
                     </div>
                   )}
                 </div>
                 <div className="flex justify-between text-lg font-bold text-charcoal-900 dark:text-white mb-6">
                   <span>Total</span>
-                  <span className="text-gold-600">${(subtotal - discountAmount).toFixed(2)}</span>
+                  <span className="text-gold-600">{formatPrice(subtotal - discountAmount)}</span>
                 </div>
                 <button
                   onClick={handleContinue}

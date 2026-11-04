@@ -14,7 +14,7 @@ export default function ReviewPage() {
   const router = useRouter();
   const { checkoutData, couriers, clearCheckout } = useCheckout();
   const { clearCart } = useCart();
-  const { currency } = useLocalization();
+  const { currency, formatPrice } = useLocalization();
   const { cartItems, shippingAddress, paymentMethod, selectedCourierId, subtotal, discount, shippingCost, tax, total, couponCode } = checkoutData;
   const selectedCourier = couriers.find(c => c.id === selectedCourierId) || { id: selectedCourierId, name: 'Standard Delivery', price: shippingCost, icon: '📦', carrier: 'Courier', estimatedDate: '3-5 days', deliveryDays: '3-5 days', tracking: 'standard' };
 
@@ -166,7 +166,7 @@ export default function ReviewPage() {
                       <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Qty: {item.quantity}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gold-600">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-bold text-gold-600">{formatPrice(item.price * item.quantity)}</p>
                     </div>
                   </div>
                 ))}
@@ -211,7 +211,7 @@ export default function ReviewPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-charcoal-700 dark:text-cool-gray-300">{getShippingMethodName()}</span>
-                <span className="font-semibold text-charcoal-900 dark:text-white">${shippingCost.toFixed(2)}</span>
+                <span className="font-semibold text-charcoal-900 dark:text-white">{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost)}</span>
               </div>
             </div>
 
@@ -280,26 +280,26 @@ export default function ReviewPage() {
               <div className="space-y-3 mb-4 pb-4 border-b border-cool-gray-300 dark:border-charcoal-700">
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Subtotal ({cartItems.length} items)</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>Discount ({discount}%)</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
+                    <span>-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Shipping</span>
-                  <span>${shippingCost.toFixed(2)}</span>
+                  <span>{shippingCost === 0 ? 'FREE' : formatPrice(shippingCost)}</span>
                 </div>
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>{formatPrice(tax)}</span>
                 </div>
               </div>
               <div className="flex justify-between text-xl font-bold text-charcoal-900 dark:text-white mb-6">
                 <span>Total</span>
-                <span className="text-gold-600">${total.toFixed(2)}</span>
+                <span className="text-gold-600">{formatPrice(total)}</span>
               </div>
               <button
                 onClick={handlePlaceOrder}

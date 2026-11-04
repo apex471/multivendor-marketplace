@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
+import { useLocalization } from '../../../contexts/LocalizationContext';
 
 export default function PaymentPage() {
   const router = useRouter();
+  const { formatPrice } = useLocalization();
   const { checkoutData, updatePaymentMethod } = useCheckout();
   const [paymentType, setPaymentType] = useState<'new' | 'bank' | 'paypal'>('new');
   const [billingAddressSame, setBillingAddressSame] = useState(true);
@@ -210,26 +212,26 @@ export default function PaymentPage() {
               <div className="space-y-3 mb-4 pb-4 border-b border-cool-gray-300 dark:border-charcoal-700">
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Subtotal</span>
-                  <span>${checkoutData.subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(checkoutData.subtotal)}</span>
                 </div>
                 {checkoutData.discount > 0 && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>Discount ({checkoutData.discount}%)</span>
-                    <span>-${((checkoutData.subtotal * checkoutData.discount) / 100).toFixed(2)}</span>
+                    <span>-{formatPrice((checkoutData.subtotal * checkoutData.discount) / 100)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Shipping</span>
-                  <span>${checkoutData.shippingCost.toFixed(2)}</span>
+                  <span>{formatPrice(checkoutData.shippingCost)}</span>
                 </div>
                 <div className="flex justify-between text-charcoal-700 dark:text-cool-gray-300">
                   <span>Tax</span>
-                  <span>${checkoutData.tax.toFixed(2)}</span>
+                  <span>{formatPrice(checkoutData.tax)}</span>
                 </div>
               </div>
               <div className="flex justify-between text-lg font-bold text-charcoal-900 dark:text-white mb-6">
                 <span>Total</span>
-                <span className="text-gold-600">${checkoutData.total.toFixed(2)}</span>
+                <span className="text-gold-600">{formatPrice(checkoutData.total)}</span>
               </div>
               {paymentType === 'new' && (
                 <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 text-center">

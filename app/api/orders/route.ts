@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
 
     // ── Fee calculation ─────────────────────────────────────────────────────────
     const subtotal = rawSubtotal ?? cartItems.reduce((s: number, i: { price?: number; quantity?: number }) => s + (i.price ?? 0) * (i.quantity ?? 1), 0);
-    const shipping = rawShipping ?? courierPrice ?? 0;
+    const rawShip = rawShipping ?? courierPrice ?? 0;
+    // Safeguard: If shipping was sent in raw NGN (> 100), convert to base USD to avoid 1500x double conversion
+    const shipping = rawShip > 100 ? Math.round((rawShip / 1500) * 100) / 100 : rawShip;
     const fees = calculateFees(subtotal, shipping);
     // Apply discount to grand total if coupon provided
     const discountAmount = discount ?? 0;

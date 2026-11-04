@@ -86,6 +86,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [refreshingRates, setRefreshingRates] = useState(false);
 
   // ── CourierPlus fallback options ─────────────────────────────────────────
+  // Prices in USD base for standard platform checkout and formatPrice conversion
   const COURIERPLUS_FALLBACKS = [
     {
       id: 'courierplus-standard',
@@ -93,7 +94,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       carrier: 'CourierPlus Nigeria',
       tagline: 'Reliable nationwide delivery across all 36 states',
       icon: '🚚',
-      price: 3500,
+      price: 2.33,
+      priceNgn: 3500,
+      currency: 'NGN',
       deliveryDays: '2–4 business days',
       estimatedDate: '2–4 business days',
       features: ['Full live GPS tracking', 'SMS & Email alerts', 'Tamper-evident packaging', 'Doorstep delivery'],
@@ -110,7 +113,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       carrier: 'CourierPlus Nigeria',
       tagline: 'Expedited priority dispatch with dedicated courier handling',
       icon: '⚡',
-      price: 5500,
+      price: 3.67,
+      priceNgn: 5500,
+      currency: 'NGN',
       deliveryDays: '1–2 business days',
       estimatedDate: 'Priority / Next day',
       features: ['Minute-by-minute tracking', 'Dedicated courier', 'Signature & photo on delivery', 'Up to ₦500,000 cover'],
@@ -124,24 +129,33 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   ];
 
   // Helper: map a raw CourierPlus rate to the courier card shape
-  const mapRate = (rate: any, idx: number) => ({
-    id: rate.id || `courierplus-${idx}`,
-    name: rate.name || 'CourierPlus Standard Delivery',
-    carrier: rate.carrier || 'CourierPlus Nigeria',
-    tagline: rate.tagline || 'Official CourierPlus live delivery service',
-    icon: rate.icon || (rate.id?.includes('express') ? '⚡' : '🚚'),
-    price: Number(rate.price ?? rate.amount ?? 3500),
-    deliveryDays: rate.deliveryDays || rate.estimatedDelivery || '2–4 business days',
-    estimatedDate: rate.estimatedDate || rate.estimatedDelivery || rate.deliveryDays || '2–4 business days',
-    features: rate.features || ['Full live GPS tracking', 'Doorstep delivery'],
-    badge: rate.badge || (rate.id?.includes('express') ? 'Fastest' : 'Official Carrier'),
-    badgeVariant: rate.badgeVariant || (rate.id?.includes('express') ? 'orange' : 'gold'),
-    tracking: rate.tracking || 'realtime',
-    insurance: true,
-    signature: true,
-    available: rate.available !== false,
-    breakdown: rate.breakdown,
-  });
+  const mapRate = (rate: any, idx: number) => {
+    // Determine normalized USD price:
+    // If incoming price/amount is in raw NGN (> 100), convert to USD so formatPrice doesn't double-multiply
+    const rawVal = Number(rate.price ?? rate.amount ?? 2.33);
+    const usdPrice = rawVal > 100 ? Math.round((rawVal / 1500) * 100) / 100 : rawVal;
+
+    return {
+      id: rate.id || `courierplus-${idx}`,
+      name: rate.name || 'CourierPlus Standard Delivery',
+      carrier: rate.carrier || 'CourierPlus Nigeria',
+      tagline: rate.tagline || 'Official CourierPlus live delivery service',
+      icon: rate.icon || (rate.id?.includes('express') ? '⚡' : '🚚'),
+      price: usdPrice,
+      priceNgn: rate.priceNgn ?? (rawVal > 100 ? rawVal : Math.round(usdPrice * 1500)),
+      currency: rate.currency || 'NGN',
+      deliveryDays: rate.deliveryDays || rate.estimatedDelivery || '2–4 business days',
+      estimatedDate: rate.estimatedDate || rate.estimatedDelivery || rate.deliveryDays || '2–4 business days',
+      features: rate.features || ['Full live GPS tracking', 'Doorstep delivery'],
+      badge: rate.badge || (rate.id?.includes('express') ? 'Fastest' : 'Official Carrier'),
+      badgeVariant: rate.badgeVariant || (rate.id?.includes('express') ? 'orange' : 'gold'),
+      tracking: rate.tracking || 'realtime',
+      insurance: true,
+      signature: true,
+      available: rate.available !== false,
+      breakdown: rate.breakdown,
+    };
+  };
 
   // Helper: apply a new couriers list and set default selection
   const applyCouriers = (mapped: any[]) => {
@@ -150,7 +164,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       const defaultId = mapped.some((c: any) => c.id === prev.selectedCourierId)
         ? prev.selectedCourierId
         : (mapped[0]?.id || 'courierplus-standard');
-      const courier = mapped.find((c: any) => c.id === defaultId) || mapped[0] || { price: 3500 };
+      const courier = mapped.find((c: any) => c.id === defaultId) || mapped[0] || { price: 2.33 };
       const subtotal = prev.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const discountAmount = (subtotal * prev.discount) / 100;
       const tax = (subtotal - discountAmount) * 0.08;
