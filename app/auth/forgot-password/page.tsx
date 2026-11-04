@@ -180,3 +180,4 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
+

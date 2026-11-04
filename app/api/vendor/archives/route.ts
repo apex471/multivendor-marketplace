@@ -173,3 +173,4 @@ export async function PATCH(req: NextRequest) {
     return sendServerError('Failed to update archived item');
   }
 }
+
