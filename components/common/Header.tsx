@@ -16,7 +16,6 @@ import {
   UserIcon,
   SettingsIcon,
   LogoutIcon,
-  TruckIcon,
   DashboardIcon,
 } from './Icons';
 
@@ -164,9 +163,11 @@ export default function Header() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/shop?search=${encodeURIComponent(searchQuery)}`);
-      setSearchOpen(false);
-      setSearchQuery('');
+    } else {
+      router.push('/shop');
     }
+    setSearchOpen(false);
+    setSearchQuery('');
   };
 
   const handleNavigation = (href: string) => {
@@ -359,15 +360,6 @@ export default function Header() {
             {/* Profile - Hide on mobile, show only hamburger */}
             {isLoggedIn ? (
               <div className="hidden sm:flex items-center gap-2">
-                {(user?.role === 'vendor' || user?.role === 'brand') && (
-                  <Link
-                    href="/logistics/providers"
-                    className="p-1.5 sm:p-2 text-charcoal-700 dark:text-cool-gray-300 hover:text-gold-600 dark:hover:text-gold-400 transition-colors touch-manipulation flex items-center justify-center"
-                    title="Logistics Providers"
-                  >
-                    <TruckIcon size={20} className="w-5 h-5" />
-                  </Link>
-                )}
                 {/* Profile dropdown */}
                 <div className="relative" ref={profileMenuRef}>
                   <button
@@ -494,25 +486,6 @@ export default function Header() {
                 {item.name}
               </button>
             ))}
-            {/* Logistics link — only for vendors and brand owners */}
-            {isLoggedIn && (user?.role === 'vendor' || user?.role === 'brand') && (
-              <button
-                onClick={() => {
-                  handleNavigation('/logistics/providers');
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left py-2 font-medium ${
-                  pathname === '/logistics/providers'
-                    ? 'text-gold-600 dark:text-gold-400'
-                    : 'text-charcoal-700 dark:text-cool-gray-300'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <TruckIcon size={18} className="w-4.5 h-4.5" />
-                  Logistics Providers
-                </span>
-              </button>
-            )}
             {isLoggedIn ? (
               <>
                 <div className="mt-3 pt-3 border-t border-cool-gray-200 dark:border-charcoal-700">

@@ -361,6 +361,9 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [stories,  setStories]  = useState<any[]>([]);
   const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
+  const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const brandsRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
@@ -465,7 +468,9 @@ export default function Home() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/shop?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push('/shop');
     }
   };
 
@@ -491,16 +496,37 @@ export default function Home() {
       color: '',
       quantity: 1,
     });
+    setAddedProductId(productId);
+    setToastMessage(`Added "${product.name}" to cart! 🛍️`);
+    setTimeout(() => setAddedProductId(null), 1800);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleAddToWishlist = async (productId: string) => {
     const token = getAuthToken();
-    if (!token) { router.push('/auth/login'); return; }
-    await fetch('/api/wishlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ productId }),
+    if (!token) {
+      router.push('/auth/login?redirect=' + encodeURIComponent(window.location.pathname));
+      return;
+    }
+    const isAlready = wishlistedIds.has(productId);
+    setWishlistedIds(prev => {
+      const next = new Set(prev);
+      if (isAlready) next.delete(productId);
+      else next.add(productId);
+      return next;
     });
+    setToastMessage(isAlready ? 'Removed from wishlist' : 'Added to wishlist! ❤️');
+    setTimeout(() => setToastMessage(null), 2500);
+
+    try {
+      await fetch('/api/wishlist', {
+        method: isAlready ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId }),
+      });
+    } catch (err) {
+      console.error('Wishlist error:', err);
+    }
   };
 
   return (
@@ -564,8 +590,9 @@ export default function Home() {
                 {['Women', 'Men', 'Accessories', 'Watches', 'Jewelry'].map((cat) => (
                   <button
                     key={cat}
+                    type="button"
                     onClick={() => handleCategoryClick(cat)}
-                    className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/20 dark:bg-white/10 hover:bg-white/30 dark:hover:bg-white/20 active:bg-white/40 dark:active:bg-white/30 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium transition-all min-h-8 sm:min-h-9 touch-manipulation"
+                    className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/20 dark:bg-white/10 hover:bg-white/30 dark:hover:bg-white/20 active:bg-white/40 dark:active:bg-white/30 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium transition-all min-h-8 sm:min-h-9 touch-manipulation cursor-pointer active:scale-95"
                   >
                     {cat}
                   </button>
@@ -722,15 +749,17 @@ export default function Home() {
             <div className="relative group/slider">
               {/* Navigation Arrows */}
               <button 
+                type="button"
                 onClick={() => scrollContainer(productsRef, 'left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute left-1 sm:left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:-translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Left"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
               </button>
               <button 
+                type="button"
                 onClick={() => scrollContainer(productsRef, 'right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute right-1 sm:right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Right"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
@@ -764,10 +793,17 @@ export default function Home() {
                         )}
                         <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-100 sm:opacity-0 sm:group-hover/img:opacity-100 transition-opacity">
                           <button
+                            type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToWishlist(product.id); }}
-                            className="w-7 h-7 bg-white/95 dark:bg-charcoal-700/95 rounded-full flex items-center justify-center shadow-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors touch-manipulation text-xs"
+                            className={`w-7 h-7 rounded-full flex items-center justify-center shadow-md transition-all touch-manipulation text-xs active:scale-90 cursor-pointer ${
+                              wishlistedIds.has(product.id)
+                                ? 'bg-red-500 text-white scale-105'
+                                : 'bg-white/95 dark:bg-charcoal-700/95 hover:bg-red-50 dark:hover:bg-red-950/30 text-charcoal-800'
+                            }`}
                             aria-label="Add to wishlist"
-                          >❤️</button>
+                          >
+                            {wishlistedIds.has(product.id) ? '❤️' : '🤍'}
+                          </button>
                         </div>
                       </Link>
                       <div className="p-3">
@@ -787,9 +823,20 @@ export default function Home() {
                           )}
                         </div>
                         <button
-                          onClick={(e) => { e.preventDefault(); handleAddToCart(product.id); }}
-                          className="w-full py-1.5 min-h-8 bg-gold-600 dark:bg-gold-600 text-white rounded-lg hover:bg-gold-700 dark:hover:bg-gold-700 active:scale-95 transition-all font-semibold text-[11px] touch-manipulation"
-                        >{t('add_to_cart')}</button>
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToCart(product.id); }}
+                          className={`w-full py-1.5 min-h-8 rounded-lg active:scale-95 transition-all font-semibold text-[11px] touch-manipulation cursor-pointer flex items-center justify-center gap-1 shadow-xs ${
+                            addedProductId === product.id
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                              : 'bg-gold-600 dark:bg-gold-600 text-white hover:bg-gold-700 dark:hover:bg-gold-700'
+                          }`}
+                        >
+                          {addedProductId === product.id ? (
+                            <span>Added! ✓</span>
+                          ) : (
+                            <span>{t('add_to_cart')}</span>
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -824,15 +871,17 @@ export default function Home() {
             <div className="relative group/slider">
               {/* Navigation Arrows */}
               <button 
+                type="button"
                 onClick={() => scrollContainer(brandsRef, 'left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute left-1 sm:left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:-translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Left"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
               </button>
               <button 
+                type="button"
                 onClick={() => scrollContainer(brandsRef, 'right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute right-1 sm:right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Right"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
@@ -965,15 +1014,17 @@ export default function Home() {
             <div className="relative group/slider">
               {/* Navigation Arrows */}
               <button 
+                type="button"
                 onClick={() => scrollContainer(vendorsRef, 'left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 -translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute left-1 sm:left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:-translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Left"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">←</span>
               </button>
               <button 
+                type="button"
                 onClick={() => scrollContainer(vendorsRef, 'right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 dark:bg-charcoal-800/90 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-0 group-hover/slider:opacity-100 translate-x-2 pointer-events-auto active:scale-90"
+                className="absolute right-1 sm:right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 dark:bg-charcoal-800/95 backdrop-blur-md border border-cool-gray-200 dark:border-charcoal-700 shadow-md hover:bg-white dark:hover:bg-charcoal-750 flex items-center justify-center transition-all opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100 hover:opacity-100 sm:translate-x-2 pointer-events-auto active:scale-90 touch-manipulation cursor-pointer"
                 aria-label="Scroll Right"
               >
                 <span className="text-charcoal-900 dark:text-white font-bold text-base">→</span>
@@ -1077,6 +1128,14 @@ export default function Home() {
           </section>
         )}
       </div>
+
+      {/* Floating Action Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-charcoal-900/95 dark:bg-white/95 text-white dark:text-charcoal-900 px-5 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-gold-500/30 flex items-center gap-2 text-sm font-semibold transition-all pointer-events-none">
+          <span>✨</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       <Footer />
     </div>
