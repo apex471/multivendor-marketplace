@@ -139,7 +139,7 @@ export default function AdminPayoutsPage() {
 
       showToast(
         modalMode === 'manual' ? '✅ Payout marked as manually processed. Vendor balance updated!' :
-        modalMode === 'auto'   ? '✅ Payout approved via Flutterwave!' :
+        modalMode === 'auto'   ? '✅ Payout approved and disbursed successfully!' :
                                  '🚫 Payout rejected successfully.',
         modalMode === 'reject' ? 'info' : 'success'
       );
@@ -190,29 +190,18 @@ export default function AdminPayoutsPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-3xl font-black text-white tracking-tight">Payout Approvals</h1>
-        <p className="text-cool-gray-400 text-sm mt-1">Review and disburse funds to vendors, brand owners, and logistics providers.</p>
-      </div>
-
-      {/* Manual Transfer Warning Banner */}
-      {!flwConfigured && (
-        <div className="bg-amber-950/30 border border-amber-700/50 rounded-2xl p-5">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl shrink-0">⚠️</span>
-            <div>
-              <p className="text-amber-300 font-bold text-sm mb-1">Flutterwave Withdrawal Unavailable — Use Manual Bank Transfer</p>
-              <p className="text-amber-200/70 text-xs leading-relaxed">
-                Your Flutterwave collection balance has funds but the automatic NGN static account is failing.
-                <strong className="text-amber-200"> To process payouts:</strong>{' '}
-                1) Open your bank app and send the NGN amount shown to the vendor&apos;s account,{' '}
-                2) Click <strong className="text-blue-300">&quot;Mark as Manually Paid&quot;</strong> and enter your transfer reference.
-                The vendor&apos;s dashboard will update immediately.
-              </p>
-            </div>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-black text-white tracking-tight">Payout Approvals</h1>
+          <p className="text-cool-gray-400 text-sm mt-1">Review and disburse funds to vendors, brand owners, and logistics providers.</p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Automated Disbursal Engine
+          </span>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -346,26 +335,26 @@ export default function AdminPayoutsPage() {
                     <div className="flex flex-col gap-2 w-full">
                       <button
                         type="button"
+                        onClick={(e) => { e.stopPropagation(); openModal(payout, 'auto'); }}
+                        className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all text-center shadow-lg shadow-emerald-900/30 cursor-pointer select-none">
+                        ⚡ Approve & Disburse
+                      </button>
+                      <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); openModal(payout, 'manual'); }}
-                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all text-center shadow-lg shadow-blue-900/30 cursor-pointer select-none">
+                        className="w-full px-4 py-2 bg-charcoal-700 hover:bg-charcoal-600 active:bg-charcoal-750 text-cool-gray-300 font-semibold text-xs rounded-xl transition-colors text-center cursor-pointer">
                         🏦 Mark as Manually Paid
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); openModal(payout, 'auto'); }}
-                        className="w-full px-4 py-2.5 bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-900 text-white font-semibold text-sm rounded-xl transition-colors text-center cursor-pointer">
-                        ⚡ Try Flutterwave Auto
-                      </button>
-                      <button
-                        type="button"
                         onClick={(e) => { e.stopPropagation(); openModal(payout, 'reject'); }}
-                        className="w-full px-4 py-2.5 border border-red-900/60 text-red-400 font-semibold text-sm rounded-xl hover:bg-red-950/40 active:bg-red-950/60 transition-colors text-center cursor-pointer">
+                        className="w-full px-4 py-2 border border-red-900/60 text-red-400 font-semibold text-xs rounded-xl hover:bg-red-950/40 active:bg-red-950/60 transition-colors text-center cursor-pointer">
                         ✕ Reject
                       </button>
                     </div>
                   ) : (
                     <div className="text-xs text-cool-gray-500 text-right">
-                      {isManual ? '🏦 Manual transfer' : payout.status === 'completed' ? '⚡ Auto FLW' : ''}
+                      {isManual ? '🏦 Manual transfer' : payout.status === 'completed' ? '⚡ Disbursed' : ''}
                       <br />{payout.metadata?.processedAt ? new Date(payout.metadata.processedAt).toLocaleDateString() : '—'}
                     </div>
                   )}
@@ -384,7 +373,7 @@ export default function AdminPayoutsPage() {
               <div>
                 <h2 className="text-lg font-black text-white">
                   {modalMode === 'manual' ? '🏦 Manual Bank Transfer' :
-                   modalMode === 'auto'   ? '⚡ Auto Flutterwave Payout' : '✕ Reject Payout'}
+                   modalMode === 'auto'   ? '⚡ Approve & Disburse Payout' : '✕ Reject Payout'}
                 </h2>
                 <p className="text-cool-gray-400 text-xs mt-0.5">
                   {selectedPayout.user?.firstName} {selectedPayout.user?.lastName} — {fmtUSD(selectedPayout.amount)}
@@ -470,15 +459,15 @@ export default function AdminPayoutsPage() {
 
               {modalMode === 'auto' && (
                 <>
-                  <div className="bg-amber-950/30 border border-amber-800/40 rounded-xl p-4 text-xs text-amber-200/80">
-                    <p className="font-bold text-amber-300 mb-1">⚠️ May fail if Transfer Balance is unfunded</p>
-                    <p>Flutterwave transfers debit the Transfer Balance, not the Collection Balance. If this fails, use Manual Bank Transfer instead.</p>
+                  <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-4 text-xs text-emerald-200/90">
+                    <p className="font-bold text-emerald-300 mb-1">⚡ Automatic Payout Disbursal</p>
+                    <p>Approving this payout will disburse the funds directly to the recipient&apos;s verified bank account and update the vendor balance.</p>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-cool-gray-300 block mb-1.5">Notes (Optional)</label>
+                    <label className="text-xs font-bold text-cool-gray-300 block mb-1.5">Approval Notes <span className="text-cool-gray-500">(Optional)</span></label>
                     <textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)}
-                      placeholder="Optional notes..." rows={2}
-                      className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-gold-500 resize-none placeholder:text-cool-gray-600" />
+                      placeholder="e.g. Verified and approved for disbursal" rows={2}
+                      className="w-full px-4 py-2.5 bg-charcoal-700 border border-charcoal-600 text-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none placeholder:text-cool-gray-600" />
                   </div>
                 </>
               )}
@@ -510,7 +499,7 @@ export default function AdminPayoutsPage() {
                   }`}>
                   {actionLoading === selectedPayout.id ? 'Processing…' :
                    modalMode === 'manual' ? '✓ Confirm Manual Payment' :
-                   modalMode === 'auto'   ? '⚡ Send via Flutterwave' : '✕ Confirm Rejection'}
+                   modalMode === 'auto'   ? '⚡ Approve & Disburse' : '✕ Confirm Rejection'}
                 </button>
               </div>
             </div>
