@@ -706,4 +706,323 @@ export async function sendPasswordResetEmail(opts: {
   return sendEmail({ to, subject, html, text });
 }
 
+// ─── Vendor Order Notifications ───────────────────────────────────────────────
+
+export interface VendorOrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  size?: string;
+  color?: string;
+  image?: string;
+}
+
+export interface VendorNewOrderEmailOpts {
+  vendorEmail: string;
+  vendorName: string;
+  orderId: string;
+  orderDate?: string;
+  customerName: string;
+  shippingCity: string;
+  shippingState?: string;
+  shippingCountry: string;
+  items: VendorOrderItem[];
+  vendorSubtotal: number;
+  paymentStatus: string;
+  courierName?: string;
+}
+
+/**
+ * Send an email notification to a vendor/brand owner when a new order is placed.
+ */
+export async function sendVendorNewOrderEmail(opts: VendorNewOrderEmailOpts): Promise<EmailResult> {
+  const {
+    vendorEmail,
+    vendorName,
+    orderId,
+    customerName,
+    shippingCity,
+    shippingState,
+    shippingCountry,
+    items,
+    vendorSubtotal,
+    paymentStatus,
+    courierName,
+  } = opts;
+
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const orderUrl = `${siteUrl}/dashboard/vendor?tab=orders&order=${encodeURIComponent(orderId)}`;
+  const year = new Date().getFullYear();
+  const shortId = orderId.length > 12 ? orderId.slice(-8) : orderId;
+  const isPaid = paymentStatus === 'paid';
+
+  const destination = [shippingCity, shippingState, shippingCountry].filter(Boolean).join(', ');
+
+  const itemsHtml = items.map(item => {
+    const variantParts = [item.size ? `Size: ${item.size}` : '', item.color ? `Color: ${item.color}` : ''].filter(Boolean);
+    const variantStr = variantParts.length > 0 ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${variantParts.join(' &bull; ')}</div>` : '';
+    const lineTotal = (item.price * item.quantity).toFixed(2);
+    return `
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;vertical-align:top">
+          <strong style="color:#111827;font-size:14px">${item.name}</strong>
+          ${variantStr}
+        </td>
+        <td style="padding:12px 10px;border-bottom:1px solid #f3f4f6;text-align:center;color:#4b5563;font-size:14px;vertical-align:top">
+          &times;${item.quantity}
+        </td>
+        <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;text-align:right;color:#111827;font-weight:600;font-size:14px;vertical-align:top">
+          $${lineTotal}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin: 0; padding: 0; background: #0f1012; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; }
+    .wrapper { max-width: 580px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .header { background: #16181d; padding: 36px 40px; text-align: center; border-bottom: 3px solid #d4af37; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; }
+    .header p { margin: 6px 0 0; color: #d4af37; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+    .badge { display: inline-block; margin-top: 14px; padding: 6px 18px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #d1fae5; color: #065f46; }
+    .body { padding: 36px 40px; }
+    .body p { margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6; }
+    .card { background: #fdfaf3; border: 1px solid #e8dfc8; border-radius: 12px; padding: 20px; margin: 24px 0; }
+    .card-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #d4af37, #b8962e); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 15px; margin: 24px 0 12px; text-align: center; box-shadow: 0 4px 14px rgba(212,175,55,0.35); }
+    .footer { padding: 24px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; }
+    .footer p { margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>✨ ${APP_NAME}</h1>
+      <p>Vendor Merchant Dispatch</p>
+      <div class="badge">🛍️ NEW ORDER RECEIVED</div>
+    </div>
+    <div class="body">
+      <p>Hi <strong>${vendorName}</strong>,</p>
+      <p>Great news! A client has just purchased items from your collection. Here are the order fulfillment details:</p>
+
+      <div class="card">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#374151">
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280;width:120px">Order Number:</td>
+            <td style="padding:4px 0;font-weight:700;color:#111827">#${orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Client:</td>
+            <td style="padding:4px 0;color:#111827">${customerName}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Destination:</td>
+            <td style="padding:4px 0;color:#111827">${destination}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Logistics:</td>
+            <td style="padding:4px 0;color:#111827">${courierName || 'CourierPlus Standard Delivery'}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Payment:</td>
+            <td style="padding:4px 0;color:#111827">
+              ${isPaid ? '<span style="color:#059669;font-weight:700">✓ Paid (Escrow Protected)</span>' : '<span style="color:#d97706;font-weight:700">⏳ Pending Verification</span>'}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <h3 style="margin:24px 0 12px;font-size:16px;color:#111827;font-weight:700">Items to Fulfill:</h3>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #e5e7eb">
+            <th style="text-align:left;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;padding-bottom:8px">Item</th>
+            <th style="text-align:center;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;padding-bottom:8px">Qty</th>
+            <th style="text-align:right;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;padding-bottom:8px">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding:16px 0 0;font-weight:700;font-size:15px;color:#111827">Vendor Subtotal:</td>
+            <td style="padding:16px 0 0;text-align:right;font-weight:800;font-size:18px;color:#b8962e">$${vendorSubtotal.toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="text-align:center;margin:32px 0 16px">
+        <a href="${orderUrl}" class="btn">View &amp; Fulfill Order &rarr;</a>
+      </div>
+
+      <div style="background:#f3f4f6;border-radius:8px;padding:12px 16px;font-size:12px;color:#6b7280;margin-top:24px">
+        <strong>🔒 Escrow Protection:</strong> Client funds are securely reserved in escrow and released to your available balance upon confirmed delivery.
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${year} ${APP_NAME}. Vendor Merchant Services.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const textItems = items.map(i => `• ${i.name} (x${i.quantity}) - $${(i.price * i.quantity).toFixed(2)}`).join('\n');
+  const text = `Hi ${vendorName},\n\nYou have received a new order #${shortId} on ${APP_NAME}!\n\nOrder Number: ${orderId}\nClient: ${customerName}\nDestination: ${destination}\nPayment: ${paymentStatus}\n\nItems to fulfill:\n${textItems}\n\nVendor Subtotal: $${vendorSubtotal.toFixed(2)}\n\nView and fulfill this order in your portal:\n${orderUrl}\n\n${APP_NAME}`;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\n🛍️  [Dev Vendor Order Email] To: ${vendorEmail} | Order: ${orderId} | Items: ${items.length}\n`);
+  }
+
+  return sendEmail({
+    to: vendorEmail,
+    subject: `🛍️ New Order Received: #${shortId} — ${APP_NAME}`,
+    html,
+    text,
+  });
+}
+
+export interface VendorOrderUpdateEmailOpts {
+  vendorEmail: string;
+  vendorName: string;
+  orderId: string;
+  oldStatus?: string;
+  newStatus: string;
+  trackingNumber?: string;
+  courierName?: string;
+  updateNotes?: string;
+  items?: Array<{ name: string; quantity: number }>;
+}
+
+/**
+ * Send an email notification to a vendor/brand owner when an order status updates.
+ */
+export async function sendVendorOrderUpdateEmail(opts: VendorOrderUpdateEmailOpts): Promise<EmailResult> {
+  const {
+    vendorEmail,
+    vendorName,
+    orderId,
+    newStatus,
+    trackingNumber,
+    courierName,
+    updateNotes,
+    items,
+  } = opts;
+
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const orderUrl = `${siteUrl}/dashboard/vendor?tab=orders&order=${encodeURIComponent(orderId)}`;
+  const year = new Date().getFullYear();
+  const shortId = orderId.length > 12 ? orderId.slice(-8) : orderId;
+
+  const statusLabels: Record<string, { label: string; badgeBg: string; badgeColor: string; icon: string }> = {
+    pending:    { label: 'Pending Payment', badgeBg: '#fef3c7', badgeColor: '#92400e', icon: '⏳' },
+    processing: { label: 'Processing',      badgeBg: '#dbeafe', badgeColor: '#1e40af', icon: '⚙️' },
+    shipped:    { label: 'Shipped / In Transit', badgeBg: '#ede9fe', badgeColor: '#5b21b6', icon: '🚚' },
+    delivered:  { label: 'Delivered',       badgeBg: '#d1fae5', badgeColor: '#065f46', icon: '📦' },
+    completed:  { label: 'Completed (Funds Released)', badgeBg: '#fdf9ec', badgeColor: '#b8962e', icon: '🎉' },
+    cancelled:  { label: 'Cancelled',       badgeBg: '#fee2e2', badgeColor: '#991b1b', icon: '❌' },
+  };
+
+  const statusMeta = statusLabels[newStatus.toLowerCase()] ?? {
+    label: newStatus.toUpperCase(),
+    badgeBg: '#f3f4f6',
+    badgeColor: '#374151',
+    icon: 'ℹ️',
+  };
+
+  const itemsSummary = items && items.length > 0
+    ? `<div style="margin-top:16px;font-size:13px;color:#4b5563"><strong>Items:</strong> ${items.map(i => `${i.name} (x${i.quantity})`).join(', ')}</div>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin: 0; padding: 0; background: #0f1012; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; }
+    .wrapper { max-width: 580px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .header { background: #16181d; padding: 36px 40px; text-align: center; border-bottom: 3px solid #d4af37; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; }
+    .header p { margin: 6px 0 0; color: #d4af37; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+    .badge { display: inline-block; margin-top: 14px; padding: 7px 22px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+    .body { padding: 36px 40px; }
+    .body p { margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6; }
+    .card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin: 20px 0; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #d4af37, #b8962e); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 15px; margin: 20px 0 8px; text-align: center; }
+    .footer { padding: 24px 40px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; }
+    .footer p { margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>✨ ${APP_NAME}</h1>
+      <p>Order Status Dispatch</p>
+      <div class="badge" style="background:${statusMeta.badgeBg};color:${statusMeta.badgeColor}">
+        ${statusMeta.icon} ${statusMeta.label}
+      </div>
+    </div>
+    <div class="body">
+      <p>Hi <strong>${vendorName}</strong>,</p>
+      <p>The status of order <strong>#${orderId}</strong> has been updated:</p>
+
+      <div class="card">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#374151">
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280;width:120px">Order Number:</td>
+            <td style="padding:4px 0;font-weight:700;color:#111827">#${orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Current Status:</td>
+            <td style="padding:4px 0;font-weight:700;color:${statusMeta.badgeColor}">${statusMeta.label}</td>
+          </tr>
+          ${trackingNumber ? `
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Tracking Number:</td>
+            <td style="padding:4px 0;font-mono;font-weight:700;color:#111827">${trackingNumber}</td>
+          </tr>` : ''}
+          ${courierName ? `
+          <tr>
+            <td style="padding:4px 0;font-weight:600;color:#6b7280">Courier Service:</td>
+            <td style="padding:4px 0;color:#111827">${courierName}</td>
+          </tr>` : ''}
+        </table>
+        ${itemsSummary}
+        ${updateNotes ? `
+        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e5e7eb;font-size:13px;color:#4b5563">
+          <strong>Note:</strong> ${updateNotes}
+        </div>` : ''}
+      </div>
+
+      <div style="text-align:center;margin:28px 0 8px">
+        <a href="${orderUrl}" class="btn">View Order in Portal &rarr;</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${year} ${APP_NAME}. Vendor Merchant Services.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi ${vendorName},\n\nThe status of order #${shortId} on ${APP_NAME} has been updated to: ${statusMeta.label}.\n\nOrder Number: ${orderId}\n${trackingNumber ? `Tracking Number: ${trackingNumber}\n` : ''}${courierName ? `Courier: ${courierName}\n` : ''}${updateNotes ? `Notes: ${updateNotes}\n` : ''}\nView order details:\n${orderUrl}\n\n${APP_NAME}`;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(`\n📦  [Dev Vendor Order Update] To: ${vendorEmail} | Order: ${orderId} | Status: ${newStatus}\n`);
+  }
+
+  return sendEmail({
+    to: vendorEmail,
+    subject: `📦 Order #${shortId} Status Update: ${statusMeta.label} — ${APP_NAME}`,
+    html,
+    text,
+  });
+}
+
 

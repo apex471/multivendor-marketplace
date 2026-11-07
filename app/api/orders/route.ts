@@ -193,6 +193,16 @@ export async function POST(request: NextRequest) {
     };
     OrderStore.add(inMemoryOrder);
 
+    // ── Dispatch Vendor Email & In-App Notifications (non-blocking) ────────────
+    try {
+      const { notifyVendorsNewOrder } = await import('@/backend/utils/vendorNotifications');
+      notifyVendorsNewOrder(orderId).catch(notifErr => {
+        console.error('[Orders API] Vendor new order notification failed:', notifErr);
+      });
+    } catch (importErr) {
+      console.warn('[Orders API] Could not load vendor notification module:', importErr);
+    }
+
     return NextResponse.json({
       success: true,
       paymentLink,

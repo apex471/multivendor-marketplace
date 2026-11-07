@@ -103,4 +103,14 @@ async function verifyOrderPayment(orderId: string, docId: string) {
   if (memOrder) {
     OrderStore.update(orderId, { paymentStatus: 'paid', status: 'pending' });
   }
+
+  // Notify vendors of confirmed payment and processing readiness
+  try {
+    const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+    notifyVendorsOrderUpdate(orderId, 'processing', {
+      notes: 'Payment confirmed via Flutterwave gateway. Funds secured in Escrow.',
+    }).catch(err => console.error('[Verify API] Vendor payment notification failed:', err));
+  } catch (notifErr) {
+    console.warn('[Verify API] Could not dispatch vendor notification:', notifErr);
+  }
 }

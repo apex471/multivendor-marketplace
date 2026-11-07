@@ -114,6 +114,20 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // ── Dispatch Vendor Email & In-App Status Notification ───────────────────
+    if (status && status !== order.status) {
+      try {
+        const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+        notifyVendorsOrderUpdate(order, status, {
+          trackingNumber: typeof trackingNumber === 'string' ? trackingNumber : order.trackingNumber,
+          oldStatus: order.status,
+          notes: 'Order status updated by platform administrator',
+        }).catch(err => console.error('[Admin Orders] Vendor status update notification failed:', err));
+      } catch (notifErr) {
+        console.warn('[Admin Orders] Could not dispatch vendor notification:', notifErr);
+      }
+    }
+
     return sendSuccess({ order: normalize({ ...order, ...updates as Partial<IOrder> } as IOrder & { id: string }) },
       'Order updated successfully');
   } catch (err) {

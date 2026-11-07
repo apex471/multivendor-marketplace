@@ -165,6 +165,13 @@ export async function PATCH(request: NextRequest) {
           `${driverDisplayName} has accepted your order and is heading to pick it up`,
           `/track/${order.orderId}`
         );
+        try {
+          const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+          notifyVendorsOrderUpdate(order, 'processing', {
+            notes: `Dispatch driver ${driverDisplayName} accepted pickup request.`,
+            oldStatus: order.status,
+          }).catch(err => console.error('[Logistics] Vendor notification error:', err));
+        } catch {}
         break;
       }
 
@@ -186,6 +193,13 @@ export async function PATCH(request: NextRequest) {
           `${driverDisplayName} has picked up your order and is on the way! 🚚`,
           `/track/${order.orderId}`
         );
+        try {
+          const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+          notifyVendorsOrderUpdate(order, 'shipped', {
+            notes: `Package picked up by ${driverDisplayName} and is in transit.`,
+            oldStatus: order.status,
+          }).catch(err => console.error('[Logistics] Vendor notification error:', err));
+        } catch {}
         break;
       }
 
@@ -203,6 +217,13 @@ export async function PATCH(request: NextRequest) {
           `Your order has been delivered! 🎉 Please rate your experience`,
           `/orders/${order.orderId}`
         );
+        try {
+          const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+          notifyVendorsOrderUpdate(order, 'delivered', {
+            notes: `Package delivered to customer by ${driverDisplayName}. Escrow clearing period initiated.`,
+            oldStatus: order.status,
+          }).catch(err => console.error('[Logistics] Vendor notification error:', err));
+        } catch {}
         break;
       }
 

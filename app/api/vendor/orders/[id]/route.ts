@@ -107,6 +107,19 @@ export async function PATCH(
     if (status === 'cancelled' && cancelReason) updates.trackingNumber = `CANCELLED: ${cancelReason.trim()}`;
 
     await Order.updateOne(order.id!, updates);
+
+    // Dispatch notification to vendors/brand partners
+    try {
+      const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+      notifyVendorsOrderUpdate(order, status, {
+        trackingNumber: trackingNumber?.trim(),
+        oldStatus: order.status,
+        notes: cancelReason ? `Cancelled: ${cancelReason.trim()}` : undefined,
+      }).catch(err => console.error('[Vendor Orders] Status update notification error:', err));
+    } catch (notifErr) {
+      console.warn('[Vendor Orders] Could not dispatch vendor notification:', notifErr);
+    }
+
     return sendSuccess({ orderId: id, status }, 'Order status updated');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));

@@ -67,6 +67,20 @@ export async function PATCH(
     }
 
     await Order.updateOne(id, mongoUpdates);
+
+    // Dispatch status update notification to vendors
+    if (body.status && body.status !== order.status) {
+      try {
+        const { notifyVendorsOrderUpdate } = await import('@/backend/utils/vendorNotifications');
+        notifyVendorsOrderUpdate(order, body.status, {
+          oldStatus: order.status,
+          trackingNumber: order.trackingNumber,
+        }).catch(err => console.error('[Orders ID] Vendor notification error:', err));
+      } catch (notifErr) {
+        console.warn('[Orders ID] Could not dispatch vendor notification:', notifErr);
+      }
+    }
+
     const updated = await Order.findById(id);
     return sendSuccess({ order: updated ?? { id, ...mongoUpdates } }, 'Order updated successfully');
   } catch (err) {
