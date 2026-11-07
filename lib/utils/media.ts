@@ -13,8 +13,8 @@ export function optimizeMediaUrl(url: string | null | undefined, type: 'image' |
       // Prevent double optimization
       if (!suffix.startsWith('f_auto') && !suffix.startsWith('q_auto')) {
         if (type === 'video') {
-          // Optimized for instant audio/video playback without on-the-fly transcoding delay
-          return `${prefix}q_auto:good,w_1080,c_limit/${suffix}`;
+          // Serve original video directly to avoid on-the-fly transcoding 400/423 errors
+          return url;
         }
         return `${prefix}f_auto,q_auto/${suffix}`;
       }

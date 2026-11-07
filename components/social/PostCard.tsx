@@ -42,8 +42,18 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
         </button>
       </div>
 
-      {/* Post Images */}
-      {post.images.length > 0 && (
+      {/* Post Media (Video or Image) */}
+      {post.videos && post.videos.length > 0 ? (
+        <div className="relative aspect-square bg-charcoal-950 flex items-center justify-center">
+          <video
+            src={post.videos[0]}
+            className="w-full h-full object-cover"
+            controls
+            playsInline
+            preload="metadata"
+          />
+        </div>
+      ) : post.images.length > 0 ? (
         <div className="relative aspect-square bg-gray-100">
           <Image
             src={post.images[0]}
@@ -57,7 +67,7 @@ export default function PostCard({ post, onLike, onComment, onShare }: PostCardP
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Post Actions */}
       <div className="p-4">

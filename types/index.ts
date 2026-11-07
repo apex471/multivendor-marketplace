@@ -217,6 +217,7 @@ export interface Post {
   author: User;
   caption: string;
   images: string[];
+  videos?: string[];
   hashtags: string[];
   mentions: string[];
   likes: number;

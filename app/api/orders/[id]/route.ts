@@ -36,7 +36,8 @@ export async function PATCH(
     // Authorize customer or admin for 'completed' status transition
     if (body.status === 'completed') {
       const isAdmin = payload.role === 'admin';
-      const isCustomer = payload.userId === order.customerId;
+      const isCustomer = (order.customerId && payload.userId === order.customerId) ||
+        (order.customerEmail && payload.email?.toLowerCase() === order.customerEmail.toLowerCase());
       if (!isAdmin && !isCustomer) {
         return sendError('Access denied: Only the customer who placed this order or an admin can mark it as completed', 403);
       }

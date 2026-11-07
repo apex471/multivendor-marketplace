@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Header from '@/components/common/Header';
 import Footer from '@/components/common/Footer';
 import { useLocalization } from '@/contexts/LocalizationContext';
+import { useCart } from '@/contexts/CartContext';
 
 interface OrderItem {
   id: string;
@@ -37,6 +38,164 @@ export default function OrdersPage() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
+
+  const { addItem } = useCart();
+  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Review Modal state
+  const [reviewModal, setReviewModal] = useState<{
+    isOpen: boolean;
+    order: Order | null;
+    selectedProductId: string;
+    rating: number;
+    title: string;
+    comment: string;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    order: null,
+    selectedProductId: '',
+    rating: 5,
+    title: '',
+    comment: '',
+    loading: false,
+  });
+
+  // Ticket / Support Modal state
+  const [ticketModal, setTicketModal] = useState<{
+    isOpen: boolean;
+    orderId: string;
+    subject: string;
+    message: string;
+    category: string;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    orderId: '',
+    subject: '',
+    message: '',
+    category: 'order',
+    loading: false,
+  });
+
+  const handleConfirmComplete = async (orderId: string) => {
+    if (!confirm('Are you sure you have received your order in good condition? Confirming completion will release escrow payments to the vendor.')) return;
+    setCompletingOrderId(orderId);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'completed' } : o));
+        setToastMessage('Order completed! Escrow funds released to vendor. 🎉');
+        setTimeout(() => setToastMessage(null), 3500);
+      } else {
+        alert(json.message ?? 'Failed to complete order');
+      }
+    } catch {
+      alert('Network error — please check connection');
+    } finally {
+      setCompletingOrderId(null);
+    }
+  };
+
+  const handleBuyAgain = (order: Order) => {
+    if (!order.items.length) {
+      router.push('/shop');
+      return;
+    }
+    const unitPrice = Math.round((order.total / order.items.length) * 100) / 100 || 0;
+    order.items.forEach(item => {
+      addItem({
+        productId: item.id,
+        name: item.name,
+        price: unitPrice,
+        image: item.image,
+        vendor: '',
+        size: '',
+        color: '',
+        quantity: item.quantity || 1,
+      });
+    });
+    setToastMessage(`Added ${order.items.length} item(s) to bag! 🛍️`);
+    setTimeout(() => {
+      setToastMessage(null);
+      router.push('/cart');
+    }, 1000);
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewModal.selectedProductId) return;
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/auth/login?redirect=/orders');
+      return;
+    }
+    setReviewModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch(`/api/products/${reviewModal.selectedProductId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          rating: reviewModal.rating,
+          title: reviewModal.title || 'Verified Purchase',
+          comment: reviewModal.comment,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setReviewModal({ isOpen: false, order: null, selectedProductId: '', rating: 5, title: '', comment: '', loading: false });
+        setToastMessage('Review submitted successfully! Thank you for your feedback. ⭐');
+        setTimeout(() => setToastMessage(null), 3500);
+      } else {
+        alert(json.message || 'Failed to submit review');
+        setReviewModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch {
+      alert('Network error — please try again');
+      setReviewModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSubmitTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = getAuthToken();
+    if (!token) return;
+    setTicketModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          orderId: ticketModal.orderId,
+          subject: ticketModal.subject,
+          message: ticketModal.message,
+          category: ticketModal.category,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.ticket) {
+        setTicketModal({ isOpen: false, orderId: '', subject: '', message: '', category: 'order', loading: false });
+        setToastMessage('Support ticket opened! Redirecting to live conversation... 🎫');
+        setTimeout(() => {
+          setToastMessage(null);
+          router.push(`/dashboard/tickets/${json.data.ticket.id}`);
+        }, 1100);
+      } else {
+        alert(json.message || 'Failed to submit ticket');
+        setTicketModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch {
+      alert('Network error — please check connection');
+      setTicketModal(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   useEffect(() => {
     // Wrap in Promise.resolve to avoid synchronous setState-in-effect lint warning
@@ -331,74 +490,106 @@ export default function OrdersPage() {
                   </div>
 
                   {/* Order Actions */}
-                  <div className="p-4 sm:p-6 border-t dark:border-charcoal-700 bg-gray-50 dark:bg-charcoal-900 flex flex-wrap gap-2">
+                  <div className="p-4 sm:p-6 border-t dark:border-charcoal-700 bg-gray-50 dark:bg-charcoal-900 flex flex-wrap gap-2.5 items-center">
                     {(order.status === 'shipped' || order.status === 'delivered') && (
                       <button
-                        onClick={async () => {
-                          if (!confirm('Are you sure you want to mark this order as completed and release the escrow payment?')) return;
-                          try {
-                            const token = getAuthToken();
-                            const res = await fetch(`/api/orders/${order.id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                              body: JSON.stringify({ status: 'completed' }),
-                            });
-                            const json = await res.json();
-                            if (json.success) {
-                              setAllOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed' } : o));
-                              alert('Order completed successfully! Escrow payments released.');
-                            } else {
-                              alert(json.message ?? 'Failed to complete order');
-                            }
-                          } catch {
-                            alert('Network error — please try again');
-                          }
-                        }}
-                        className="px-4 py-2 bg-gold-600 text-white rounded-lg text-sm font-semibold hover:bg-gold-700 transition-colors"
+                        type="button"
+                        disabled={completingOrderId === order.id}
+                        onClick={() => handleConfirmComplete(order.id)}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer active:scale-95 shadow-xs flex items-center gap-1.5"
                       >
-                        Confirm Receipt / Complete
+                        <span>✓</span>
+                        <span>{completingOrderId === order.id ? 'Releasing Escrow...' : 'Confirm Receipt / Complete'}</span>
                       </button>
                     )}
                     {order.status === 'shipped' && (
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
-                        Track Package
-                      </button>
+                      <Link
+                        href={`/track/${order.id}`}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer active:scale-95 flex items-center gap-1"
+                      >
+                        <span>🚚</span>
+                        <span>Track Package</span>
+                      </Link>
                     )}
-                    {order.status === 'delivered' && (
+                    {(order.status === 'delivered' || order.status === 'completed') && (
                       <>
-                        <button className="px-4 py-2 bg-charcoal-900 text-white rounded-lg text-sm font-semibold hover:bg-charcoal-800 transition-colors">
-                          Buy Again
+                        <button
+                          type="button"
+                          onClick={() => handleBuyAgain(order)}
+                          className="px-4 py-2 bg-charcoal-900 hover:bg-charcoal-800 dark:bg-charcoal-700 dark:hover:bg-charcoal-600 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
+                        >
+                          <span>🛍️</span>
+                          <span>Buy Again</span>
                         </button>
-                        <button className="px-4 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-100 dark:hover:bg-charcoal-700 transition-colors">
-                          Leave Review
+                        <button
+                          type="button"
+                          onClick={() => setReviewModal({
+                            isOpen: true,
+                            order,
+                            selectedProductId: order.items[0]?.id || '',
+                            rating: 5,
+                            title: '',
+                            comment: '',
+                            loading: false,
+                          })}
+                          className="px-4 py-2 border-2 border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-200 rounded-lg text-sm font-semibold hover:bg-cool-gray-100 dark:hover:bg-charcoal-800 transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
+                        >
+                          <span>⭐</span>
+                          <span>Leave Review</span>
                         </button>
-                        <button className="px-4 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-100 dark:hover:bg-charcoal-700 transition-colors">
-                          Return Items
+                        <button
+                          type="button"
+                          onClick={() => setTicketModal({
+                            isOpen: true,
+                            orderId: order.id,
+                            subject: `Return Request for Order #${order.id}`,
+                            message: 'I would like to request a return / refund for this order under the certified luxury escrow policy.',
+                            category: 'return',
+                            loading: false,
+                          })}
+                          className="px-4 py-2 border-2 border-orange-300 dark:border-orange-500/40 text-orange-600 dark:text-orange-400 rounded-lg text-sm font-semibold hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
+                        >
+                          <span>🔄</span>
+                          <span>Return Items</span>
                         </button>
                       </>
                     )}
                     {order.status === 'processing' && (
                       <button
+                        type="button"
                         onClick={async () => {
-                          if (confirm('Are you sure you want to cancel this order?')) {
-                            const token = getAuthToken();
-                            const res = await fetch(`/api/orders/${order.id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                              body: JSON.stringify({ status: 'cancelled' }),
-                            });
-                            if (res.ok) {
-                              setAllOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
-                            }
+                          if (!confirm('Are you sure you want to cancel this order?')) return;
+                          const token = getAuthToken();
+                          const res = await fetch(`/api/orders/${order.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                            body: JSON.stringify({ status: 'cancelled' }),
+                          });
+                          if (res.ok) {
+                            setAllOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+                            setToastMessage('Order cancelled successfully.');
+                            setTimeout(() => setToastMessage(null), 2500);
                           }
                         }}
-                        className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 transition-colors"
+                        className="px-4 py-2 border-2 border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
                       >
                         Cancel Order
                       </button>
                     )}
-                    <button className="px-4 py-2 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-100 dark:hover:bg-charcoal-700 transition-colors">
-                      Get Help
+                    <button
+                      type="button"
+                      onClick={() => setTicketModal({
+                        isOpen: true,
+                        orderId: order.id,
+                        subject: `Support Inquiry for Order #${order.id}`,
+                        message: '',
+                        category: 'order',
+                        loading: false,
+                      })}
+                      className="px-4 py-2 border-2 border-gold-500/50 text-gold-600 dark:text-gold-400 rounded-lg text-sm font-semibold hover:bg-gold-50 dark:hover:bg-gold-950/20 transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <span>💬</span>
+                      <span>Get Help</span>
                     </button>
                   </div>
                 </div>
@@ -428,6 +619,203 @@ export default function OrdersPage() {
         </>
         )}
       </div>
+
+      {/* ── Review Modal ──────────────────────────────────────────────── */}
+      {reviewModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-charcoal-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-cool-gray-200 dark:border-charcoal-700">
+            <div className="p-6 border-b border-cool-gray-100 dark:border-charcoal-700 flex justify-between items-center bg-cool-gray-50/60 dark:bg-charcoal-750/50">
+              <h3 className="text-lg font-bold text-charcoal-900 dark:text-white">Write a Product Review</h3>
+              <button
+                type="button"
+                onClick={() => setReviewModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-cool-gray-400 hover:text-charcoal-600 dark:hover:text-white text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSubmitReview} className="p-6 space-y-4">
+              {reviewModal.order && reviewModal.order.items.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                    Select Item to Review
+                  </label>
+                  <select
+                    value={reviewModal.selectedProductId}
+                    onChange={e => setReviewModal(prev => ({ ...prev, selectedProductId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                  >
+                    {reviewModal.order.items.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Star Rating */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-2 uppercase tracking-wider">
+                  Rating
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewModal(prev => ({ ...prev, rating: star }))}
+                      className="text-2xl hover:scale-110 transition-transform cursor-pointer"
+                    >
+                      {star <= reviewModal.rating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-gold-600 dark:text-gold-400 self-center ml-2">
+                    {reviewModal.rating} of 5 Stars
+                  </span>
+                </div>
+              </div>
+
+              {/* Review Title */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                  Headline
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Exceptional craftsmanship, authentic quality"
+                  value={reviewModal.title}
+                  onChange={e => setReviewModal(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                />
+              </div>
+
+              {/* Comment */}
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                  Your Review
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Share details about the fit, material quality, and delivery experience..."
+                  value={reviewModal.comment}
+                  onChange={e => setReviewModal(prev => ({ ...prev, comment: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReviewModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 text-charcoal-600 dark:text-cool-gray-300 font-semibold text-sm hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewModal.loading}
+                  className="px-5 py-2 bg-gold-600 hover:bg-gold-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer active:scale-95 shadow-xs"
+                >
+                  {reviewModal.loading ? 'Submitting...' : 'Publish Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ticket / Get Help Modal ─────────────────────────────────────── */}
+      {ticketModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-charcoal-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-cool-gray-200 dark:border-charcoal-700">
+            <div className="p-6 border-b border-cool-gray-100 dark:border-charcoal-700 flex justify-between items-center bg-cool-gray-50/60 dark:bg-charcoal-750/50">
+              <div>
+                <h3 className="text-lg font-bold text-charcoal-900 dark:text-white">Order Support Ticket</h3>
+                <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">Order #{ticketModal.orderId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-cool-gray-400 hover:text-charcoal-600 dark:hover:text-white text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSubmitTicket} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                  Category
+                </label>
+                <select
+                  value={ticketModal.category}
+                  onChange={e => setTicketModal(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                >
+                  <option value="order">📦 Order Status / Inquiry</option>
+                  <option value="delivery">🚚 Delivery / Courier Issue</option>
+                  <option value="return">🔄 Return / Refund Request (Escrow)</option>
+                  <option value="product">💎 Defect or Damage Report</option>
+                  <option value="other">💬 Other Assistance</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ticketModal.subject}
+                  onChange={e => setTicketModal(prev => ({ ...prev, subject: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                  Describe the Issue
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Please provide specifics so our concierge team can assist or coordinate with the vendor and CourierPlus..."
+                  value={ticketModal.message}
+                  onChange={e => setTicketModal(prev => ({ ...prev, message: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-cool-gray-300 dark:border-charcoal-600 rounded-lg text-sm bg-white dark:bg-charcoal-700 text-charcoal-900 dark:text-white resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTicketModal(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 text-charcoal-600 dark:text-cool-gray-300 font-semibold text-sm hover:bg-cool-gray-100 dark:hover:bg-charcoal-700 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={ticketModal.loading}
+                  className="px-5 py-2 bg-gold-600 hover:bg-gold-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer active:scale-95 shadow-xs"
+                >
+                  {ticketModal.loading ? 'Submitting...' : 'Open Ticket'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast Notification ───────────────────────────────────────────── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-charcoal-900/95 text-white dark:bg-white/95 dark:text-charcoal-900 px-6 py-3 rounded-full shadow-2xl backdrop-blur-md border border-gold-500/30 flex items-center gap-2.5 text-sm font-semibold animate-fade-in pointer-events-none">
+          <span>✨</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       <Footer />
     </div>

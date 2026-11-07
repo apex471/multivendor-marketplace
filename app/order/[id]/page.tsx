@@ -443,10 +443,10 @@ export default function OrderDetailPage() {
                   </button>
                 )}
                 <Link
-                  href="/contact"
-                  className="block w-full px-4 py-3 bg-gray-100 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-center"
+                  href={`/dashboard/customer?tab=tickets&orderId=${order.id}`}
+                  className="block w-full px-4 py-3 bg-charcoal-800 hover:bg-charcoal-700 text-gold-400 border border-gold-500/40 rounded-lg font-semibold transition-colors text-center"
                 >
-                  Contact Support
+                  💬 Open Order Support Ticket
                 </Link>
                 {order.status === 'processing' && (
                   <button

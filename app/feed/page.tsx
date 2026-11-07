@@ -798,6 +798,8 @@ export default function FeedPage() {
   const [activeGroupIndex, setActiveGroupIndex] = useState<number | null>(null);
   const [activeImageIndexes, setActiveImageIndexes] = useState<Record<string, number>>({});
   const [mutedPosts, setMutedPosts] = useState<Record<string, boolean>>({});
+  const [pausedPosts, setPausedPosts] = useState<Record<string, boolean>>({});
+  const [copiedLink, setCopiedLink] = useState(false);
   const [activePostMenu, setActivePostMenu] = useState<string | null>(null);
   
   // Post Edit States
@@ -1356,14 +1358,17 @@ export default function FeedPage() {
                   <div className="relative group px-4 pb-3">
                     <div className="relative rounded-xl overflow-hidden aspect-4/3 bg-charcoal-950">
                       {currentItem.type === 'video' ? (
-                        <div className="w-full h-full relative">
+                        <div className="w-full h-full relative group/video flex items-center justify-center">
                           <video
-                            src={optimizeMediaUrl(currentItem.url, 'video')}
+                            src={currentItem.url}
                             className="w-full h-full object-cover cursor-pointer"
                             playsInline
                             loop
+                            preload="metadata"
                             muted={mutedPosts[post.id] !== false}
                             data-autoplay
+                            onPlay={() => setPausedPosts(prev => ({ ...prev, [post.id]: false }))}
+                            onPause={() => setPausedPosts(prev => ({ ...prev, [post.id]: true }))}
                             onClick={(e) => {
                               const video = e.currentTarget;
                               if (video.paused) {
@@ -1374,6 +1379,39 @@ export default function FeedPage() {
                             }}
                             key={currentItem.url}
                           />
+
+                          {/* Center Play/Pause button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const container = e.currentTarget.parentElement;
+                              const video = container?.querySelector('video');
+                              if (video) {
+                                if (video.paused) video.play().catch(() => {});
+                                else video.pause();
+                              }
+                            }}
+                            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 cursor-pointer ${
+                              pausedPosts[post.id] !== false ? 'opacity-100 bg-black/25' : 'opacity-0 group-hover/video:opacity-100'
+                            }`}
+                            aria-label="Play or pause video"
+                          >
+                            <div className="w-14 h-14 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md border border-white/20 shadow-xl transition-transform hover:scale-110">
+                              {pausedPosts[post.id] !== false ? (
+                                <span className="text-2xl ml-1">▶</span>
+                              ) : (
+                                <span className="text-xl">❚❚</span>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Video Badge */}
+                          <div className="absolute top-3 left-3 z-10 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-md text-[11px] font-bold text-white flex items-center gap-1.5 shadow pointer-events-none">
+                            <span>📹</span>
+                            <span>Video</span>
+                          </div>
+
                           {/* Toggle mute/unmute overlay button */}
                           <button
                             type="button"
@@ -1381,7 +1419,7 @@ export default function FeedPage() {
                               e.stopPropagation();
                               setMutedPosts(prev => ({ ...prev, [post.id]: prev[post.id] === false }));
                             }}
-                            className="absolute bottom-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors shadow-md border border-white/10"
+                            className="absolute bottom-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors shadow-md border border-white/10 cursor-pointer"
                             aria-label={mutedPosts[post.id] === false ? "Mute" : "Unmute"}
                           >
                             {mutedPosts[post.id] === false ? (
@@ -1607,39 +1645,145 @@ export default function FeedPage() {
       {shareModal && (() => {
         const sharedPost = posts.find(p => p.id === shareModal);
         const postUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${shareModal}`;
+        const shareText = sharedPost?.content ? `"${sharedPost.content.slice(0, 100)}..."` : 'Discover this luxury piece on Certified Luxury World';
+
+        const triggerShareAndOpen = (url: string) => {
+          handleShare(shareModal);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setShareModal(null);
+        };
+
         return (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-charcoal-950/70 backdrop-blur-sm"
-            onClick={() => setShareModal(null)}>
-            <div className="bg-white dark:bg-charcoal-900 w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-cool-gray-200 dark:border-charcoal-700"
+            onClick={() => { setShareModal(null); setCopiedLink(false); }}>
+            <div className="bg-white dark:bg-charcoal-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 border border-cool-gray-200 dark:border-charcoal-700 shadow-2xl"
               onClick={e => e.stopPropagation()}>
               <div className="w-10 h-1 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 mx-auto mb-5 sm:hidden" />
-              <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-1">Share Post</h3>
-              {sharedPost && <p className="text-sm text-cool-gray-500 mb-5 line-clamp-2">{sharedPost.content}</p>}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-charcoal-900 dark:text-white">Share to Socials</h3>
+                <button
+                  type="button"
+                  onClick={() => { setShareModal(null); setCopiedLink(false); }}
+                  className="text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white font-bold text-lg p-1"
+                >
+                  ✕
+                </button>
+              </div>
+              {sharedPost && <p className="text-xs sm:text-sm text-cool-gray-500 mb-5 line-clamp-2">{sharedPost.content}</p>}
+
+              {/* Social Grid */}
+              <div className="grid grid-cols-4 gap-3 mb-5">
+                {/* WhatsApp */}
+                <button
+                  type="button"
+                  onClick={() => triggerShareAndOpen(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + postUrl)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-center group cursor-pointer"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">WhatsApp</span>
+                </button>
+
+                {/* X / Twitter */}
+                <button
+                  type="button"
+                  onClick={() => triggerShareAndOpen(`https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(shareText)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-cool-gray-100 dark:bg-charcoal-800 hover:bg-cool-gray-200 dark:hover:bg-charcoal-700 transition-colors text-center group cursor-pointer"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">𝕏</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">X (Twitter)</span>
+                </button>
+
+                {/* Facebook */}
+                <button
+                  type="button"
+                  onClick={() => triggerShareAndOpen(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-center group cursor-pointer"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📘</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">Facebook</span>
+                </button>
+
+                {/* Telegram */}
+                <button
+                  type="button"
+                  onClick={() => triggerShareAndOpen(`https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(shareText)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors text-center group cursor-pointer"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">✈️</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">Telegram</span>
+                </button>
+              </div>
+
+              {/* Other Options */}
               <div className="space-y-2">
-                {[
-                  { icon: '🔗', label: 'Copy Link', sub: 'Copy post URL to clipboard', onClick: () => { navigator.clipboard.writeText(postUrl); setShareModal(null); } },
-                ].map(item => (
-                  <button key={item.label} onClick={item.onClick}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 hover:border-gold-400 transition-all text-left">
-                    <span className="text-2xl">{item.icon}</span>
+                {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        handleShare(shareModal);
+                        await navigator.share({
+                          title: 'Certified Luxury World',
+                          text: sharedPost?.content || 'Check out this luxury fashion piece',
+                          url: postUrl,
+                        });
+                        setShareModal(null);
+                      } catch {}
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 transition-all text-left cursor-pointer"
+                  >
+                    <span className="text-2xl">📱</span>
                     <div>
-                      <p className="font-semibold text-charcoal-900 dark:text-white text-sm">{item.label}</p>
-                      <p className="text-xs text-cool-gray-400">{item.sub}</p>
+                      <p className="font-semibold text-charcoal-900 dark:text-white text-sm">More Share Options...</p>
+                      <p className="text-xs text-cool-gray-400">Open native device share sheet</p>
                     </div>
                   </button>
-                ))}
-                <Link href={`/messages?share=${shareModal}`} onClick={() => setShareModal(null)}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 hover:border-gold-400 transition-all">
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(postUrl);
+                    handleShare(shareModal);
+                    setCopiedLink(true);
+                    setTimeout(() => {
+                      setCopiedLink(false);
+                      setShareModal(null);
+                    }, 1200);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 transition-all text-left cursor-pointer"
+                >
+                  <span className="text-2xl">{copiedLink ? '✅' : '🔗'}</span>
+                  <div>
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
+                      {copiedLink ? 'Link Copied to Clipboard!' : 'Copy Link'}
+                    </p>
+                    <p className="text-xs text-cool-gray-400">Copy URL to share anywhere</p>
+                  </div>
+                </button>
+
+                <Link
+                  href={`/messages?share=${shareModal}`}
+                  onClick={() => {
+                    handleShare(shareModal);
+                    setShareModal(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 transition-all"
+                >
                   <span className="text-2xl">💬</span>
                   <div>
-                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send via DM</p>
-                    <p className="text-xs text-cool-gray-400">Share in a direct message</p>
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send in Direct Message</p>
+                    <p className="text-xs text-cool-gray-400">Share privately with a vendor or client</p>
                   </div>
                 </Link>
               </div>
-              <button onClick={() => setShareModal(null)}
-                className="mt-4 w-full py-3 text-cool-gray-500 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white transition-colors">
-                Cancel
+
+              <button
+                type="button"
+                onClick={() => { setShareModal(null); setCopiedLink(false); }}
+                className="mt-4 w-full py-2.5 text-cool-gray-500 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

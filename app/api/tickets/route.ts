@@ -15,7 +15,15 @@ export async function GET(request: NextRequest) {
   try {
     let tickets: any[] = [];
     if (payload.role === 'customer') {
-      tickets = await SupportTicket.find({ customerId: payload.userId });
+      const byUserId = await SupportTicket.find({ customerId: payload.userId });
+      const byEmail = payload.email ? await SupportTicket.find({ customerEmail: payload.email.toLowerCase() }) : [];
+      const seen = new Set<string>();
+      tickets = [...byUserId, ...byEmail].filter(t => {
+        const tid = t.id || (t as any)._id;
+        if (!tid || seen.has(tid)) return false;
+        seen.add(tid);
+        return true;
+      });
     } else if (payload.role === 'vendor' || payload.role === 'brand') {
       tickets = await SupportTicket.find({ vendorId: payload.userId });
     } else if (payload.role === 'admin') {
@@ -47,7 +55,7 @@ export async function POST(request: NextRequest) {
       return sendError('orderId, subject, and message are required', 400);
     }
 
-    const order = await Order.findByOrderId(orderId);
+    const order = (await Order.findByOrderId(orderId)) || (await Order.findById(orderId));
     if (!order) return sendError('Order not found', 404);
 
     let customerId = order.customerId;
@@ -70,7 +78,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Authorization check
-    if (payload.role === 'customer' && payload.userId !== customerId) {
+    const isCustomer = (customerId && payload.userId === customerId) ||
+      (order.customerEmail && payload.email?.toLowerCase() === order.customerEmail.toLowerCase()) ||
+      payload.role === 'admin';
+
+    if (payload.role === 'customer' && !isCustomer) {
        return sendError('Unauthorized to open a ticket for this order', 403);
     }
     if ((payload.role === 'vendor' || payload.role === 'brand') && payload.userId !== vendorId) {

@@ -66,6 +66,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<PostData | null>(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
@@ -247,11 +248,13 @@ export default function PostDetailPage() {
                       <div className="w-full h-full relative flex items-center justify-center">
                         {currentMedia.type === 'video' ? (
                           <video
-                            src={optimizeMediaUrl(currentMedia.url, 'video')}
+                            src={currentMedia.url}
                             className="w-full h-full object-contain animate-fade-in"
                             controls
                             playsInline
                             preload="metadata"
+                            autoPlay
+                            muted
                             key={currentMedia.url}
                           />
                         ) : (
@@ -532,37 +535,133 @@ export default function PostDetailPage() {
       </div>
 
       {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white dark:bg-charcoal-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-2">Share Post</h3>
-            <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 mb-4 line-clamp-2">{post.caption}</p>
-            <div className="space-y-3">
+      {showShareModal && (() => {
+        const postUrl = typeof window !== 'undefined' ? window.location.href : '';
+        const shareText = post?.caption ? `"${post.caption.slice(0, 100)}..."` : 'Discover this luxury piece on Certified Luxury World';
+
+        const openSocialShare = (url: string) => {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setShowShareModal(false);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => { setShowShareModal(false); setCopiedLink(false); }}>
+            <div className="bg-white dark:bg-charcoal-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-cool-gray-200 dark:border-charcoal-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-charcoal-900 dark:text-white">Share Post</h3>
+                <button
+                  type="button"
+                  onClick={() => { setShowShareModal(false); setCopiedLink(false); }}
+                  className="text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white font-bold text-lg p-1"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs sm:text-sm text-charcoal-600 dark:text-cool-gray-400 mb-5 line-clamp-2">{post?.caption}</p>
+
+              {/* Social Grid */}
+              <div className="grid grid-cols-4 gap-3 mb-5">
+                <button
+                  type="button"
+                  onClick={() => openSocialShare(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + postUrl)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-center cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">WhatsApp</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openSocialShare(`https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(shareText)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-cool-gray-100 dark:bg-charcoal-700 hover:bg-cool-gray-200 dark:hover:bg-charcoal-650 transition-colors text-center cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">𝕏</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">X (Twitter)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openSocialShare(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-center cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📘</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">Facebook</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openSocialShare(`https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(shareText)}`)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors text-center cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">✈️</span>
+                  <span className="text-[11px] font-semibold text-charcoal-800 dark:text-cool-gray-200">Telegram</span>
+                </button>
+              </div>
+
+              {/* Direct & Native Options */}
+              <div className="space-y-2">
+                {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.share({
+                          title: 'Certified Luxury World',
+                          text: post?.caption || 'Check out this luxury fashion piece',
+                          url: postUrl,
+                        });
+                        setShowShareModal(false);
+                      } catch {}
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-left cursor-pointer"
+                  >
+                    <span className="text-2xl">📱</span>
+                    <div>
+                      <p className="font-semibold text-charcoal-900 dark:text-white text-sm">More Share Options...</p>
+                      <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Open system share sheet</p>
+                    </div>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(postUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => {
+                      setCopiedLink(false);
+                      setShowShareModal(false);
+                    }, 1200);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-left cursor-pointer"
+                >
+                  <span className="text-2xl">{copiedLink ? '✅' : '🔗'}</span>
+                  <div>
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">
+                      {copiedLink ? 'Link Copied to Clipboard!' : 'Copy Link'}
+                    </p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Copy URL to clipboard</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDMAuthor}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors text-left cursor-pointer"
+                >
+                  <span className="text-2xl">💬</span>
+                  <div>
+                    <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send DM to Author</p>
+                    <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Open a direct conversation</p>
+                  </div>
+                </button>
+              </div>
               <button
-                onClick={() => { navigator.clipboard.writeText(window.location.href); setShowShareModal(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
+                type="button"
+                onClick={() => { setShowShareModal(false); setCopiedLink(false); }}
+                className="mt-4 w-full py-2.5 text-charcoal-600 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white transition-colors cursor-pointer"
               >
-                <span className="text-2xl">🔗</span>
-                <div className="text-left">
-                  <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Copy Link</p>
-                  <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Copy post URL to clipboard</p>
-                </div>
-              </button>
-              <button
-                onClick={handleDMAuthor}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cool-gray-200 dark:border-charcoal-700 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 transition-colors"
-              >
-                <span className="text-2xl">💬</span>
-                <div className="text-left">
-                  <p className="font-semibold text-charcoal-900 dark:text-white text-sm">Send DM to Author</p>
-                  <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">Open a direct message</p>
-                </div>
+                Cancel
               </button>
             </div>
-            <button onClick={() => setShowShareModal(false)} className="mt-4 w-full py-3 text-charcoal-600 dark:text-cool-gray-400 font-semibold text-sm hover:text-charcoal-900 dark:hover:text-white">Cancel</button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <Footer />
     </div>
