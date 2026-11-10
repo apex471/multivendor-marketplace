@@ -4,6 +4,7 @@ import { getAuthToken } from '@/lib/api/auth';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Script from 'next/script';
 import Header from '../../../components/common/Header';
 import Footer from '../../../components/common/Footer';
 import { useCheckout } from '../../../contexts/CheckoutContext';
@@ -66,9 +67,39 @@ export default function ReviewPage() {
 
       const orderId: string = data.data.orderId;
       const paymentLink: string | undefined = data.paymentLink;
+      const flwPublicKey: string = data.flwPublicKey || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
       localStorage.setItem('lastOrderNumber', orderId);
       localStorage.setItem('lastOrderData', JSON.stringify(data.data.order));
+
+      if (typeof window !== 'undefined' && (window as any).FlutterwaveCheckout && flwPublicKey && !flwPublicKey.includes('xxxx')) {
+        (window as any).FlutterwaveCheckout({
+          public_key: flwPublicKey,
+          tx_ref: orderId,
+          amount: data.flwAmount || total,
+          currency: data.flwCurrency || 'USD',
+          payment_options: paymentMethod?.type === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account',
+          customer: {
+            email: shippingAddress?.phone ? `${shippingAddress.fullName.replace(/\s+/g, '').toLowerCase()}@clwcustomer.com` : 'client@certifiedluxuryworld.com',
+            phone_number: shippingAddress?.phone || '',
+            name: shippingAddress?.fullName || 'Client',
+          },
+          customizations: {
+            title: 'Certified Luxury World',
+            description: `Escrow payment for Order #${orderId}`,
+            logo: `${window.location.origin}/images/brand/clw-logo.png`,
+          },
+          callback: (response: any) => {
+            clearCheckout();
+            clearCart();
+            window.location.href = `/checkout/verify?gateway=flutterwave&order_id=${orderId}&transaction_id=${response.transaction_id}&status=${response.status}`;
+          },
+          onclose: () => {
+            setIsPlacing(false);
+          },
+        });
+        return;
+      }
 
       clearCheckout();
       clearCart();
@@ -76,7 +107,7 @@ export default function ReviewPage() {
       if (paymentLink) {
         window.location.href = paymentLink;
       } else {
-        router.push('/checkout/confirmation');
+        router.push(`/order/confirmation?orderId=${orderId}`);
       }
     } catch {
       setPlaceError('Network error. Please check your connection and try again.');
@@ -230,22 +261,17 @@ export default function ReviewPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-3xl">
-                  {paymentMethod.type === 'paypal' ? '💰' : '💳'}
+                  {paymentMethod.type === 'bank' ? '🏛️' : '💳'}
                 </div>
                 <div>
-                  {paymentMethod.type === 'card' && (
-                    <>
-                      <p className="font-semibold text-charcoal-900 dark:text-white">
-                        {paymentMethod.cardNumber}
-                      </p>
-                      <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                        {paymentMethod.cardHolder}
-                      </p>
-                    </>
-                  )}
-                  {paymentMethod.type === 'paypal' && (
-                    <p className="font-semibold text-charcoal-900 dark:text-white">PayPal</p>
-                  )}
+                  <p className="font-semibold text-charcoal-900 dark:text-white">
+                    {paymentMethod.type === 'bank'
+                      ? 'Flutterwave Bank Transfer'
+                      : 'Flutterwave Card Payment'}
+                  </p>
+                  <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">
+                    Protected by Certified Luxury World Escrow • Powered by Flutterwave
+                  </p>
                 </div>
               </div>
             </div>
@@ -304,9 +330,16 @@ export default function ReviewPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={isPlacing}
-                className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-500 active:scale-95 transition-all font-bold mb-3 disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-gold-600/20 cursor-pointer flex items-center justify-center gap-2"
               >
-                {isPlacing ? '⏳ Placing Order…' : 'Place Order'}
+                {isPlacing ? (
+                  <>
+                    <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    <span>Connecting to Flutterwave...</span>
+                  </>
+                ) : (
+                  <span>Pay {formatPrice(total)} with Flutterwave 🔒</span>
+                )}
               </button>
               {placeError && (
                 <p className="text-sm text-red-600 dark:text-red-400 text-center mb-2">{placeError}</p>

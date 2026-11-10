@@ -105,31 +105,44 @@ export async function POST(request: NextRequest) {
 
     // ── Payment Link Initialization (Flutterwave — card or bank transfer) ────────
     let paymentLink: string | undefined;
+    let flwAmount = buyerTotal;
+    let flwCurrency = (currency || 'USD').toUpperCase();
     const paymentType = paymentMethod?.type ?? 'card';
-    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    const isRealKey = flwSecretKey && (flwSecretKey.startsWith('FLWSECK-') || flwSecretKey.startsWith('FLWSECK_TEST-'));
+    const flwSecretKey = (
+      process.env.FLUTTERWAVE_SECRET_KEY ||
+      process.env.FLW_SECRET_KEY ||
+      process.env.FLUTTERWAVE_SECRET ||
+      ''
+    ).trim().replace(/^["']|["']$/g, '');
+    const isRealKey = flwSecretKey.length > 8 && !flwSecretKey.includes('xxxx');
+    const flwPublicKey = (
+      process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ||
+      process.env.FLUTTERWAVE_PUBLIC_KEY ||
+      ''
+    ).trim().replace(/^["']|["']$/g, '');
+
     if (isRealKey) {
       try {
         const appUrl = request.nextUrl.origin;
         const orderCurrency = (currency || 'USD').toUpperCase();
         const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
         
-        const flwCurrency = (paymentType === 'bank' || orderCurrency === 'NGN') ? 'NGN' : 'USD';
-        const flwAmount = flwCurrency === 'NGN' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
+        flwCurrency = (paymentType === 'bank' || orderCurrency === 'NGN') ? 'NGN' : 'USD';
+        flwAmount = flwCurrency === 'NGN' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
 
         const flwPayload: Record<string, unknown> = {
           tx_ref: orderId,
           amount: flwAmount,
           currency: flwCurrency,
           redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
-          payment_options: paymentType === 'bank' ? 'banktransfer' : 'card',
+          payment_options: paymentType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account,qr',
           customer: {
             email: customerEmail || 'guest@example.com',
             phonenumber: shippingInfo.phone || '08000000000',
             name: shippingInfo.fullName,
           },
           customizations: {
-            title: process.env.NEXT_PUBLIC_APP_NAME || 'CLW Marketplace',
+            title: process.env.NEXT_PUBLIC_APP_NAME || 'Certified Luxury World',
             description: `Payment for order ${orderId}`,
             logo: `${appUrl}/images/brand/clw-logo.png`,
           },
@@ -206,6 +219,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentLink,
+      flwPublicKey,
+      flwAmount,
+      flwCurrency,
       data: {
         orderId,
         order: inMemoryOrder,

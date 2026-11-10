@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import Script from 'next/script';
 import { COURIERS, BADGE_STYLES, TRACKING_LABEL } from '../../lib/couriers';
 import { useCart } from '@/contexts/CartContext';
 import { getAuthToken } from '@/lib/api/auth';
@@ -202,14 +203,11 @@ export default function CheckoutPage() {
           shippingInfo,
           currency,
           paymentInfo: {
-            cardNumber: paymentMethodType === 'card' ? '1111' : 'Bank',
-            cardName: paymentMethodType === 'card' ? 'Flutterwave Checkout' : 'Bank Transfer Client',
-            expiryDate: paymentMethodType === 'card' ? '12/30' : 'N/A',
+            cardName: paymentMethodType === 'card' ? 'Flutterwave Card' : 'Flutterwave Bank Transfer',
           },
           paymentMethod: {
             type: paymentMethodType,
-            cardNumber: undefined,
-            cardHolder: paymentMethodType === 'card' ? 'Flutterwave Checkout' : 'Bank Transfer Client',
+            cardHolder: paymentMethodType === 'card' ? 'Flutterwave Card' : 'Flutterwave Bank Transfer',
           },
           cartItems,
           courierId:       selectedCourier.id,
@@ -232,6 +230,35 @@ export default function CheckoutPage() {
       }
       const orderId = data.data?.orderId;
       const paymentLink = data.paymentLink;
+      const flwPublicKey = data.flwPublicKey || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
+
+      if (typeof window !== 'undefined' && (window as any).FlutterwaveCheckout && flwPublicKey && !flwPublicKey.includes('xxxx')) {
+        (window as any).FlutterwaveCheckout({
+          public_key: flwPublicKey,
+          tx_ref: orderId,
+          amount: data.flwAmount || total,
+          currency: data.flwCurrency || 'USD',
+          payment_options: paymentMethodType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account',
+          customer: {
+            email: shippingInfo.email || `${shippingInfo.fullName.replace(/\s+/g, '').toLowerCase()}@clwcustomer.com`,
+            phone_number: shippingInfo.phone || '',
+            name: shippingInfo.fullName,
+          },
+          customizations: {
+            title: 'Certified Luxury World',
+            description: `Payment for Order #${orderId}`,
+            logo: `${window.location.origin}/images/brand/clw-logo.png`,
+          },
+          callback: (response: any) => {
+            clearCart();
+            window.location.href = `/checkout/verify?gateway=flutterwave&order_id=${orderId}&transaction_id=${response.transaction_id}&status=${response.status}`;
+          },
+          onclose: () => {
+            setIsProcessing(false);
+          },
+        });
+        return;
+      }
 
       if (paymentLink) {
         window.location.href = paymentLink;
@@ -255,6 +282,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-charcoal-900">
+      <Script src="https://checkout.flutterwave.com/v3.js" strategy="lazyOnload" />
       {/* ── Header ── */}
       <div className="bg-white dark:bg-charcoal-800 border-b border-cool-gray-300 dark:border-charcoal-700">
         <div className="container mx-auto px-4 py-4">
@@ -864,16 +892,17 @@ export default function CheckoutPage() {
                         <h3 className="font-semibold text-charcoal-900 dark:text-white">Payment Method</h3>
                         <button onClick={() => setCurrentStep(3)} className="text-xs text-gold-600 hover:text-gold-700 font-medium">Edit</button>
                       </div>
-                      {paymentMethodType === 'card' ? (
-                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                          💳 Card ending in {paymentInfo.cardNumber.slice(-4)}<br />
-                          Expires {paymentInfo.expiryDate}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">
-                          🏛️ Bank Transfer (Pending Escrow Verification)
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
+                        <span className="text-xl">{paymentMethodType === 'card' ? '💳' : '🏛️'}</span>
+                        <div>
+                          <p className="text-xs font-bold text-charcoal-900 dark:text-white">
+                            {paymentMethodType === 'card' ? 'Flutterwave Card Payment (Visa, Mastercard, Verve)' : 'Flutterwave Direct Bank Transfer (Virtual NGN Account)'}
+                          </p>
+                          <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">
+                            Secured by 256-bit encryption • Certified Luxury World Escrow Protection
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -913,13 +942,15 @@ export default function CheckoutPage() {
                     Back
                   </button>
                   <button onClick={handlePlaceOrder} disabled={isProcessing}
-                    className="flex-1 px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors disabled:bg-cool-gray-400 disabled:cursor-not-allowed">
+                    className="flex-1 px-6 py-3.5 bg-gold-600 hover:bg-gold-500 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md shadow-gold-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2">
                     {isProcessing ? (
                       <span className="flex items-center justify-center gap-2">
                         <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                        Processing…
+                        Connecting to Flutterwave…
                       </span>
-                    ) : 'Place Order 🎉'}
+                    ) : (
+                      <span>Pay {formatPrice(total)} with Flutterwave 🔒</span>
+                    )}
                   </button>
                 </div>
               </div>
