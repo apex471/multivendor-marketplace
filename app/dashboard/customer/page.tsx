@@ -48,6 +48,8 @@ export default function CustomerDashboard() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
+  const [customerPosts, setCustomerPosts] = useState<{ id: string; caption: string; images: string[]; videos: string[]; createdAt: string; likes: number; comments: number }[]>([]);
+  const [postFilter, setPostFilter] = useState<'all' | 'videos' | 'images'>('all');
 
   const [ticketCategory, setTicketCategory] = useState('delivery');
   const [ticketModal, setTicketModal] = useState<{ isOpen: boolean; orderId: string; subject: string; message: string; loading: boolean }>({ isOpen: false, orderId: '', subject: '', message: '', loading: false });
@@ -117,6 +119,39 @@ export default function CustomerDashboard() {
         if (json.success) {
           setTickets(json.data.tickets ?? []);
           setStats(prev => ({ ...prev, openTickets: (json.data.tickets ?? []).filter((t: any) => t.status !== 'closed').length }));
+        }
+      })
+      .catch(() => {});
+
+    // Fetch posts & saved videos
+    fetch('/api/posts?limit=50', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data?.posts) {
+          const isVideoUrl = (url?: string) => {
+            if (!url) return false;
+            return url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') || url.includes('/video/upload/');
+          };
+          const mapped = json.data.posts.map((p: any) => {
+            const rawImages = p.images ?? [];
+            const rawVideos = p.videos ?? [];
+            const detectedVideos = [
+              ...rawVideos,
+              ...rawImages.filter((img: string) => isVideoUrl(img))
+            ];
+            const cleanImages = rawImages.filter((img: string) => !isVideoUrl(img));
+            return {
+              id: String(p._id),
+              caption: p.content || '',
+              images: cleanImages,
+              videos: detectedVideos,
+              createdAt: p.createdAt,
+              likes: p.likes ?? 0,
+              comments: p.comments ?? 0,
+            };
+          });
+          setCustomerPosts(mapped);
+          setStats(prev => ({ ...prev, savedPosts: mapped.length }));
         }
       })
       .catch(() => {});
@@ -492,27 +527,142 @@ export default function CustomerDashboard() {
             </div>
           )}
 
-          {activeTab === 'posts' && (
-            <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white">Saved Posts</h2>
-                <Link href="/dashboard/customer/posts" className="text-primary-700 hover:text-primary-800 text-sm font-semibold">
-                  Manage All →
-                </Link>
+          {activeTab === 'posts' && (() => {
+            const filteredPosts = postFilter === 'videos'
+              ? customerPosts.filter(p => p.videos.length > 0)
+              : postFilter === 'images'
+              ? customerPosts.filter(p => p.videos.length === 0 && p.images.length > 0)
+              : customerPosts;
+
+            return (
+              <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6 border border-cool-gray-200/60 dark:border-charcoal-700">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-white">Saved Posts &amp; Videos</h2>
+                    <p className="text-xs sm:text-sm text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">Explore your saved luxury media and video showcases</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/post/create"
+                      className="px-4 py-2 bg-gold-600 hover:bg-gold-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      + Create Post
+                    </Link>
+                    <Link
+                      href="/dashboard/customer/posts"
+                      className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-50 dark:hover:bg-charcoal-700 rounded-lg text-xs font-semibold transition-colors"
+                    >
+                      Manage All →
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex gap-2 mb-6">
+                  {[
+                    { id: 'all', label: 'All Media', count: customerPosts.length },
+                    { id: 'videos', label: '📹 Saved Videos', count: customerPosts.filter(p => p.videos.length > 0).length },
+                    { id: 'images', label: '📸 Photos', count: customerPosts.filter(p => p.videos.length === 0 && p.images.length > 0).length },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => setPostFilter(filter.id as typeof postFilter)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        postFilter === filter.id
+                          ? 'bg-gold-600 text-white shadow-2xs'
+                          : 'bg-cool-gray-100 dark:bg-charcoal-700 text-charcoal-700 dark:text-cool-gray-300 hover:bg-cool-gray-200 dark:hover:bg-charcoal-600'
+                      }`}
+                    >
+                      {filter.label} ({filter.count})
+                    </button>
+                  ))}
+                </div>
+
+                {filteredPosts.length === 0 ? (
+                  <div className="text-center py-12 bg-cool-gray-50/50 dark:bg-charcoal-900/40 rounded-xl border border-dashed border-cool-gray-200 dark:border-charcoal-700">
+                    <div className="text-5xl mb-3">{postFilter === 'videos' ? '📹' : '📝'}</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                      {postFilter === 'videos' ? 'No saved videos found' : 'No saved posts found'}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-cool-gray-400 mb-5">
+                      {postFilter === 'videos' ? 'Videos you share or save from the feed will play here' : 'Start creating or saving fashion inspiration'}
+                    </p>
+                    <Link
+                      href="/post/create"
+                      className="inline-block px-5 py-2.5 bg-gold-600 hover:bg-gold-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
+                    >
+                      Create Post
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredPosts.map((post) => {
+                      const hasVideo = post.videos.length > 0;
+                      return (
+                        <div
+                          key={post.id}
+                          className="bg-cool-gray-50 dark:bg-charcoal-900 rounded-xl overflow-hidden border border-cool-gray-200 dark:border-charcoal-700 hover:border-gold-500/50 transition-all flex flex-col"
+                        >
+                          <div className="relative aspect-square w-full bg-black overflow-hidden">
+                            {hasVideo ? (
+                              <div className="w-full h-full relative flex items-center justify-center">
+                                <video
+                                  src={post.videos[0]}
+                                  controls
+                                  playsInline
+                                  preload="metadata"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute top-2 right-2 bg-black/80 backdrop-blur-xs text-white px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 pointer-events-none z-10 shadow-xs">
+                                  <span>📹</span> Video
+                                </div>
+                              </div>
+                            ) : post.images.length > 0 ? (
+                              <div className="relative w-full h-full">
+                                <Image
+                                  src={post.images[0]}
+                                  alt="Post image"
+                                  fill
+                                  className="object-cover"
+                                />
+                                {post.images.length > 1 && (
+                                  <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs font-semibold">
+                                    +{post.images.length - 1}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl text-cool-gray-400">
+                                📝
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-4 flex-1 flex flex-col justify-between">
+                            {post.caption && (
+                              <p className="text-xs sm:text-sm text-charcoal-800 dark:text-cool-gray-200 line-clamp-2 mb-3">
+                                {post.caption}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between text-xs text-cool-gray-500 dark:text-cool-gray-400 pt-2 border-t border-cool-gray-200/60 dark:border-charcoal-700">
+                              <span className="flex items-center gap-1">❤️ {post.likes}</span>
+                              <span className="flex items-center gap-1">💬 {post.comments}</span>
+                              <Link
+                                href={`/post/${post.id}`}
+                                className="text-gold-600 dark:text-gold-400 hover:underline font-semibold"
+                              >
+                                View →
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📝</div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No saved drafts yet</h3>
-                <p className="text-gray-600 dark:text-cool-gray-400 mb-6">Start creating and saving your fashion posts</p>
-                <Link
-                  href="/post/create"
-                  className="inline-block px-6 py-3 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-semibold"
-                >
-                  Create Post
-                </Link>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'profile' && (
             <div className="bg-white dark:bg-charcoal-800 rounded-xl shadow-md p-4 sm:p-6">

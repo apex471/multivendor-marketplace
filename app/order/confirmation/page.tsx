@@ -77,16 +77,22 @@ function ConfirmationContent() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href={`/order/${orderId}`}
+              className="flex-1 px-6 py-3 bg-gold-600 hover:bg-gold-500 text-white rounded-lg font-semibold transition-colors text-center shadow-md active:scale-95 cursor-pointer"
+            >
+              View Order Details
+            </Link>
             <Link
               href={`/track/${orderId}`}
-              className="flex-1 px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors text-center"
+              className="flex-1 px-6 py-3 bg-charcoal-900 hover:bg-charcoal-800 dark:bg-charcoal-700 dark:hover:bg-charcoal-600 text-white rounded-lg font-semibold transition-colors text-center cursor-pointer"
             >
-              Track Order
+              Track Package
             </Link>
             <Link
               href="/shop"
-              className="flex-1 px-6 py-3 border-2 border-gray-300 text-charcoal-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-3 border-2 border-gray-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cool-gray-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-charcoal-800 transition-colors text-center cursor-pointer"
             >
               Continue Shopping
             </Link>

@@ -15,10 +15,14 @@ const CONFETTI = Array.from({ length: 50 }, () => ({
 
 export default function ConfirmationPage() {
   const router = useRouter();
-  // Read order data synchronously from localStorage (lazy initialisers avoid useEffect setState)
-  const [orderNumber] = useState<string>(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem('lastOrderNumber') ?? '') : ''
-  );
+  // Read order data synchronously from URL params or localStorage
+  const [orderNumber] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const sp = new URLSearchParams(window.location.search);
+    const param = sp.get('orderId') || sp.get('order_id');
+    if (param) return param;
+    return localStorage.getItem('lastOrderNumber') ?? '';
+  });
   const [courierEta] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
     try {
@@ -146,14 +150,14 @@ export default function ConfirmationPage() {
           {/* Action Buttons */}
           <div className="grid sm:grid-cols-2 gap-4 mb-8">
             <Link
-              href="/orders"
-              className="py-4 bg-gold-600 text-white rounded-lg hover:bg-gold-700 transition-colors font-semibold"
+              href={orderNumber ? `/order/${orderNumber}` : '/orders'}
+              className="py-4 bg-gold-600 hover:bg-gold-500 text-white rounded-lg transition-colors font-semibold text-center block shadow-md cursor-pointer active:scale-95"
             >
               View Order Details
             </Link>
             <Link
               href="/shop"
-              className="py-4 bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white border-2 border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:border-gold-600 dark:hover:border-gold-500 transition-colors font-semibold"
+              className="py-4 bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white border-2 border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:border-gold-600 dark:hover:border-gold-500 transition-colors font-semibold text-center block cursor-pointer"
             >
               Continue Shopping
             </Link>

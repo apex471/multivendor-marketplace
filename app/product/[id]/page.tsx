@@ -121,6 +121,70 @@ export default function ProductDetailPage() {
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+
+  const handleShareProduct = async () => {
+    if (typeof window === 'undefined') return;
+    const shareUrl = window.location.href;
+    const shareTitle = product?.name || 'Certified Luxury World';
+    const shareText = `Discover ${product?.name || 'this luxury piece'} on Certified Luxury World.`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name !== 'AbortError') {
+          setShowShareModal(true);
+        }
+        return;
+      }
+    }
+    setShowShareModal(true);
+  };
+
+  const handlePlatformShare = (platformName: string) => {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href;
+    const title = product?.name || 'Certified Luxury World';
+    const text = `Discover ${title} on Certified Luxury World:`;
+    const image = product?.images?.[0] || '';
+
+    switch (platformName) {
+      case 'Copy Link':
+        navigator.clipboard.writeText(url);
+        setCopiedLink(true);
+        setShareToast('Link copied to clipboard! 📋');
+        setTimeout(() => {
+          setCopiedLink(false);
+          setShareToast(null);
+        }, 3000);
+        break;
+      case 'WhatsApp':
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener,noreferrer');
+        break;
+      case 'Twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
+        break;
+      case 'Facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
+        break;
+      case 'Telegram':
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+        break;
+      case 'Pinterest':
+        window.open(`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(image)}&description=${encodeURIComponent(title)}`, '_blank', 'noopener,noreferrer');
+        break;
+      case 'Email':
+        window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`;
+        break;
+    }
+  };
 
   const [product,        setProduct]        = useState<ProductData | null>(null);
   const [reviews,         setReviews]         = useState<Review[]>([]);
@@ -424,10 +488,13 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               <button
-                onClick={() => setShowShareModal(true)}
-                className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:bg-cool-gray-50 dark:hover:bg-charcoal-800 transition-colors"
+                type="button"
+                onClick={handleShareProduct}
+                className="px-4 py-2 border border-cool-gray-300 dark:border-charcoal-700 rounded-lg hover:bg-gold-50 dark:hover:bg-charcoal-700 hover:border-gold-500 text-charcoal-900 dark:text-white transition-all font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                title="Share this product"
               >
-                📤 Share
+                <span>📤</span>
+                <span>Share</span>
               </button>
             </div>
 
@@ -777,31 +844,76 @@ export default function ProductDetailPage() {
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white dark:bg-charcoal-800 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-charcoal-900 dark:text-white">Share Product</h3>
-              <button onClick={() => setShowShareModal(false)} className="text-2xl">✕</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white dark:bg-charcoal-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-cool-gray-200 dark:border-charcoal-700 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-cool-gray-100 dark:border-charcoal-700">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✨</span>
+                <h3 className="text-lg font-bold text-charcoal-900 dark:text-white">Share Luxury Piece</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShareModal(false)}
+                className="text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white text-xl p-1 cursor-pointer transition-colors"
+                aria-label="Close share dialog"
+              >
+                ✕
+              </button>
             </div>
-            <div className="grid grid-cols-4 gap-4">
+
+            {/* Direct Link Copy Bar */}
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-charcoal-700 dark:text-cool-gray-300 mb-1.5 uppercase tracking-wider">
+                Direct Link
+              </label>
+              <div className="flex items-center gap-2 p-1.5 bg-cool-gray-100 dark:bg-charcoal-900 rounded-xl border border-cool-gray-200 dark:border-charcoal-700">
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? window.location.href : ''}
+                  className="flex-1 bg-transparent px-3 py-1.5 text-xs text-charcoal-700 dark:text-cool-gray-300 outline-none select-all font-mono truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => handlePlatformShare('Copy Link')}
+                  className="px-3.5 py-1.5 bg-gold-600 hover:bg-gold-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer active:scale-95 shrink-0 shadow-2xs"
+                >
+                  {copiedLink ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Social Sharing Grid */}
+            <div className="grid grid-cols-4 gap-3">
               {[
-                { name: 'Facebook', icon: '📘' },
-                { name: 'Twitter', icon: '🐦' },
-                { name: 'WhatsApp', icon: '💬' },
-                { name: 'Email', icon: '📧' },
-                { name: 'Copy Link', icon: '🔗' },
-                { name: 'Pinterest', icon: '📌' }
+                { name: 'WhatsApp', icon: '💬', color: 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-500' },
+                { name: 'Twitter', icon: '🐦', color: 'hover:bg-sky-50 dark:hover:bg-sky-950/30 hover:border-sky-500' },
+                { name: 'Facebook', icon: '📘', color: 'hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-500' },
+                { name: 'Telegram', icon: '✈️', color: 'hover:bg-cyan-50 dark:hover:bg-cyan-950/30 hover:border-cyan-500' },
+                { name: 'Pinterest', icon: '📌', color: 'hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-500' },
+                { name: 'Email', icon: '📧', color: 'hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:border-purple-500' },
+                { name: 'Copy Link', icon: '🔗', color: 'hover:bg-gold-50 dark:hover:bg-gold-950/30 hover:border-gold-500' },
               ].map((platform) => (
                 <button
                   key={platform.name}
-                  className="flex flex-col items-center gap-2 p-4 bg-cool-gray-50 dark:bg-charcoal-700 rounded-lg hover:bg-cool-gray-100 dark:hover:bg-charcoal-600 transition-colors"
+                  type="button"
+                  onClick={() => handlePlatformShare(platform.name)}
+                  className={`flex flex-col items-center gap-1.5 p-3.5 bg-cool-gray-50 dark:bg-charcoal-700/60 rounded-xl border border-cool-gray-200 dark:border-charcoal-600 transition-all cursor-pointer active:scale-95 ${platform.color}`}
                 >
-                  <span className="text-3xl">{platform.icon}</span>
-                  <span className="text-xs text-charcoal-900 dark:text-white">{platform.name}</span>
+                  <span className="text-2xl">{platform.icon}</span>
+                  <span className="text-xs font-semibold text-charcoal-800 dark:text-cool-gray-200">{platform.name}</span>
                 </button>
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Share Toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-charcoal-900/95 text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-gold-500/40 text-xs font-bold animate-fade-in pointer-events-none flex items-center gap-2">
+          <span>✨</span>
+          <span>{shareToast}</span>
         </div>
       )}
 

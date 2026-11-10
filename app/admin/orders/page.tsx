@@ -351,10 +351,21 @@ export default function OrderManagementPage() {
           <div className="bg-white dark:bg-charcoal-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-cool-gray-300 dark:border-charcoal-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white">Order Details</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white">Order Details</h2>
+                  <a
+                    href={`/order/${selectedOrder.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1 bg-gold-600/10 hover:bg-gold-600/20 text-gold-600 dark:text-gold-400 border border-gold-500/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                  >
+                    <span>Full Customer View</span>
+                    <span>↗</span>
+                  </a>
+                </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-charcoal-600 dark:text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white text-2xl"
+                  className="text-charcoal-600 dark:text-cool-gray-400 hover:text-charcoal-900 dark:hover:text-white text-2xl cursor-pointer"
                 >
                   ×
                 </button>
