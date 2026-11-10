@@ -72,9 +72,8 @@ export async function POST(request: NextRequest) {
       couponCode:   couponCode || undefined,
       status:       'pending',
       // IMPORTANT: Never auto-mark as 'paid' without a confirmed gateway response.
-      // 'pending_manual' = admin must manually verify payment (e.g. bank transfer screenshot)
-      // This prevents orders from being fulfilled without actual payment when gateway is not configured.
-      paymentStatus: process.env.FLUTTERWAVE_SECRET_KEY ? 'pending' : 'pending_manual',
+      // Order starts as 'pending' and is transitioned to 'paid' upon Flutterwave callback verification.
+      paymentStatus: 'pending',
     });
 
     // ── Record escrow transaction (buyer charge) ─────────────────────────────────
@@ -112,73 +111,92 @@ export async function POST(request: NextRequest) {
       process.env.FLUTTERWAVE_SECRET_KEY ||
       process.env.FLW_SECRET_KEY ||
       process.env.FLUTTERWAVE_SECRET ||
+      process.env.FLW_SEC_KEY ||
+      process.env.FLW_SECRET ||
+      process.env.RAVE_SECRET_KEY ||
+      process.env.FLUTTERWAVE_KEY ||
       ''
     ).trim().replace(/^["']|["']$/g, '');
     const isRealKey = flwSecretKey.length > 8 && !flwSecretKey.includes('xxxx');
     const flwPublicKey = (
       process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ||
       process.env.FLUTTERWAVE_PUBLIC_KEY ||
+      process.env.FLW_PUBLIC_KEY ||
+      process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY ||
+      process.env.RAVE_PUBLIC_KEY ||
       ''
     ).trim().replace(/^["']|["']$/g, '');
 
-    if (isRealKey) {
-      try {
-        const appUrl = request.nextUrl.origin;
-        const orderCurrency = (currency || 'USD').toUpperCase();
-        const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
-        
-        flwCurrency = (paymentType === 'bank' || orderCurrency === 'NGN') ? 'NGN' : 'USD';
-        flwAmount = flwCurrency === 'NGN' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
+    if (!isRealKey) {
+      console.error('[Orders API] Payment init blocked: FLUTTERWAVE_SECRET_KEY is missing or invalid on the server.');
+      return NextResponse.json({
+        success: false,
+        message: 'Payment gateway configuration required: FLUTTERWAVE_SECRET_KEY is not configured on the production server. Please add your Flutterwave Secret Key to Netlify Site Settings > Environment Variables.'
+      }, { status: 503 });
+    }
 
-        const flwPayload: Record<string, unknown> = {
-          tx_ref: orderId,
-          amount: flwAmount,
-          currency: flwCurrency,
-          redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
-          payment_options: paymentType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account,qr',
-          customer: {
-            email: customerEmail || 'guest@example.com',
-            phonenumber: shippingInfo.phone || '08000000000',
-            name: shippingInfo.fullName,
-          },
-          customizations: {
-            title: process.env.NEXT_PUBLIC_APP_NAME || 'Certified Luxury World',
-            description: `Payment for order ${orderId}`,
-            logo: `${appUrl}/images/brand/clw-logo.png`,
-          },
-          meta: {
-            order_id: orderId,
-            payment_type: paymentType,
-            usd_equivalent: buyerTotal,
-          },
-        };
+    try {
+      const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+      const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+      const fallbackOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : request.nextUrl.origin;
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || fallbackOrigin || 'https://cluxuryworld.com').replace(/\/$/, '');
+      const orderCurrency = (currency || 'USD').toUpperCase();
+      const NGN_RATE = Number(process.env.USD_TO_NGN_RATE ?? 1600);
+      
+      flwCurrency = (paymentType === 'bank' || orderCurrency === 'NGN') ? 'NGN' : 'USD';
+      flwAmount = flwCurrency === 'NGN' ? Math.round(buyerTotal * NGN_RATE) : buyerTotal;
 
-        const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${flwSecretKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(flwPayload),
-        });
+      const safeEmail = (customerEmail || shippingInfo.email || `${(shippingInfo.fullName || 'client').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'client'}@cluxuryworld.com`).trim();
+      const safePhone = (shippingInfo.phone || '08000000000').trim();
 
-        const flwData = await flwResponse.json();
-        if (flwResponse.ok && flwData.status === 'success') {
-          paymentLink = flwData.data.link;
-        } else {
-          console.error('[Flutterwave] Init failed — status:', flwData.status, 'message:', flwData.message);
-          return NextResponse.json({
-            success: false,
-            message: `Payment initialization failed: ${flwData.message || 'Unknown error'}`
-          }, { status: 400 });
-        }
-      } catch (err: any) {
-        console.error('[Flutterwave] Network error during payment init:', err);
+      const flwPayload: Record<string, unknown> = {
+        tx_ref: orderId,
+        amount: flwAmount,
+        currency: flwCurrency,
+        redirect_url: `${appUrl}/checkout/verify?gateway=flutterwave&order_id=${orderId}`,
+        payment_options: paymentType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account,qr',
+        customer: {
+          email: safeEmail,
+          phonenumber: safePhone,
+          name: shippingInfo.fullName || 'Valued Client',
+        },
+        customizations: {
+          title: process.env.NEXT_PUBLIC_APP_NAME || 'Certified Luxury World',
+          description: `Escrow Payment for Order ${orderId}`,
+          logo: `${appUrl}/images/brand/clw-logo.png`,
+        },
+        meta: {
+          order_id: orderId,
+          payment_type: paymentType,
+          usd_equivalent: buyerTotal,
+        },
+      };
+
+      const flwResponse = await fetch('https://api.flutterwave.com/v3/payments', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${flwSecretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(flwPayload),
+      });
+
+      const flwData = await flwResponse.json();
+      if (flwResponse.ok && flwData.status === 'success') {
+        paymentLink = flwData.data.link;
+      } else {
+        console.error('[Flutterwave] Init failed — status:', flwData.status, 'message:', flwData.message);
         return NextResponse.json({
           success: false,
-          message: `Could not connect to payment gateway: ${err.message}`
-        }, { status: 500 });
+          message: `Flutterwave error: ${flwData.message || 'Payment link generation rejected'}`
+        }, { status: 400 });
       }
+    } catch (err: any) {
+      console.error('[Flutterwave] Network error during payment init:', err);
+      return NextResponse.json({
+        success: false,
+        message: `Could not connect to Flutterwave payment gateway: ${err.message}`
+      }, { status: 500 });
     }
 
     // ── Sync to in-memory store for live logistics monitor ───────────────────────
@@ -198,7 +216,7 @@ export async function POST(request: NextRequest) {
       subtotal:      fees.subtotal,
       tax:           fees.tax,
       status:        'pending' as const,
-      paymentStatus: (paymentLink ? 'pending' : 'pending_manual') as 'pending' | 'pending_manual',
+      paymentStatus: 'pending' as const,
       orderDate:     new Date().toISOString(),
       shippingAddress: `${shippingInfo.addressLine1 ?? shippingInfo.address ?? ''}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
       estimatedDistance: '', estimatedTime: '',

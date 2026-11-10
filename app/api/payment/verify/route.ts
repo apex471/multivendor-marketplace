@@ -25,12 +25,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: Flutterwave
-    const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-    const isRealKey = flwSecretKey && (flwSecretKey.startsWith('FLWSECK-') || flwSecretKey.startsWith('FLWSECK_TEST-'));
+    const flwSecretKey = (
+      process.env.FLUTTERWAVE_SECRET_KEY ||
+      process.env.FLW_SECRET_KEY ||
+      process.env.FLUTTERWAVE_SECRET ||
+      process.env.FLW_SEC_KEY ||
+      process.env.FLW_SECRET ||
+      process.env.RAVE_SECRET_KEY ||
+      process.env.FLUTTERWAVE_KEY ||
+      ''
+    ).trim().replace(/^["']|["']$/g, '');
+    const isRealKey = flwSecretKey.length > 8 && !flwSecretKey.includes('xxxx');
     if (!isRealKey) {
-      // Mock success if key is not configured for testing
-      await verifyOrderPayment(order.orderId, order.id!);
-      return NextResponse.json({ success: true, message: 'Mock payment verified successfully (Dev Mode)' });
+      return NextResponse.json({
+        success: false,
+        message: 'Payment verification failed: FLUTTERWAVE_SECRET_KEY is not configured on the server.'
+      }, { status: 500 });
     }
 
     if (!transactionId) {

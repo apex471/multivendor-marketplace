@@ -225,20 +225,29 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (!res.ok || !data?.success) {
-        setOrderError(data?.message || 'Failed to place order. Please try again.');
+        setOrderError(data?.message || 'Failed to initialize payment with Flutterwave. Please try again.');
+        setIsProcessing(false);
         return;
       }
       const orderId = data.data?.orderId;
       const paymentLink = data.paymentLink;
       const flwPublicKey = data.flwPublicKey || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
+      // Direct redirection to Flutterwave hosted payment gateway
+      if (paymentLink) {
+        clearCart();
+        window.location.href = paymentLink;
+        return;
+      }
+
+      // If Flutterwave inline modal is available and public key is configured
       if (typeof window !== 'undefined' && (window as any).FlutterwaveCheckout && flwPublicKey && !flwPublicKey.includes('xxxx')) {
         (window as any).FlutterwaveCheckout({
           public_key: flwPublicKey,
           tx_ref: orderId,
           amount: data.flwAmount || total,
           currency: data.flwCurrency || 'USD',
-          payment_options: paymentMethodType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account',
+          payment_options: paymentMethodType === 'bank' ? 'banktransfer,card,account,ussd' : 'card,banktransfer,ussd,account,qr',
           customer: {
             email: shippingInfo.email || `${shippingInfo.fullName.replace(/\s+/g, '').toLowerCase()}@clwcustomer.com`,
             phone_number: shippingInfo.phone || '',
@@ -260,12 +269,8 @@ export default function CheckoutPage() {
         return;
       }
 
-      if (paymentLink) {
-        window.location.href = paymentLink;
-      } else {
-        clearCart();
-        router.push(`/order/confirmation?orderId=${orderId}`);
-      }
+      // CRITICAL: NEVER silently bypass payment! If gateway did not return a payment link, show error
+      setOrderError(data?.message || 'Payment Gateway Error: Unable to redirect to Flutterwave. Please check your network or contact support.');
     } catch {
       setOrderError('Network error. Please check your connection and try again.');
     } finally {
@@ -276,8 +281,7 @@ export default function CheckoutPage() {
   const steps = [
     { number: 1, title: 'Shipping', icon: '📋' },
     { number: 2, title: 'Delivery', icon: '🚚' },
-    { number: 3, title: 'Payment', icon: '💳' },
-    { number: 4, title: 'Review',  icon: '✓'  },
+    { number: 3, title: 'Payment',  icon: '💳' },
   ];
 
   return (
@@ -676,277 +680,201 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* ── STEP 3: Payment ──────────────────────────────────────────── */}
+            {/* ── STEP 3: Payment & Order Confirmation ─────────────────────── */}
             {currentStep === 3 && (
-              <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
-                <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Payment Information</h2>
-                
-                {/* Payment Method Switcher */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethodType('card')}
-                    className={`py-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm ${
-                      paymentMethodType === 'card'
-                        ? 'border-gold-600 bg-gold-600/5 text-gold-600 dark:text-gold-400'
-                        : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-500 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
-                    }`}
-                  >
-                    <span>💳</span> Pay with Card
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethodType('bank')}
-                    className={`py-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm ${
-                      paymentMethodType === 'bank'
-                        ? 'border-gold-600 bg-gold-600/5 text-gold-600 dark:text-gold-400'
-                        : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-500 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
-                    }`}
-                  >
-                    <span>🏛️</span> Bank Transfer
-                  </button>
-                </div>
+              <div className="space-y-6">
+                {/* Payment Selection Box */}
+                <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-charcoal-900 dark:text-white">Select Payment Channel</h2>
+                      <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">
+                        Processed via Flutterwave official PCI-DSS Level 1 secure payment gateway
+                      </p>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <span>🔒</span> Escrow Protected
+                    </span>
+                  </div>
+                  
+                  {/* Payment Method Switcher */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethodType('card')}
+                      className={`py-3.5 px-4 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm cursor-pointer ${
+                        paymentMethodType === 'card'
+                          ? 'border-gold-600 bg-gold-600/10 text-gold-700 dark:text-gold-300 shadow-sm'
+                          : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-600 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
+                      }`}
+                    >
+                      <span className="text-lg">💳</span>
+                      <span>Pay with Card</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethodType('bank')}
+                      className={`py-3.5 px-4 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm cursor-pointer ${
+                        paymentMethodType === 'bank'
+                          ? 'border-gold-600 bg-gold-600/10 text-gold-700 dark:text-gold-300 shadow-sm'
+                          : 'border-cool-gray-200 dark:border-charcoal-700 text-charcoal-600 dark:text-cool-gray-400 hover:border-cool-gray-300 dark:hover:border-charcoal-600'
+                      }`}
+                    >
+                      <span className="text-lg">🏛️</span>
+                      <span>Bank Transfer</span>
+                    </button>
+                  </div>
 
-                <form onSubmit={handlePaymentSubmit} className="space-y-4">
                   {paymentMethodType === 'card' ? (
-                    <div className="space-y-4">
-                      <div className="bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-gold-600 text-xl">💳</span>
-                          <h3 className="font-semibold text-gold-900 dark:text-gold-300 text-sm">Flutterwave Secure Card Payment</h3>
-                        </div>
-                        <ol className="space-y-2.5">
-                          {[
-                            { step: '1', text: "Click 'Review Order' then 'Place Order' below" },
-                            { step: '2', text: "You'll be securely redirected to Flutterwave's checkout page" },
-                            { step: '3', text: 'Enter your card details securely on the Flutterwave hosted form' },
-                            { step: '4', text: 'Complete any 3D Secure verification (OTP) from your bank' },
-                          ].map(({ step, text }) => (
-                            <li key={step} className="flex items-start gap-3">
-                              <span className="shrink-0 w-5 h-5 rounded-full bg-gold-600 dark:bg-gold-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
-                                {step}
-                              </span>
-                              <span className="text-xs text-gold-800 dark:text-gold-300 leading-relaxed">{text}</span>
-                            </li>
-                          ))}
-                        </ol>
+                    <div className="bg-gold-50 dark:bg-gold-900/10 border border-gold-200 dark:border-gold-800 rounded-xl p-5">
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <span className="text-xl">💳</span>
+                        <h4 className="font-bold text-gold-900 dark:text-gold-300 text-sm">Flutterwave 3D Secure Card Processing</h4>
+                      </div>
+                      <p className="text-xs text-gold-800 dark:text-gold-300/90 leading-relaxed mb-3">
+                        You will be directly redirected to Flutterwave’s official checkout UI to complete your payment with any Nigerian or international Visa, Mastercard, or Verve card with OTP verification.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-gold-800 dark:text-gold-300">
+                        <span className="px-2 py-0.5 bg-white dark:bg-charcoal-800 border border-gold-200 dark:border-gold-800 rounded">Visa</span>
+                        <span className="px-2 py-0.5 bg-white dark:bg-charcoal-800 border border-gold-200 dark:border-gold-800 rounded">Mastercard</span>
+                        <span className="px-2 py-0.5 bg-white dark:bg-charcoal-800 border border-gold-200 dark:border-gold-800 rounded">Verve</span>
+                        <span className="px-2 py-0.5 bg-white dark:bg-charcoal-800 border border-gold-200 dark:border-gold-800 rounded">Apple Pay / Google Pay</span>
                       </div>
                     </div>
                   ) : (
-                    /* Bank Transfer via Flutterwave */
                     <div className="space-y-4">
-                      {/* How it works */}
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-blue-600 text-xl">🏛️</span>
-                          <h3 className="font-semibold text-blue-900 dark:text-blue-300 text-sm">Flutterwave Secure Bank Transfer</h3>
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <span className="text-xl">🏛️</span>
+                          <h4 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Instant Virtual Bank Transfer via Flutterwave</h4>
                         </div>
-                        <ol className="space-y-2.5">
-                          {[
-                            { step: '1', text: 'Click \'Review Order\' then \'Place Order\' below' },
-                            { step: '2', text: 'You\'ll be securely redirected to Flutterwave\'s payment page' },
-                            { step: '3', text: 'A unique virtual account number is generated for your exact order amount' },
-                            { step: '4', text: 'Transfer the amount from any bank app — payment is confirmed automatically' },
-                          ].map(({ step, text }) => (
-                            <li key={step} className="flex items-start gap-3">
-                              <span className="shrink-0 w-5 h-5 rounded-full bg-blue-600 dark:bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
-                                {step}
-                              </span>
-                              <span className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">{text}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-
-                      {/* Amount preview */}
-                      <div className="flex items-center justify-between p-4 bg-white dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 rounded-xl">
-                        <div>
-                          <p className="text-xs text-cool-gray-500 dark:text-cool-gray-400 mb-0.5">Amount to transfer</p>
-                          <p className="text-2xl font-bold text-charcoal-900 dark:text-white">{formatPrice(total)}</p>
-                          <p className="text-[11px] text-cool-gray-400 mt-0.5">Includes service fee, shipping & tax</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-2xl">
-                            🏦
+                        <p className="text-xs text-blue-800 dark:text-blue-300/90 leading-relaxed mb-3">
+                          Flutterwave will automatically generate a unique, dedicated virtual Nigerian bank account for your order amount. Transfer directly from your banking app for instant verification.
+                        </p>
+                        <div className="flex items-center justify-between p-3.5 bg-white dark:bg-charcoal-800 border border-blue-200 dark:border-blue-700 rounded-lg">
+                          <div>
+                            <p className="text-[11px] text-cool-gray-500">Order Equivalent (NGN)</p>
+                            <p className="text-lg font-bold text-charcoal-900 dark:text-white">
+                              ₦{(Math.round(total * 1600)).toLocaleString()}
+                            </p>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Phone number requirement note */}
-                      {!shippingInfo.phone && (
-                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                          <span className="text-amber-600 shrink-0">⚠️</span>
-                          <p className="text-xs text-amber-700 dark:text-amber-400">
-                            Please add a phone number in your shipping details — Flutterwave requires it to generate your virtual account.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Supported banks */}
-                      <div className="p-3 bg-cool-gray-50 dark:bg-charcoal-900 rounded-lg border border-cool-gray-200 dark:border-charcoal-700">
-                        <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 font-medium mb-2">Accepted from any Nigerian bank:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {['GTBank', 'Access Bank', 'Zenith', 'First Bank', 'UBA', 'Opay', 'Palmpay', '+100 more'].map(b => (
-                            <span key={b} className="text-[10px] px-2 py-0.5 bg-white dark:bg-charcoal-800 border border-cool-gray-200 dark:border-charcoal-700 rounded text-charcoal-600 dark:text-cool-gray-400">{b}</span>
-                          ))}
+                          <span className="text-xs px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded font-semibold">
+                            Live Rate @ ₦1,600/USD
+                          </span>
                         </div>
                       </div>
                     </div>
                   )}
-                  <div className="bg-gold-600/10 dark:bg-gold-600/20 border border-gold-600/30 dark:border-gold-600/40 rounded-lg p-4 mt-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-gold-600 text-xl">🔒</span>
-                      <div>
-                        <p className="text-sm font-medium text-charcoal-900 dark:text-white">Secure Payment</p>
-                        <p className="text-xs text-charcoal-600 dark:text-cool-gray-400 mt-1">
-                          Your payment information is encrypted and secure. We never store your full card details.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => setCurrentStep(2)}
-                      className="flex-1 px-6 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-700 dark:text-white rounded-lg font-semibold hover:bg-cool-gray-100 dark:hover:bg-charcoal-600 transition-colors">
-                      Back
-                    </button>
-                    <button type="submit" className="flex-1 px-6 py-3 bg-gold-600 text-white rounded-lg font-semibold hover:bg-gold-700 transition-colors">
-                      Review Order →
 
-                    </button>
+                  <div className="mt-4 pt-4 border-t border-cool-gray-200 dark:border-charcoal-700 flex items-center justify-between text-xs text-cool-gray-500 dark:text-cool-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <span>🔒</span> 256-Bit Bank-Grade SSL Encryption
+                    </span>
+                    <span>No card details stored on our servers</span>
                   </div>
-                </form>
-              </div>
-            )}
+                </div>
 
-            {/* ── STEP 4: Review ───────────────────────────────────────────── */}
-            {currentStep === 4 && (
-              <div className="space-y-6">
-                {/* Summary cards */}
+                {/* Shipping & Delivery Review */}
                 <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
-                  <h2 className="text-2xl font-bold text-charcoal-900 dark:text-white mb-6">Review Your Order</h2>
-                  <div className="space-y-5">
-
-                    {/* Shipping address */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-charcoal-900 dark:text-white">Shipping Address</h3>
-                        <button onClick={() => setCurrentStep(1)} className="text-xs text-gold-600 hover:text-gold-700 font-medium">Edit</button>
+                  <h3 className="text-lg font-bold text-charcoal-900 dark:text-white mb-4">Order &amp; Delivery Review</h3>
+                  <div className="space-y-4">
+                    {/* Shipping Address */}
+                    <div className="flex items-start justify-between p-3.5 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
+                      <div>
+                        <p className="text-xs font-semibold text-cool-gray-400 dark:text-cool-gray-500 mb-0.5">Shipping Destination</p>
+                        <p className="text-sm font-bold text-charcoal-900 dark:text-white">{shippingInfo.fullName}</p>
+                        <p className="text-xs text-charcoal-600 dark:text-cool-gray-400">
+                          {shippingInfo.address}, {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zipCode}
+                        </p>
+                        <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mt-0.5">📞 {shippingInfo.phone || 'No phone provided'}</p>
                       </div>
-                      <p className="text-sm text-charcoal-600 dark:text-cool-gray-400 leading-relaxed">
-                        {shippingInfo.fullName}<br />{shippingInfo.address}<br />
-                        {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zipCode}<br />
-                        {shippingInfo.phone}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(1)}
+                        className="text-xs text-gold-600 hover:text-gold-700 font-bold cursor-pointer"
+                      >
+                        Edit
+                      </button>
                     </div>
 
-                    {/* Delivery method */}
-                    <div className="border-t border-cool-gray-200 dark:border-charcoal-700 pt-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-charcoal-900 dark:text-white">Delivery Method</h3>
-                        <button onClick={() => setCurrentStep(2)} className="text-xs text-gold-600 hover:text-gold-700 font-medium">Change</button>
-                      </div>
-                      {selectedCourier ? (
-                        <div className="flex items-start gap-3 p-3 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
-                          <span className="text-2xl select-none">{selectedCourier.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm text-charcoal-900 dark:text-white">{selectedCourier.name}</span>
-                              {selectedCourier.badge && selectedCourier.badgeVariant && (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${BADGE_STYLES[selectedCourier.badgeVariant]}`}>
-                                  {selectedCourier.badge}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-charcoal-500 dark:text-cool-gray-400 mt-0.5">
-                              {selectedCourier.deliveryDays} · Est. <strong>{selectedCourier.estimatedDate}</strong>
-                            </p>
-                            <p className="text-xs text-charcoal-400 dark:text-cool-gray-500">{selectedCourier.carrier}</p>
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cool-gray-200 dark:bg-charcoal-700 text-charcoal-600 dark:text-cool-gray-400">
-                                {TRACKING_LABEL[selectedCourier.tracking]}
-                              </span>
-                              {selectedCourier.insurance && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">🛡️ Insured</span>
-                              )}
-                              {selectedCourier.signature && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">✍️ Signature</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className={`font-bold text-sm ${selectedCourier.price === 0 ? 'text-green-600 dark:text-green-400' : 'text-charcoal-900 dark:text-white'}`}>
-                              {selectedCourier.price === 0 ? 'FREE' : formatPrice(selectedCourier.price)}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-                          No delivery method selected. <button onClick={() => setCurrentStep(2)} className="underline font-semibold">Choose one now</button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Payment */}
-                    <div className="border-t border-cool-gray-200 dark:border-charcoal-700 pt-5">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-charcoal-900 dark:text-white">Payment Method</h3>
-                        <button onClick={() => setCurrentStep(3)} className="text-xs text-gold-600 hover:text-gold-700 font-medium">Edit</button>
-                      </div>
-                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
-                        <span className="text-xl">{paymentMethodType === 'card' ? '💳' : '🏛️'}</span>
+                    {/* Delivery Provider */}
+                    <div className="flex items-start justify-between p-3.5 rounded-xl bg-cool-gray-50 dark:bg-charcoal-900 border border-cool-gray-200 dark:border-charcoal-700">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{selectedCourier?.icon || '🚚'}</span>
                         <div>
-                          <p className="text-xs font-bold text-charcoal-900 dark:text-white">
-                            {paymentMethodType === 'card' ? 'Flutterwave Card Payment (Visa, Mastercard, Verve)' : 'Flutterwave Direct Bank Transfer (Virtual NGN Account)'}
-                          </p>
-                          <p className="text-[11px] text-cool-gray-500 dark:text-cool-gray-400 mt-0.5">
-                            Secured by 256-bit encryption • Certified Luxury World Escrow Protection
+                          <p className="text-xs font-semibold text-cool-gray-400 dark:text-cool-gray-500 mb-0.5">CourierPlus Service</p>
+                          <p className="text-sm font-bold text-charcoal-900 dark:text-white">{selectedCourier?.name || 'CourierPlus Delivery'}</p>
+                          <p className="text-xs text-charcoal-500 dark:text-cool-gray-400">
+                            Est. Arrival: <strong>{selectedCourier?.estimatedDate || '2-4 business days'}</strong>
                           </p>
                         </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-charcoal-900 dark:text-white block">
+                          {selectedCourier?.price === 0 ? 'FREE' : formatPrice(shipping)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          className="text-xs text-gold-600 hover:text-gold-700 font-bold cursor-pointer"
+                        >
+                          Change
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Order items */}
+                {/* Items Summary */}
                 <div className="bg-white dark:bg-charcoal-800 border border-cool-gray-300 dark:border-charcoal-700 rounded-xl p-6">
-                  <h3 className="font-semibold text-charcoal-900 dark:text-white mb-4">
-                    Order Items ({cartItems.length})
+                  <h3 className="font-bold text-charcoal-900 dark:text-white mb-3 text-sm">
+                    Items in Bag ({cartItems.length})
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex gap-4">
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
+                      <div key={item.id} className="flex items-center gap-3 py-2 border-b border-cool-gray-100 dark:border-charcoal-700/60 last:border-0">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-cool-gray-200 dark:border-charcoal-700">
                           <Image src={item.image} alt={item.name} fill className="object-cover" />
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-charcoal-900 dark:text-white">{item.name}</h4>
-                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">{item.vendor}</p>
-                          <p className="text-sm text-charcoal-600 dark:text-cool-gray-400">Qty: {item.quantity}</p>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs text-charcoal-900 dark:text-white truncate">{item.name}</h4>
+                          <p className="text-[11px] text-charcoal-500 dark:text-cool-gray-400">{item.vendor} • Qty: {item.quantity}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-charcoal-900 dark:text-white">{formatPrice(item.price * item.quantity)}</p>
-                        </div>
+                        <span className="font-bold text-xs text-charcoal-900 dark:text-white shrink-0">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                {/* Error Banner */}
                 {orderError && (
-                  <div className="mb-4 px-4 py-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-lg text-sm font-medium">
-                    {orderError}
+                  <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300 font-semibold flex items-start gap-2">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <span className="leading-relaxed">{orderError}</span>
                   </div>
                 )}
-                <div className="flex gap-4">
-                  <button onClick={() => setCurrentStep(3)}
-                    className="flex-1 px-6 py-3 border-2 border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-700 dark:text-white rounded-lg font-semibold hover:bg-cool-gray-100 dark:hover:bg-charcoal-600 transition-colors">
-                    Back
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="sm:w-1/3 py-4 border-2 border-cool-gray-300 dark:border-charcoal-600 bg-white dark:bg-charcoal-700 text-charcoal-700 dark:text-white rounded-xl font-bold hover:bg-cool-gray-100 dark:hover:bg-charcoal-600 transition-colors text-sm cursor-pointer"
+                  >
+                    ← Back to Delivery
                   </button>
-                  <button onClick={handlePlaceOrder} disabled={isProcessing}
-                    className="flex-1 px-6 py-3.5 bg-gold-600 hover:bg-gold-500 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md shadow-gold-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePlaceOrder}
+                    disabled={isProcessing}
+                    className="sm:w-2/3 py-4 bg-gold-600 hover:bg-gold-500 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md shadow-gold-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 text-base"
+                  >
                     {isProcessing ? (
                       <span className="flex items-center justify-center gap-2">
-                        <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                        Connecting to Flutterwave…
+                        <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                        <span>Connecting to Flutterwave Secure Gateway…</span>
                       </span>
                     ) : (
                       <span>Pay {formatPrice(total)} with Flutterwave 🔒</span>

@@ -101,14 +101,15 @@ export default function ReviewPage() {
         return;
       }
 
-      clearCheckout();
-      clearCart();
-
       if (paymentLink) {
+        clearCheckout();
+        clearCart();
         window.location.href = paymentLink;
-      } else {
-        router.push(`/order/confirmation?orderId=${orderId}`);
+        return;
       }
+
+      setPlaceError(data.message || 'Payment Gateway Error: Unable to redirect to Flutterwave. Payment is required to complete this order.');
+      setIsPlacing(false);
     } catch {
       setPlaceError('Network error. Please check your connection and try again.');
     } finally {

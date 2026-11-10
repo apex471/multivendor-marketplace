@@ -162,10 +162,8 @@ export default function PaymentPage() {
         return;
       }
 
-      // Fallback for development / mock environments
-      clearCheckout();
-      clearCart();
-      router.push(`/checkout/verify?gateway=flutterwave&order_id=${orderId}&status=successful`);
+      setErrorMessage(data.message || 'Payment Gateway Error: Unable to redirect to Flutterwave. Please try again or contact support.');
+      setIsProcessing(false);
     } catch {
       setErrorMessage('Network error during payment initialization. Please check your connection.');
       setIsProcessing(false);
