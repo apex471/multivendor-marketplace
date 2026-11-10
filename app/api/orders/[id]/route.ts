@@ -9,8 +9,57 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const order = await Order.findById(id);
-    if (!order) return sendError('Order not found', 404);
+    let rawOrder = await Order.findById(id);
+    if (!rawOrder) {
+      rawOrder = await Order.findByOrderId(id);
+    }
+    if (!rawOrder) {
+      try {
+        const OrderStore = await import('@/lib/store/orders');
+        const mem = OrderStore.getById(id);
+        if (mem) rawOrder = mem as any;
+      } catch {}
+    }
+    if (!rawOrder) return sendError('Order not found', 404);
+
+    // Normalize shipping address safely (handles both object and string representations)
+    let shippingAddressObj: any = {};
+    if (typeof rawOrder.shippingAddress === 'string') {
+      shippingAddressObj = {
+        fullName: rawOrder.customerName || '',
+        phone: rawOrder.customerPhone || '',
+        addressLine1: rawOrder.shippingAddress,
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+        formattedAddress: rawOrder.shippingAddress,
+      };
+    } else if (rawOrder.shippingAddress && typeof rawOrder.shippingAddress === 'object') {
+      const sa = rawOrder.shippingAddress as any;
+      const parts = [sa.addressLine1, sa.addressLine2, sa.city, sa.state, sa.zipCode, sa.country].filter(Boolean);
+      shippingAddressObj = {
+        fullName: sa.fullName || rawOrder.customerName || '',
+        phone: sa.phone || rawOrder.customerPhone || '',
+        addressLine1: sa.addressLine1 || '',
+        addressLine2: sa.addressLine2 || '',
+        city: sa.city || '',
+        state: sa.state || '',
+        zipCode: sa.zipCode || '',
+        country: sa.country || '',
+        formattedAddress: parts.join(', ') || sa.address || '',
+      };
+    }
+
+    const order = {
+      ...rawOrder,
+      id: rawOrder.id,
+      orderId: rawOrder.orderId || (rawOrder as any).id,
+      orderDate: rawOrder.createdAt ? new Date(rawOrder.createdAt).toISOString() : (rawOrder as any).orderDate || new Date().toISOString(),
+      createdAt: rawOrder.createdAt ? new Date(rawOrder.createdAt).toISOString() : new Date().toISOString(),
+      shippingAddress: shippingAddressObj,
+    };
+
     return sendSuccess({ order });
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
@@ -28,7 +77,10 @@ export async function PATCH(
     const payload = verifyToken(auth.slice(7));
     if (!payload) return sendError('Invalid token', 401);
 
-    const order = await Order.findById(id);
+    let order = await Order.findById(id);
+    if (!order) {
+      order = await Order.findByOrderId(id);
+    }
     if (!order) return sendError('Order not found', 404);
 
     const body = await request.json().catch(() => ({}));
@@ -66,7 +118,7 @@ export async function PATCH(
       } catch {}
     }
 
-    await Order.updateOne(id, mongoUpdates);
+    await Order.updateOne(order.id || id, mongoUpdates);
 
     // Dispatch status update notification to vendors
     if (body.status && body.status !== order.status) {
@@ -81,7 +133,7 @@ export async function PATCH(
       }
     }
 
-    const updated = await Order.findById(id);
+    const updated = (await Order.findById(order.id || id)) || (await Order.findByOrderId(order.orderId || id));
     return sendSuccess({ order: updated ?? { id, ...mongoUpdates } }, 'Order updated successfully');
   } catch (err) {
     return sendServerError(err instanceof Error ? err.message : String(err));
